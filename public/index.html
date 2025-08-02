@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>TossIt - מערכת ניהול מלאי ותוקף</title>
+    <meta name="description" content="מערכת ניהול מלאי ותוקף עבור ברים ומטבחים" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="mask-icon" href="/icons/mask-icon.svg" color="#FFFFFF">
+    <meta name="theme-color" content="#009688">
+    <style>
+      html {
+        direction: rtl;
+      }
+      
+      /* Special handling for different input types */
+      input[type="email"], input[type="password"], input[type="url"] {
+        direction: ltr !important;
+        text-align: left !important;
+      }
+      
+      input, textarea, select {
+        text-align: right;
+      }
+      
+      /* Hebrew text inputs should be RTL */
+      input[type="text"], textarea, select {
+        direction: rtl;
+        text-align: right;
+      }
+      
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html> 

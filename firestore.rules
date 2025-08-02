@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Development mode rules - allow all operations (REPLACE WITH STRICTER RULES IN PRODUCTION)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // THE FOLLOWING RULES ARE COMMENTED OUT FOR DEVELOPMENT
+    // UNCOMMENT AND MODIFY THESE RULES BEFORE GOING TO PRODUCTION
+    
+    /* 
+    // כללים בסיסיים
+    match /{document=**} {
+      allow read, write: if false; // חסימת גישה כברירת מחדל
+    }
+    
+    // הרשאות למשתמשים - משתמש יכול לקרוא ולעדכן את המידע שלו עצמו
+    match /users/{userId} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || 
+                               exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    // הרשאות לניהול מוצרים
+    match /products/{productId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                   exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                   (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.businessId == resource.data.businessId);
+    }
+    
+    // הרשאות לניהול פריטים
+    match /items/{itemId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isOnShift == true;
+      allow update, delete: if request.auth != null && 
+                           (request.auth.uid == resource.data.userId || 
+                            exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    */
+  }
+}

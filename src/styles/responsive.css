@@ -1,0 +1,403 @@
+/* ===== RESPONSIVE DESIGN UTILITIES ===== */
+/*
+  This file provides a comprehensive responsive design system for the TossIt app.
+  
+  BREAKPOINTS:
+  - Mobile: 0-599px (phones)
+  - Tablet: 600-899px (tablets, small laptops)
+  - Desktop: 900px+ (desktops, large laptops)
+  
+  USAGE:
+  - Use .responsive-* classes for automatic responsive behavior
+  - Grid system adapts automatically based on screen size
+  - Touch targets are optimized for mobile devices
+  - Typography scales appropriately across devices
+  
+  FEATURES:
+  - Mobile-first approach
+  - Touch-friendly interactions
+  - Proper spacing and sizing
+  - RTL support
+  - Device-specific optimizations
+*/
+
+/* Standard breakpoints */
+:root {
+  --mobile-max: 599px;
+  --tablet-min: 600px;
+  --tablet-max: 899px;
+  --desktop-min: 900px;
+  --large-desktop-min: 1200px;
+  
+  /* Responsive spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Touch target sizes */
+  --touch-target-min: 44px;
+  --touch-target-mobile: 48px;
+}
+
+/* ===== RESPONSIVE CONTAINERS ===== */
+.responsive-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+@media (max-width: 599px) {
+  .responsive-container {
+    padding: 0 var(--spacing-sm);
+  }
+}
+
+/* ===== RESPONSIVE GRID SYSTEM ===== */
+.responsive-grid {
+  display: grid;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+/* Auto-fit responsive grid */
+.responsive-grid--auto {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+@media (max-width: 599px) {
+  .responsive-grid--auto {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+}
+
+/* Column-based responsive grid */
+.responsive-grid--2-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.responsive-grid--3-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 899px) {
+  .responsive-grid--3-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 599px) {
+  .responsive-grid--2-col,
+  .responsive-grid--3-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== RESPONSIVE FLEXBOX ===== */
+.responsive-flex {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.responsive-flex--wrap {
+  flex-wrap: wrap;
+}
+
+.responsive-flex--column-mobile {
+  flex-direction: row;
+}
+
+@media (max-width: 599px) {
+  .responsive-flex--column-mobile {
+    flex-direction: column;
+  }
+  
+  .responsive-flex {
+    gap: var(--spacing-sm);
+  }
+}
+
+/* ===== RESPONSIVE BUTTONS ===== */
+.responsive-button {
+  min-height: var(--touch-target-min);
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 599px) {
+  .responsive-button {
+    min-height: var(--touch-target-mobile);
+    padding: 14px 20px;
+    font-size: 0.875rem;
+    width: 100%;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .responsive-button {
+    min-height: var(--touch-target-mobile);
+  }
+}
+
+/* ===== RESPONSIVE TYPOGRAPHY ===== */
+.responsive-text--large {
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.responsive-text--medium {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.responsive-text--small {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 599px) {
+  .responsive-text--large {
+    font-size: 1.125rem;
+  }
+  
+  .responsive-text--medium {
+    font-size: 0.875rem;
+  }
+  
+  .responsive-text--small {
+    font-size: 0.75rem;
+  }
+}
+
+/* ===== RESPONSIVE SPACING ===== */
+.responsive-padding {
+  padding: var(--spacing-lg);
+}
+
+.responsive-padding--small {
+  padding: var(--spacing-md);
+}
+
+.responsive-margin {
+  margin: var(--spacing-lg);
+}
+
+.responsive-margin--small {
+  margin: var(--spacing-md);
+}
+
+@media (max-width: 599px) {
+  .responsive-padding {
+    padding: var(--spacing-md);
+  }
+  
+  .responsive-padding--small {
+    padding: var(--spacing-sm);
+  }
+  
+  .responsive-margin {
+    margin: var(--spacing-md);
+  }
+  
+  .responsive-margin--small {
+    margin: var(--spacing-sm);
+  }
+}
+
+/* ===== RESPONSIVE CARDS ===== */
+.responsive-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: var(--spacing-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+@media (max-width: 599px) {
+  .responsive-card {
+    padding: var(--spacing-md);
+    border-radius: 6px;
+    margin: 0 var(--spacing-xs);
+  }
+}
+
+/* ===== RESPONSIVE NAVIGATION ===== */
+.responsive-nav {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+@media (max-width: 599px) {
+  .responsive-nav {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: stretch;
+  }
+}
+
+.responsive-nav__item {
+  padding: 10px 20px;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  text-align: center;
+  min-height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 599px) {
+  .responsive-nav__item {
+    min-height: var(--touch-target-mobile);
+    width: 100%;
+  }
+}
+
+/* ===== RESPONSIVE TABLES ===== */
+.responsive-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.responsive-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.responsive-table th,
+.responsive-table td {
+  padding: 12px;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+}
+
+@media (max-width: 599px) {
+  .responsive-table th,
+  .responsive-table td {
+    padding: 8px 6px;
+    font-size: 0.875rem;
+  }
+  
+  /* Hide less important columns on mobile */
+  .responsive-table .hide-mobile {
+    display: none;
+  }
+}
+
+/* ===== RESPONSIVE FORMS ===== */
+.responsive-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.responsive-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.responsive-form__row {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+@media (max-width: 599px) {
+  .responsive-form__row {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+}
+
+.responsive-form__input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  min-height: var(--touch-target-min);
+}
+
+@media (max-width: 599px) {
+  .responsive-form__input {
+    min-height: var(--touch-target-mobile);
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* ===== RESPONSIVE VISIBILITY ===== */
+.show-mobile {
+  display: none;
+}
+
+.hide-mobile {
+  display: block;
+}
+
+@media (max-width: 599px) {
+  .show-mobile {
+    display: block;
+  }
+  
+  .hide-mobile {
+    display: none;
+  }
+}
+
+.show-tablet {
+  display: none;
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+  .show-tablet {
+    display: block;
+  }
+}
+
+.show-desktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .show-desktop {
+    display: block;
+  }
+}
+
+/* ===== RESPONSIVE RTL SUPPORT ===== */
+[dir="rtl"] .responsive-flex {
+  direction: rtl;
+}
+
+[dir="rtl"] .responsive-nav {
+  direction: rtl;
+}
+
+[dir="rtl"] .responsive-table th,
+[dir="rtl"] .responsive-table td {
+  text-align: right;
+}
+
+/* ===== RESPONSIVE ANIMATIONS ===== */
+@media (prefers-reduced-motion: reduce) {
+  .responsive-button,
+  .responsive-card,
+  .responsive-nav__item {
+    transition: none;
+  }
+} 

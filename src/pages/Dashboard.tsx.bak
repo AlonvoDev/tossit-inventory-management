@@ -1,0 +1,374 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { signOut, updateUserRoleToAdmin } from '../api/authAPI';
+import ShiftButton from '../components/ShiftButton';
+import OpenItemForm from '../components/OpenItemForm';
+import ItemsList from '../components/ItemsList';
+import { Container, Box, Button } from '@mui/material';
+import { addSampleProducts } from '../api/productsAPI';
+
+const Dashboard: React.FC = () => {
+  const { currentUser, userProfile, isAdmin, isOffline } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'bar' | 'kitchen'>('bar');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Debug effect to log user status
+  useEffect(() => {
+    console.log('User profile:', userProfile);
+    console.log('Is admin:', isAdmin);
+    console.log('Role:', userProfile?.role);
+    console.log('Offline mode:', isOffline);
+  }, [userProfile, isAdmin, isOffline]);
+  
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+  
+  const handleItemAdded = () => {
+    // Trigger a refresh of the items list
+    setRefreshTrigger(prev => prev + 1);
+  };
+  
+  // If no user profile, show loading or error
+  if (!userProfile) {
+    return (
+      <div className="loading-container">
+        <h2>טוען נתוני משתמש...</h2>
+        <p>אם המסך נתקע, יתכן שיש בעיה בחיבור לשרת.</p>
+        <button 
+          onClick={() => navigate('/login')}
+          className="error-button"
+        >
+          חזרה למסך הכניסה
+        </button>
+      </div>
+    );
+  }
+  
+  return (
+    <Container maxWidth="md" sx={{ mt: 4 }} className="dashboard">
+      {isOffline && (
+        <div className="offline-banner">
+          <span className="offline-icon">⚠️</span>
+          מצב לא מקוון - חלק מהפעולות לא יהיו זמינות עד לחידוש החיבור
+        </div>
+      )}
+      
+      <header className="dashboard-header">
+        <h1>שלום, {userProfile.displayName}</h1>
+        <div className="user-info">
+          <p>תפקיד: {userProfile.role === 'admin' ? 'מנהל' : 'עובד'}</p>
+          {isOffline && <p className="offline-status">מצב לא מקוון</p>}
+        </div>
+        <ShiftButton />
+      </header>
+      
+      <div className="dashboard-content">
+        <div className="tabs">
+          <button 
+            className={`tab ${activeTab === 'bar' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bar')}
+          >
+            בר
+          </button>
+          <button 
+            className={`tab ${activeTab === 'kitchen' ? 'active' : ''}`}
+            onClick={() => setActiveTab('kitchen')}
+          >
+            מטבח
+          </button>
+        </div>
+        
+        <div className="tab-content">
+          <OpenItemForm 
+            onItemAdded={handleItemAdded} 
+            area={activeTab}
+            disabled={isOffline}
+            businessId={userProfile.businessId}
+            userId={currentUser?.uid}
+            areas={['מטבח', 'בר', 'מחסן', 'אחר']}
+          />
+          
+          <ItemsList 
+            area={activeTab} 
+            refreshTrigger={refreshTrigger}
+            isOffline={isOffline}
+          />
+        </div>
+      </div>
+      
+      <div className="admin-controls">
+        {isAdmin && (
+          <button 
+            onClick={() => navigate('/admin')}
+            className="admin-button"
+            disabled={isOffline}
+          >
+            ניהול מערכת
+          </button>
+        )}
+        
+        {/* Development utilities - only visible on localhost */}
+        {window.location.hostname === 'localhost' && (
+          <div className="dev-utilities">
+            <h3>כלי פיתוח</h3>
+            <button 
+              onClick={async () => {
+                try {
+                  await updateUserRoleToAdmin(currentUser?.uid || '');
+                  alert('הרשאות מנהל הוגדרו בהצלחה!');
+                  window.location.reload();
+                } catch (error) {
+                  console.error('Error updating role:', error);
+                  alert('אירעה שגיאה בעדכון ההרשאות');
+                }
+              }}
+              className="dev-button"
+            >
+              קבע הרשאות מנהל
+            </button>
+            
+            <button 
+              onClick={async () => {
+                try {
+                  if (userProfile?.businessId) {
+                    await addSampleProducts(userProfile.businessId);
+                    alert('מוצרי דוגמה נוספו בהצלחה!');
+                    window.location.reload();
+                  } else {
+                    alert('מזהה עסק לא נמצא');
+                  }
+                } catch (error) {
+                  console.error('Error adding sample products:', error);
+                  alert('אירעה שגיאה בהוספת מוצרי דוגמה');
+                }
+              }}
+              className="dev-button"
+            >
+              הוסף מוצרי דוגמה
+            </button>
+          </div>
+        )}
+        
+        <button 
+          onClick={handleSignOut}
+          className="logout-button"
+        >
+          התנתק
+        </button>
+      </div>
+      
+      <style jsx>{`
+        .dashboard {
+          padding: 20px;
+          max-width: 1200px;
+          margin: 0 auto;
+          direction: rtl;
+        }
+        
+        .offline-banner {
+          background-color: #ffcc00;
+          color: #333;
+          padding: 10px;
+          text-align: center;
+          margin-bottom: 20px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+        }
+        
+        .offline-icon {
+          margin-left: 8px;
+          font-size: 18px;
+        }
+        
+        .offline-status {
+          color: #d32f2f;
+          font-weight: bold;
+          display: inline-block;
+          margin-right: 10px;
+        }
+        
+        .dashboard-header {
+          margin-bottom: 30px;
+        }
+        
+        .dashboard-header h1 {
+          margin: 0 0 10px;
+          color: #333;
+        }
+        
+        .user-info {
+          display: flex;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+        
+        .user-info p {
+          margin: 0;
+          color: #666;
+        }
+        
+        .dashboard-content {
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+          padding: 20px;
+          margin-bottom: 20px;
+        }
+        
+        .tabs {
+          display: flex;
+          margin-bottom: 20px;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .tab {
+          padding: 10px 20px;
+          background: none;
+          border: none;
+          font-size: 16px;
+          font-weight: 500;
+          color: #757575;
+          cursor: pointer;
+          position: relative;
+        }
+        
+        .tab.active {
+          color: #009688;
+        }
+        
+        .tab.active::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: #009688;
+        }
+        
+        .tab-content {
+          padding: 10px 0;
+        }
+        
+        .admin-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          align-items: flex-start;
+        }
+        
+        .admin-button, .logout-button, .dev-button, .error-button {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: background-color 0.3s;
+        }
+        
+        .admin-button {
+          background-color: #673AB7;
+          color: white;
+        }
+        
+        .admin-button:hover {
+          background-color: #5E35B1;
+        }
+        
+        .admin-button:disabled {
+          background-color: #B39DDB;
+          cursor: not-allowed;
+        }
+        
+        .logout-button {
+          background-color: #f5f5f5;
+          color: #333;
+        }
+        
+        .logout-button:hover {
+          background-color: #e0e0e0;
+        }
+        
+        .dev-utilities {
+          background-color: #FFF8E1;
+          border: 1px dashed #FFB300;
+          border-radius: 4px;
+          padding: 15px;
+          margin-top: 20px;
+          width: 100%;
+        }
+        
+        .dev-utilities h3 {
+          margin-top: 0;
+          margin-bottom: 10px;
+          font-size: 16px;
+          color: #F57C00;
+        }
+        
+        .dev-button {
+          background-color: #FF9800;
+          color: white;
+          font-size: 14px;
+          margin-bottom: 10px;
+          width: 100%;
+        }
+        
+        .dev-button:hover {
+          background-color: #F57C00;
+        }
+        
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          text-align: center;
+          gap: 20px;
+          padding: 20px;
+        }
+        
+        .error-button {
+          background-color: #f44336;
+          color: white;
+        }
+        
+        .error-button:hover {
+          background-color: #d32f2f;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 600px) {
+          .tabs {
+            flex-direction: column;
+            border-bottom: none;
+          }
+          
+          .tab {
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+          }
+          
+          .tab.active::after {
+            bottom: 0;
+          }
+        }
+      `}</style>
+    </Container>
+  );
+};
+
+export default Dashboard; 
