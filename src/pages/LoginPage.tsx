@@ -133,7 +133,7 @@ const LoginPage: React.FC = () => {
         
         <form className="login-form" onSubmit={handleEmailLogin}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <div className="form-group">
                 <label htmlFor="email">דוא"ל</label>
                 <input
@@ -148,7 +148,7 @@ const LoginPage: React.FC = () => {
               </div>
             </Grid>
             
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <div className="form-group">
                 <label htmlFor="password">סיסמה</label>
                 <input
@@ -165,7 +165,7 @@ const LoginPage: React.FC = () => {
           </Grid>
           
           <Grid container>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <button 
                 type="submit" 
                 className="login-button"

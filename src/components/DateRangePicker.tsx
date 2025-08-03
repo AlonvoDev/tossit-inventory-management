@@ -48,8 +48,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 }) => {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState<Date | null>(startDate);
-  const [tempEndDate, setTempEndDate] = useState<Date | null>(endDate);
+  const [tempStartDate, setTempStartDate] = useState<Date | null>(startDate || null);
+  const [tempEndDate, setTempEndDate] = useState<Date | null>(endDate || null);
 
   const presetRanges: PresetRange[] = [
     {
@@ -119,15 +119,15 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   ];
 
   const handleOpen = () => {
-    setTempStartDate(startDate);
-    setTempEndDate(endDate);
+    setTempStartDate(startDate || null);
+    setTempEndDate(endDate || null);
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
-    setTempStartDate(startDate);
-    setTempEndDate(endDate);
+    setTempStartDate(startDate || null);
+    setTempEndDate(endDate || null);
   };
 
   const handleApply = () => {
@@ -254,7 +254,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <DialogContent sx={{ p: 3 }}>
           <Grid container spacing={3}>
             {/* Preset Options */}
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -292,13 +292,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             </Grid>
 
             {/* Date Selectors */}
-            <Grid item xs={12} md={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
                   בחירה מותאמת אישית
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="תאריך התחלה"
                       type="date"
@@ -314,7 +314,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="תאריך סיום"
                       type="date"

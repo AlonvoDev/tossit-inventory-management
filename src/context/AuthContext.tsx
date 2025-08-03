@@ -40,7 +40,7 @@ interface AuthContextType {
   businessId: string | null;
   
   // Helper functions
-  hasRole: (role: 'admin' | 'staff') => boolean;
+  hasRole: (role: 'admin' | 'manager' | 'staff') => boolean;
   isInDepartment: (department: 'bar' | 'kitchen') => boolean;
   logout: () => Promise<void>;
 }

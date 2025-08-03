@@ -57,7 +57,7 @@ const RegisterPage: React.FC = () => {
         
         <form className="register-form" onSubmit={handleRegister}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <div className="form-group">
                 <label htmlFor="email">Email</label>
                 <input
@@ -73,7 +73,7 @@ const RegisterPage: React.FC = () => {
               </div>
             </Grid>
             
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <div className="form-group">
                 <label htmlFor="displayName">Full Name</label>
                 <input
@@ -88,7 +88,7 @@ const RegisterPage: React.FC = () => {
               </div>
             </Grid>
             
-            <Grid item xs={12}>
+            <Grid size={12}>
               <div className="form-group">
                 <label htmlFor="businessId">Business ID</label>
                 <input
@@ -103,7 +103,7 @@ const RegisterPage: React.FC = () => {
               </div>
             </Grid>
             
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <div className="form-group">
                 <label htmlFor="password">Password</label>
                 <input
@@ -119,7 +119,7 @@ const RegisterPage: React.FC = () => {
               </div>
             </Grid>
             
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <div className="form-group">
                 <label htmlFor="confirmPassword">Confirm Password</label>
                 <input
@@ -138,7 +138,7 @@ const RegisterPage: React.FC = () => {
           
           {/* Admin checkbox - only enable for development or in admin-creation flows */}
           <Grid container>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <div className="form-group checkbox-group">
                 <input
                   type="checkbox"
@@ -155,7 +155,7 @@ const RegisterPage: React.FC = () => {
           {error && <div className="error-message">{error}</div>}
           
           <Grid container>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <button type="submit" className="register-button" disabled={isLoading}>
                 {isLoading ? 'Creating Account...' : 'Register'}
               </button>

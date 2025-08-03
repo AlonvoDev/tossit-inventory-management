@@ -260,7 +260,7 @@ const MaterialUIShowcase: React.FC = () => {
                   Additional Dashboard Content
                 </Typography>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <AdvancedProgressCard
                       title="Bar Inventory"
                       current={847}
@@ -270,7 +270,7 @@ const MaterialUIShowcase: React.FC = () => {
                       trend={{ value: 8.5, isPositive: true }}
                     />
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <AdvancedProgressCard
                       title="Kitchen Items"
                       current={623}
@@ -292,7 +292,7 @@ const MaterialUIShowcase: React.FC = () => {
             
             <Grid container spacing={3}>
               {/* Status Chips */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
@@ -311,7 +311,7 @@ const MaterialUIShowcase: React.FC = () => {
               </Grid>
 
               {/* Color Palette */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
@@ -326,7 +326,7 @@ const MaterialUIShowcase: React.FC = () => {
                         error: 'Error',
                         info: 'Info',
                       }).map(([key, label]) => (
-                        <Grid item xs={6} sm={4} md={2} key={key}>
+                        <Grid size={{ xs: 6, sm: 4, md: 2 }} key={key}>
                           <Paper
                             sx={{
                               height: 100,
@@ -357,7 +357,7 @@ const MaterialUIShowcase: React.FC = () => {
             </Typography>
             
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <AdvancedProgressCard
                   title="Total Inventory"
                   current={1247}
@@ -367,7 +367,7 @@ const MaterialUIShowcase: React.FC = () => {
                   trend={{ value: 15.2, isPositive: true }}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <AdvancedProgressCard
                   title="Expired Items"
                   current={23}
@@ -386,7 +386,7 @@ const MaterialUIShowcase: React.FC = () => {
             </Typography>
             
             <Grid container spacing={3}>
-              <Grid item xs={12} lg={8}>
+              <Grid size={{ xs: 12, lg: 8 }}>
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
@@ -396,7 +396,7 @@ const MaterialUIShowcase: React.FC = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} lg={4}>
+              <Grid size={{ xs: 12, lg: 4 }}>
                 <Stack spacing={3}>
                   <AdvancedProgressCard
                     title="Weekly Tasks"
@@ -423,7 +423,7 @@ const MaterialUIShowcase: React.FC = () => {
             </Typography>
             
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
@@ -461,7 +461,7 @@ const MaterialUIShowcase: React.FC = () => {
             </Typography>
             
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>

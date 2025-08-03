@@ -304,8 +304,6 @@ const PremiumDrawer: React.FC<PremiumDrawerProps> = ({
   navigationItems,
   onNavigate,
 }) => {
-  const theme = useTheme();
-
   return (
     <Drawer
       anchor="right"
@@ -487,7 +485,7 @@ const PremiumDashboard: React.FC<PremiumDashboardProps> = ({ children }) => {
         {/* KPI Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {kpiData.map((kpi, index) => (
-            <Grid item xs={12} sm={6} lg={3} key={index}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={index}>
               <PremiumKPICard {...kpi} />
             </Grid>
           ))}
@@ -495,7 +493,7 @@ const PremiumDashboard: React.FC<PremiumDashboardProps> = ({ children }) => {
 
         {/* Content Grid */}
         <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
+          <Grid size={{ xs: 12, lg: 8 }}>
             <Card sx={{ height: 400 }}>
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
@@ -519,7 +517,7 @@ const PremiumDashboard: React.FC<PremiumDashboardProps> = ({ children }) => {
             </Card>
           </Grid>
           
-          <Grid item xs={12} lg={4}>
+          <Grid size={{ xs: 12, lg: 4 }}>
             <PremiumStatusCard {...statusData[0]} />
           </Grid>
         </Grid>

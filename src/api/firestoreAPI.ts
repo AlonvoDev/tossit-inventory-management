@@ -225,6 +225,7 @@ const createCleanItem = (
     area: String(area),
     isThrown: false,
     discarded: false,
+    finished: false,
     reminderSent: false,
     adminNotified: false,
     // If a fridgeId is provided, include it in the item. This allows

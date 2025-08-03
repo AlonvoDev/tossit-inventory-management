@@ -98,8 +98,12 @@ const DiscardReport: React.FC = () => {
         bValue = bValue ? new Date(bValue).getTime() : 0;
       }
       
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      // Ensure values are not undefined
+      const aVal = aValue ?? 0;
+      const bVal = bValue ?? 0;
+      
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -186,7 +190,7 @@ const DiscardReport: React.FC = () => {
 
       {/* Summary Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ 
             background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
             color: 'white'
@@ -203,7 +207,7 @@ const DiscardReport: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ 
             background: `linear-gradient(135deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
             color: 'white'
@@ -220,7 +224,7 @@ const DiscardReport: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ 
             background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
             color: 'white'
@@ -237,7 +241,7 @@ const DiscardReport: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ 
             background: `linear-gradient(135deg, ${theme.palette.info.main}, ${theme.palette.info.dark})`,
             color: 'white'
