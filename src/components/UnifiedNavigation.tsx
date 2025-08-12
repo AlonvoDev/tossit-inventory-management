@@ -188,7 +188,7 @@ const UnifiedNavigation: React.FC = () => {
       setTimeout(() => {
         handleRegisterModalClose();
       }, 2000);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Registration error:', error);
       setRegisterError(error.message || 'שגיאה ביצירת המשתמש. נסה שוב.');
     } finally {
@@ -247,7 +247,7 @@ const UnifiedNavigation: React.FC = () => {
       setTimeout(() => {
         handleCategoryModalClose();
       }, 2000);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Category creation error:', error);
       setCategoryError(error.message || 'שגיאה ביצירת הקטגוריה. נסה שוב.');
     } finally {

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: tossit-app
+    env: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npx serve -s dist -l 10000
+    envVars:
+      - key: NODE_VERSION
+        value: 18

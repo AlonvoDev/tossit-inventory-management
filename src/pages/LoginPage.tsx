@@ -40,7 +40,7 @@ const LoginPage: React.FC = () => {
     try {
       await signIn(email, password);
       navigate('/dashboard');
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Login error:', error);
       
       // Improved error handling
@@ -71,7 +71,7 @@ const LoginPage: React.FC = () => {
     try {
       await signInWithGoogle();
       navigate('/dashboard');
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Google login error:', error);
       
       // Improved error handling

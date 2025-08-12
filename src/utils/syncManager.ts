@@ -16,7 +16,7 @@ import { db } from '../services/firebase';
 interface PendingOperation {
   type: 'addItem' | 'updateItem' | 'deleteItem' | 'markItemThrown' | 
          'addProduct' | 'updateProduct' | 'deleteProduct';
-  data: Record<string, unknown>;
+  data: any;
   timestamp: number;
   id: string;
 }
@@ -255,7 +255,7 @@ export const clearPendingOperations = () => {
 };
 
 // Clean operation data by removing undefined values
-const cleanOperationData = (data: Record<string, unknown>) => {
+const cleanOperationData = (data: any) => {
   if (!data || typeof data !== 'object') return data;
   
   const cleaned = Object.fromEntries(

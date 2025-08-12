@@ -361,7 +361,7 @@ export const updateUserByAdmin = async (uid: string, updateData: UpdateUserData)
       throw new Error('User ID is required for update');
     }
 
-    const updates: Record<string, unknown> = {};
+    const updates: { [key: string]: any } = {};
 
     // Validate and assign full name
     if (updateData.fullName !== undefined) {

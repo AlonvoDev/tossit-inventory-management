@@ -44,7 +44,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         handleDismiss(notification.id);
       }, duration);
     });
-  }, [notifications, handleDismiss]);
+  }, [notifications]);
 
   const handleDismiss = (id: string) => {
     setVisibleNotifications(prev => prev.filter(nId => nId !== id));

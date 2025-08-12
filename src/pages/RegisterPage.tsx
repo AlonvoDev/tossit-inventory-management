@@ -39,7 +39,7 @@ const RegisterPage: React.FC = () => {
     try {
       await signUp(email, password, displayName, businessId, isAdmin);
       navigate('/dashboard');
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Registration error:', error);
       setError(error.message || 'Failed to register. Please try again.');
     } finally {

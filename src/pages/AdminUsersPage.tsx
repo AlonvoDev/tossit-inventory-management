@@ -47,7 +47,7 @@ const AdminUsersPage: React.FC = () => {
     if (isAdmin && businessId) {
       loadUsers();
     }
-  }, [isAdmin, businessId, loadUsers]);
+  }, [isAdmin, businessId]);
 
   // Load all users
   const loadUsers = async () => {
@@ -124,12 +124,12 @@ const AdminUsersPage: React.FC = () => {
     }
     
     if (!formData.role || (formData.role !== 'admin' && formData.role !== 'manager' && formData.role !== 'staff')) {
-      errors.role = 'Role is required';
+      errors.role = 'admin';
     }
     
     // Only validate department for staff members
     if (formData.role === 'staff' && (!formData.department || (formData.department !== 'bar' && formData.department !== 'kitchen'))) {
-      errors.department = 'Department is required for staff';
+      errors.department = 'bar';
     }
     
     setFormErrors(errors);
@@ -187,7 +187,7 @@ const AdminUsersPage: React.FC = () => {
       });
       setEditMode(false);
       setEditingUser(null);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('Error saving user:', err);
       setError(err.message || 'Failed to save user. Please try again.');
     } finally {
@@ -247,7 +247,7 @@ const AdminUsersPage: React.FC = () => {
       setSuccess(`User "${user.fullName || user.email}" deleted successfully!`);
       // Remove deleted user from local state without reloading all users
       setUsers(prev => prev.filter(u => u.uid !== user.uid));
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('Error deleting user:', err);
       setError(err.message || 'Failed to delete user. Please try again.');
     } finally {
@@ -519,7 +519,7 @@ const AdminUsersPage: React.FC = () => {
                       {user.createdAt ? 
                         (user.createdAt.toMillis ? 
                           new Date(user.createdAt.toMillis()).toLocaleDateString() :
-                          new Date(user.createdAt as Date).toLocaleDateString()
+                          new Date(user.createdAt as any).toLocaleDateString()
                         ) : 
                         '-'
                       }
