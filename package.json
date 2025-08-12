@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "serve -s dist -l $PORT -H 0.0.0.0",
+    "start": "serve -s dist -l $PORT -H 0.0.0.0",
     "emulators": "firebase emulators:start",
     "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\""
   },
