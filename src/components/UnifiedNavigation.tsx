@@ -188,7 +188,7 @@ const UnifiedNavigation: React.FC = () => {
       setTimeout(() => {
         handleRegisterModalClose();
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Registration error:', error);
       setRegisterError(error.message || 'שגיאה ביצירת המשתמש. נסה שוב.');
     } finally {
@@ -247,7 +247,7 @@ const UnifiedNavigation: React.FC = () => {
       setTimeout(() => {
         handleCategoryModalClose();
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Category creation error:', error);
       setCategoryError(error.message || 'שגיאה ביצירת הקטגוריה. נסה שוב.');
     } finally {
@@ -655,7 +655,7 @@ const UnifiedNavigation: React.FC = () => {
                 <Select
                   value={formData.role}
                   label="תפקיד"
-                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as any }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'manager' | 'staff' }))}
                   disabled={registerLoading}
                 >
                   <MenuItem value="staff">עובד</MenuItem>
@@ -670,7 +670,7 @@ const UnifiedNavigation: React.FC = () => {
                   <Select
                     value={formData.department}
                     label="מחלקה"
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value as any }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value as 'bar' | 'kitchen' }))}
                     disabled={registerLoading}
                   >
                     <MenuItem value="bar">בר</MenuItem>

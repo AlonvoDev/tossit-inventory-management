@@ -361,7 +361,7 @@ export const updateUserByAdmin = async (uid: string, updateData: UpdateUserData)
       throw new Error('User ID is required for update');
     }
 
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
 
     // Validate and assign full name
     if (updateData.fullName !== undefined) {
@@ -402,7 +402,7 @@ export const updateUserByAdmin = async (uid: string, updateData: UpdateUserData)
     // Perform update in Firestore
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, updates);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Log and rethrow for caller to handle
     console.error('Error updating user:', error);
     throw error;
@@ -426,7 +426,7 @@ export const deleteUserByAdmin = async (uid: string): Promise<void> => {
     }
     const userRef = doc(db, 'users', uid);
     await deleteDoc(userRef);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting user:', error);
     throw error;
   }

@@ -16,7 +16,7 @@ import { db } from '../services/firebase';
 interface PendingOperation {
   type: 'addItem' | 'updateItem' | 'deleteItem' | 'markItemThrown' | 
          'addProduct' | 'updateProduct' | 'deleteProduct';
-  data: any;
+  data: Record<string, unknown>;
   timestamp: number;
   id: string;
 }
@@ -43,16 +43,17 @@ export const processPendingOperations = async (): Promise<void> => {
     for (const operation of sortedOperations) {
       try {
         switch (operation.type) {
-          case 'addItem':
-          case 'addItem':
+          case 'addItem': {
             // Filter out undefined values to prevent Firestore errors
             const cleanItemData = cleanOperationData(operation.data);
             await addDoc(collection(db, 'items'), cleanItemData);
             break;
-          case 'addProduct':
+          }
+          case 'addProduct': {
             const cleanProductData = cleanOperationData(operation.data);
             await addDoc(collection(db, 'products'), cleanProductData);
             break;
+          }
           case 'updateItem':
             // For operations that target a specific document, check if it's an offline ID
             if (operation.id.startsWith('offline-')) {
@@ -154,7 +155,7 @@ const refreshCachedItems = async (): Promise<void> => {
     if (!allCachedItems) return;
     
     const items = JSON.parse(allCachedItems);
-    const businessIds = [...new Set(items.map((item: any) => item.businessId))];
+    const businessIds = [...new Set(items.map((item: Record<string, unknown>) => item.businessId as string))];
     
     for (const businessId of businessIds) {
       // Fetch items for this business
@@ -170,8 +171,8 @@ const refreshCachedItems = async (): Promise<void> => {
       localStorage.setItem('cachedItems_all', JSON.stringify(fetchedItems));
       
       // Update area-specific caches
-      const barItems = fetchedItems.filter((item: any) => item.area === 'bar');
-      const kitchenItems = fetchedItems.filter((item: any) => item.area === 'kitchen');
+      const barItems = fetchedItems.filter((item: Record<string, unknown>) => item.area === 'bar');
+      const kitchenItems = fetchedItems.filter((item: Record<string, unknown>) => item.area === 'kitchen');
       
       localStorage.setItem('cachedItems_bar', JSON.stringify(barItems));
       localStorage.setItem('cachedItems_kitchen', JSON.stringify(kitchenItems));
@@ -194,7 +195,7 @@ const refreshCachedProducts = async (): Promise<void> => {
     if (!cachedProductsJson) return;
     
     const products = JSON.parse(cachedProductsJson);
-    const businessIds = [...new Set(products.map((product: any) => product.businessId))];
+    const businessIds = [...new Set(products.map((product: Record<string, unknown>) => product.businessId as string))];
     
     for (const businessId of businessIds) {
       // Fetch products for this business
@@ -254,11 +255,11 @@ export const clearPendingOperations = () => {
 };
 
 // Clean operation data by removing undefined values
-const cleanOperationData = (data: any) => {
+const cleanOperationData = (data: Record<string, unknown>) => {
   if (!data || typeof data !== 'object') return data;
   
   const cleaned = Object.fromEntries(
-    Object.entries(data).filter(([_, value]) => value !== undefined)
+    Object.entries(data).filter(([, value]) => value !== undefined)
   );
   
   return cleaned;

@@ -268,7 +268,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         productId: generateNextProductId()
       }));
     }
-  }, [products, editMode]);
+  }, [products, editMode, generateNextProductId]);
 
   // Clear/reset any issues
   const resetForm = () => {

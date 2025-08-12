@@ -27,7 +27,7 @@ export interface Fridge {
    */
   businessId: string;
   /** Creation timestamp. Added automatically when writing to Firestore. */
-  createdAt?: Timestamp | any;
+  createdAt?: Timestamp;
   /** Last update timestamp. Optional; set when updating a record. */
-  updatedAt?: Timestamp | any;
+  updatedAt?: Timestamp;
 }

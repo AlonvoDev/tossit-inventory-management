@@ -47,7 +47,7 @@ const AdminUsersPage: React.FC = () => {
     if (isAdmin && businessId) {
       loadUsers();
     }
-  }, [isAdmin, businessId]);
+  }, [isAdmin, businessId, loadUsers]);
 
   // Load all users
   const loadUsers = async () => {
@@ -124,12 +124,12 @@ const AdminUsersPage: React.FC = () => {
     }
     
     if (!formData.role || (formData.role !== 'admin' && formData.role !== 'manager' && formData.role !== 'staff')) {
-      errors.role = 'admin' as any; // Type placeholder
+      errors.role = 'Role is required';
     }
     
     // Only validate department for staff members
     if (formData.role === 'staff' && (!formData.department || (formData.department !== 'bar' && formData.department !== 'kitchen'))) {
-      errors.department = 'bar' as any; // Type placeholder
+      errors.department = 'Department is required for staff';
     }
     
     setFormErrors(errors);
@@ -187,7 +187,7 @@ const AdminUsersPage: React.FC = () => {
       });
       setEditMode(false);
       setEditingUser(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving user:', err);
       setError(err.message || 'Failed to save user. Please try again.');
     } finally {
@@ -247,7 +247,7 @@ const AdminUsersPage: React.FC = () => {
       setSuccess(`User "${user.fullName || user.email}" deleted successfully!`);
       // Remove deleted user from local state without reloading all users
       setUsers(prev => prev.filter(u => u.uid !== user.uid));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting user:', err);
       setError(err.message || 'Failed to delete user. Please try again.');
     } finally {
@@ -389,18 +389,7 @@ const AdminUsersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add User Form (legacy) - hidden now, retained for reference */}
-      {false && (
-        <div style={{ 
-          backgroundColor: '#f9f9f9', 
-          padding: '25px', 
-          borderRadius: '8px',
-          marginBottom: '30px',
-          border: '1px solid #ddd'
-        }}>
-          {/* This legacy form is no longer used. User creation is handled via a modal. */}
-        </div>
-      )}
+      {/* Add User Form (legacy) - removed as it's no longer used. User creation is handled via a modal. */}
 
       {/* Users List */}
       <div style={{ 
@@ -530,7 +519,7 @@ const AdminUsersPage: React.FC = () => {
                       {user.createdAt ? 
                         (user.createdAt.toMillis ? 
                           new Date(user.createdAt.toMillis()).toLocaleDateString() :
-                          new Date(user.createdAt as any).toLocaleDateString()
+                          new Date(user.createdAt as Date).toLocaleDateString()
                         ) : 
                         '-'
                       }

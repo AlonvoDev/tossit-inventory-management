@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 
 // Easier to use Grid component with proper typing
-const Grid = (props: any) => <MuiGrid {...props} />;
+const Grid = (props: Parameters<typeof MuiGrid>[0]) => <MuiGrid {...props} />;
 
 interface OpenItemFormProps {
   businessId?: string;
@@ -72,7 +72,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
     if (areaFilter && areaFilter !== area) {
       setArea(areaFilter);
     }
-  }, [areaFilter]);
+  }, [areaFilter, area]);
   
   // Load products from Firestore
   useEffect(() => {
@@ -119,7 +119,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
         } else if (!navigator.onLine || disabled) {
           setIsOfflineMode(true);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error loading products:', error);
         if (isMounted) {
           setError(`Failed to load products: ${error.message}`);
@@ -275,9 +275,9 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
       setSelectedProduct(null);
       setAmount(1);
       setSelectedFridgeId('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding item:', error);
-      const errorMessage = error.message || 'אירעה שגיאה בהוספת הפריט';
+      const errorMessage = error instanceof Error ? error.message : 'אירעה שגיאה בהוספת הפריט';
       setError(errorMessage);
       
       if (onError) {

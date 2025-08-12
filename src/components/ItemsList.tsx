@@ -265,7 +265,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
     } else {
       console.log('Skipping loadItems - loading:', loading, 'profile:', !!profile);
     }
-  }, [businessId, areaFilter, userDepartment, refreshTrigger, loading, profile, canSeeAllDepartments, showDiscardedOnly, showExpiredOnly, showExpiringsSoon, showActiveOnly, showFinishedOnly]);
+  }, [businessId, areaFilter, userDepartment, refreshTrigger, loading, profile, canSeeAllDepartments, showDiscardedOnly, showExpiredOnly, showExpiringsSoon, showActiveOnly, showFinishedOnly, loadItems]);
 
   // Load fridges for the business. This is used for filtering and displaying fridge names
   useEffect(() => {

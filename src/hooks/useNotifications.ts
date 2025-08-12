@@ -62,7 +62,7 @@ export const useNotifications = (checkInterval = 60000) => {
         setIntervalId(null);
       }
     };
-  }, [currentUser, businessId, permissionStatus, checkInterval]);
+  }, [currentUser, businessId, permissionStatus, checkInterval, intervalId]);
 
   // Request permission function
   const requestPermission = async (): Promise<boolean> => {

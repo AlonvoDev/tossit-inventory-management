@@ -93,7 +93,7 @@ export const getBusinessProducts = async (businessId: string): Promise<Product[]
 };
 
 // Original addItem function
-export const addItemOriginal = async (item: any): Promise<string> => {
+export const addItemOriginal = async (item: Record<string, unknown>): Promise<string> => {
   try {
     // Extra safety: ensure no undefined or null values
     const safeItem = Object.fromEntries(
@@ -113,7 +113,7 @@ export const addItemOriginal = async (item: any): Promise<string> => {
     // Store successfully added item in local cache
     try {
       const cachedItems = localStorage.getItem(`cachedItems_${item.area}`) || '[]';
-      const parsedItems = JSON.parse(cachedItems) as any[];
+      const parsedItems = JSON.parse(cachedItems) as Record<string, unknown>[];
       parsedItems.push({ ...safeItem, id: docRef.id });
       localStorage.setItem(`cachedItems_${item.area}`, JSON.stringify(parsedItems));
       localStorage.setItem(`cachedItems_all`, JSON.stringify(parsedItems));
@@ -319,7 +319,7 @@ export const markItemAsDiscarded = async (
 ): Promise<void> => {
   try {
     const itemRef = doc(db, 'items', itemId);
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       discarded: true,
       discardedAt: Timestamp.now(),
       discardedBy: discardedBy,
@@ -676,11 +676,11 @@ export const getExpiredNotDiscardedItems = async (businessId: string): Promise<I
 };
 
 // Helper function to process Firestore query snapshots
-const processQuerySnapshot = (querySnapshot: any): Item[] => {
+const processQuerySnapshot = (querySnapshot: { size: number; forEach: (callback: (doc: { id: string; data: () => Record<string, unknown> }) => void) => void }): Item[] => {
   const items: Item[] = [];
   console.log('processQuerySnapshot: processing', querySnapshot.size, 'documents');
   
-  querySnapshot.forEach((doc: any) => {
+  querySnapshot.forEach((doc: { id: string; data: () => Record<string, unknown> }) => {
     const data = doc.data();
     const item: Item = {
       id: doc.id,
@@ -709,7 +709,7 @@ const processQuerySnapshot = (querySnapshot: any): Item[] => {
     // Include fridgeId if it exists on the document. This enables
     // grouping and filtering inventory by fridge.
     if (data.fridgeId) {
-      (item as any).fridgeId = data.fridgeId;
+      (item as Record<string, unknown>).fridgeId = data.fridgeId;
     }
     
     console.log('Processed item:', {

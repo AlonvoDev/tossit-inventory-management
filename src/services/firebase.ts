@@ -138,7 +138,7 @@ if (isLocalhost) {
 export const enhancedSignIn = async (email: string, password: string) => {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Sign-in error:', error);
     
     // Special handling for development mode

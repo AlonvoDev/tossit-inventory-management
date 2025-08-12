@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals */
+
 const CACHE_NAME = 'tossit-cache-v1';
 const STATIC_ASSETS = [
   '/',

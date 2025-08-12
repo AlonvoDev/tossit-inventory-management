@@ -266,7 +266,7 @@ const PremiumStatusCard: React.FC<StatusCardProps> = ({ title, items }) => {
                     
                     <Chip
                       label={item.value}
-                      color={getStatusColor(item.status) as any}
+                      color={getStatusColor(item.status) as 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'}
                       size="small"
                       variant="outlined"
                       sx={{ fontWeight: 600 }}

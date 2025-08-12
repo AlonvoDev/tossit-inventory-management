@@ -8,8 +8,8 @@ export interface Product {
   price?: number;
   unit?: string;
   businessId: string;
-  createdAt?: Timestamp | any;
-  updatedAt?: Timestamp | any;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
   category?: string;  // Product category (meat, sauces, alcohol, etc.)
   shelfLifeDays: number;
   type: 'kg' | 'units';
@@ -33,6 +33,6 @@ export interface CustomProductCategory {
   id: string;
   name: string;
   businessId: string;
-  createdAt?: Timestamp | any;
+  createdAt?: Timestamp;
   createdBy?: string;
 } 
