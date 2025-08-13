@@ -398,7 +398,7 @@ const UnifiedNavigation: React.FC = () => {
         zIndex: (theme) => theme.zIndex.appBar,
       }}
     >
-      <Toolbar sx={{ px: { xs: 2, sm: 3 }, minHeight: { xs: 64, sm: 70 } }}>
+      <Toolbar sx={{ px: { xs: 1, sm: 2, md: 3 }, minHeight: { xs: 56, sm: 64, md: 70 } }}>
         {/* Menu Button */}
         <IconButton
           edge="start"
@@ -406,13 +406,15 @@ const UnifiedNavigation: React.FC = () => {
           aria-label="menu"
           onClick={handleMenuOpen}
           sx={{
-            mr: 2,
+            mr: { xs: 1, sm: 2 },
             background: alpha(theme.palette.common.white, 0.1),
             '&:hover': {
               background: alpha(theme.palette.common.white, 0.2),
               transform: 'scale(1.05)',
             },
             transition: 'all 0.2s ease-in-out',
+            width: { xs: 40, sm: 48 },
+            height: { xs: 40, sm: 48 },
           }}
         >
           <MenuIcon />
@@ -424,7 +426,7 @@ const UnifiedNavigation: React.FC = () => {
             variant="h6" 
             sx={{ 
               fontWeight: 700,
-              fontSize: { xs: '1.1rem', sm: '1.3rem' },
+              fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.3rem' },
               lineHeight: 1.2,
             }}
           >
@@ -434,7 +436,7 @@ const UnifiedNavigation: React.FC = () => {
             variant="caption" 
             sx={{ 
               opacity: 0.8,
-              fontSize: '0.75rem',
+              fontSize: { xs: '0.65rem', sm: '0.75rem' },
               display: { xs: 'none', sm: 'block' }
             }}
           >
@@ -471,10 +473,12 @@ const UnifiedNavigation: React.FC = () => {
               '&:hover': {
                 background: alpha(theme.palette.common.white, 0.2),
               },
+              width: { xs: 40, sm: 48 },
+              height: { xs: 40, sm: 48 },
             }}
           >
             <Badge badgeContent={3} color="error">
-              <NotificationsIcon />
+              <NotificationsIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
             </Badge>
           </IconButton>
 
@@ -482,11 +486,11 @@ const UnifiedNavigation: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
             <Avatar 
               sx={{ 
-                width: 36, 
-                height: 36,
+                width: { xs: 32, sm: 36 }, 
+                height: { xs: 32, sm: 36 },
                 background: alpha(theme.palette.common.white, 0.2),
                 border: `2px solid ${alpha(theme.palette.common.white, 0.3)}`,
-                fontSize: '0.9rem',
+                fontSize: { xs: '0.8rem', sm: '0.9rem' },
                 fontWeight: 600,
               }}
             >

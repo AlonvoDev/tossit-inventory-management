@@ -23,7 +23,7 @@ import {
   Kitchen as KitchenIcon,
   DeleteOutline as DiscardedIcon,
 } from '@mui/icons-material';
-import UnifiedNavigation from '../components/UnifiedNavigation';
+// UnifiedNavigation is already rendered in App.tsx
 import ShiftButton from '../components/ShiftButton';
 import ItemsList from '../components/ItemsList';
 import FloatingActionButton from '../components/FloatingActionButton';
@@ -113,8 +113,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <UnifiedNavigation />
-      
       <Container maxWidth="xl" sx={{ flexGrow: 1, py: { xs: 2, sm: 4 } }}>
         {/* Welcome Section */}
         <Box sx={{ mb: 4 }}>

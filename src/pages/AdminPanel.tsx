@@ -5,7 +5,7 @@ import ItemsList from '../components/ItemsList';
 import ProductManagement from '../components/ProductManagement';
 import QATestSuite from '../components/QATestSuite';
 import DiscardReport from '../components/DiscardReport';
-import UnifiedNavigation from '../components/UnifiedNavigation';
+// UnifiedNavigation is already rendered in App.tsx
 import {
   Alert,
   Button,
@@ -104,8 +104,6 @@ const AdminPanel: React.FC = () => {
   
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <UnifiedNavigation />
-      
       {/* Access denied overlay for non-admins */}
       {!isLoading && !canAccessAdminPanel && (
         <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>

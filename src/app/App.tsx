@@ -21,8 +21,8 @@ const App: React.FC = () => {
       <Box
         component="main"
         sx={{
-          marginTop: user ? '80px' : 0, // Account for navigation height
-          padding: tokens.spacing.lg,
+          marginTop: user ? { xs: '56px', sm: '64px', md: '70px' } : 0, // Responsive navigation height
+          padding: { xs: tokens.spacing.md, sm: tokens.spacing.lg },
         }}
       >
         <AppRoutes />
