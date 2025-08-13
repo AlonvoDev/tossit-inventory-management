@@ -319,7 +319,7 @@ export const markItemAsDiscarded = async (
 ): Promise<void> => {
   try {
     const itemRef = doc(db, 'items', itemId);
-    const updateData: { [key: string]: any } = {
+    const updateData: Record<string, string | boolean | number | Timestamp> = {
       discarded: true,
       discardedAt: Timestamp.now(),
       discardedBy: discardedBy,

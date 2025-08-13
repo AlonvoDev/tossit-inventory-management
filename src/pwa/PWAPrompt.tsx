@@ -62,10 +62,11 @@ export const PWAPrompt: React.FC = () => {
     };
 
     // Listen for service worker updates from vite-plugin-pwa
-    const handleServiceWorkerUpdate = (event: CustomEvent) => {
+    const handleServiceWorkerUpdate = (event: Event) => {
       setUpdateAvailable(true);
-      if (event.detail?.updateSW) {
-        setUpdateSWFunction(() => event.detail.updateSW);
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.updateSW) {
+        setUpdateSWFunction(() => customEvent.detail.updateSW);
       }
       // Show update prompt only if user is active, not immediately
       setTimeout(() => {
@@ -131,9 +132,9 @@ export const PWAPrompt: React.FC = () => {
 
   // Expose the trigger function globally for other components to use
   useEffect(() => {
-    (window as Record<string, unknown>).triggerPWAInstall = triggerInstallPrompt;
+    (window as unknown as Record<string, unknown>).triggerPWAInstall = triggerInstallPrompt;
     return () => {
-      delete (window as Record<string, unknown>).triggerPWAInstall;
+      delete (window as unknown as Record<string, unknown>).triggerPWAInstall;
     };
   }, [deferredPrompt, installDismissed]);
 

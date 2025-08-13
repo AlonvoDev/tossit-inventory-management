@@ -131,7 +131,13 @@ const LoginPage: React.FC = () => {
     <Container maxWidth="md" sx={{ mt: 4 }} className="login-page" dir="rtl">
       <div className="login-container">
         <div className="login-header">
-          <h1 className="app-title">TossIt</h1>
+          <div className="logo-container">
+            <img 
+              src="/src/assets/tossit-logo.svg" 
+              alt="TossIt Logo"
+              className="app-logo"
+            />
+          </div>
           <p className="app-description">מערכת לניהול מלאי ומעקב פריטים</p>
         </div>
         
@@ -251,10 +257,14 @@ const LoginPage: React.FC = () => {
           margin-bottom: 30px;
         }
         
-        .app-title {
-          margin: 0;
-          color: #009688;
-          font-size: 32px;
+        .logo-container {
+          margin-bottom: 20px;
+        }
+        
+        .app-logo {
+          height: 60px;
+          width: auto;
+          max-width: 100%;
         }
         
         .app-description {

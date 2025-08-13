@@ -7,4 +7,4 @@ services:
     startCommand: npx serve -s dist -l tcp://0.0.0.0:$PORT
     envVars:
       - key: NODE_VERSION
-        value: 18
+        value: 20

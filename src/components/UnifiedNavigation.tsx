@@ -422,22 +422,37 @@ const UnifiedNavigation: React.FC = () => {
 
         {/* App Title and Page */}
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              fontWeight: 700,
-              fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.3rem' },
-              lineHeight: 1.2,
-            }}
-          >
-            {getCurrentPageTitle()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* TossIt Logo - only show on larger screens */}
+            <Box 
+              component="img" 
+              src="/src/assets/tossit-favicon.svg"
+              alt="TossIt"
+              sx={{ 
+                height: { xs: 20, sm: 24, md: 28 },
+                width: 'auto',
+                display: { xs: 'none', sm: 'block' }
+              }}
+            />
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700,
+                fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.3rem' },
+                lineHeight: 1.2,
+                fontFamily: 'Inter, Heebo, sans-serif',
+              }}
+            >
+              {getCurrentPageTitle()}
+            </Typography>
+          </Box>
           <Typography 
             variant="caption" 
             sx={{ 
               opacity: 0.8,
               fontSize: { xs: '0.65rem', sm: '0.75rem' },
-              display: { xs: 'none', sm: 'block' }
+              display: { xs: 'none', sm: 'block' },
+              fontFamily: 'Inter, Heebo, sans-serif',
             }}
           >
             TossIt Enterprise
