@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signIn, signInWithGoogle } from '../api/authAPI';
 import { Container, Grid } from '@mui/material';
+import tossitLogo from '../assets/tossit-logo.svg';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -132,11 +133,11 @@ const LoginPage: React.FC = () => {
       <div className="login-container">
         <div className="login-header">
           <div className="logo-container">
-            <img 
-              src="/src/assets/tossit-logo.svg" 
-              alt="TossIt Logo"
-              className="app-logo"
-            />
+                                <img
+                      src={tossitLogo}
+                      alt="TossIt Logo"
+                      className="app-logo"
+                    />
           </div>
           <p className="app-description">מערכת לניהול מלאי ומעקב פריטים</p>
         </div>

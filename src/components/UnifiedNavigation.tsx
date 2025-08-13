@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import tossitFavicon from '../assets/tossit-favicon.svg';
 import ClockDisplay from './ClockDisplay';
 import { createUserByAdmin } from '../api/authAPI';
 
@@ -424,10 +425,10 @@ const UnifiedNavigation: React.FC = () => {
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* TossIt Logo - only show on larger screens */}
-            <Box 
-              component="img" 
-              src="/src/assets/tossit-favicon.svg"
-              alt="TossIt"
+                                <Box
+                      component="img"
+                      src={tossitFavicon}
+                      alt="TossIt"
               sx={{ 
                 height: { xs: 20, sm: 24, md: 28 },
                 width: 'auto',

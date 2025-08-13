@@ -23,10 +23,10 @@
         "type": "image/png",
         "purpose": "any maskable"
       },
-      {
-        "src": "/src/assets/tossit-favicon.svg",
-        "sizes": "any",
-        "type": "image/svg+xml"
-      }
+          {
+      "src": "/tossit-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
     ]
   }

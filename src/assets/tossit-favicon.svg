@@ -1,23 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Arrow pointing to trash -->
-  <path d="M20 25 Q30 15, 45 20 L55 25 L50 30 L45 25 L35 22" fill="#2DD4BF" stroke="#2DD4BF" stroke-width="2"/>
+  <defs>
+    <linearGradient id="faviconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2DD4BF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14B8A6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
   
-  <!-- Trash bin -->
-  <g transform="translate(20, 45)">
+  <!-- Trash can with recycle symbol -->
+  <g transform="translate(20, 15)">
     <!-- Lid -->
-    <rect x="0" y="0" width="60" height="8" rx="4" fill="#2DD4BF"/>
+    <rect x="5" y="5" width="50" height="6" rx="3" fill="url(#faviconGradient)"/>
+    <!-- Handle -->
+    <rect x="20" y="0" width="20" height="6" rx="3" fill="url(#faviconGradient)"/>
     
-    <!-- Bin body -->
-    <path d="M5 8 L55 8 L52 45 L8 45 Z" fill="#2DD4BF"/>
+    <!-- Main body -->
+    <rect x="10" y="11" width="40" height="60" rx="6" fill="url(#faviconGradient)"/>
     
     <!-- Recycle symbol -->
-    <g transform="translate(30, 25)">
-      <!-- Arrow 1 -->
-      <path d="M-8,-5 L-3,-10 L-3,-7 L3,-7 L3,-3 L-3,-3 L-3,0 Z" fill="#000"/>
-      <!-- Arrow 2 -->
-      <path d="M5,-3 L10,3 L8,3 L8,8 L3,8 L3,3 L0,3 L5,-3 Z" fill="#000"/>
-      <!-- Arrow 3 -->
-      <path d="M3,10 L-3,5 L0,5 L0,0 L5,0 L5,5 L8,5 L3,10 Z" fill="#000"/>
+    <g transform="translate(30, 41)">
+      <g fill="#000000">
+        <!-- Arrow pointing up-right -->
+        <path d="M -6,-6 L 2,-12 L 6,-6 L 3,-6 L 3,2 L -3,2 L -3,-6 Z"/>
+        <!-- Arrow pointing down -->
+        <g transform="rotate(120)">
+          <path d="M -6,-6 L 2,-12 L 6,-6 L 3,-6 L 3,2 L -3,2 L -3,-6 Z"/>
+        </g>
+        <!-- Arrow pointing up-left -->
+        <g transform="rotate(240)">
+          <path d="M -6,-6 L 2,-12 L 6,-6 L 3,-6 L 3,2 L -3,2 L -3,-6 Z"/>
+        </g>
+      </g>
     </g>
   </g>
 </svg>
