@@ -21,6 +21,9 @@ export const useNotifications = () => {
   return context;
 };
 
+// Export an alias for convenience
+export const useNotificationContext = useNotifications;
+
 interface NotificationProviderProps {
   children: React.ReactNode;
 }

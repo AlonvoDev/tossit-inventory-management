@@ -47,6 +47,7 @@ import {
 
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import ClockDisplay from './ClockDisplay';
 import { createUserByAdmin } from '../api/authAPI';
 
@@ -65,6 +66,7 @@ interface NavigationItem {
 
 const UnifiedNavigation: React.FC = () => {
   const { user, profile, isAdmin, isManager, isOffline, logout } = useAuth();
+  const { showInfo, showError } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -107,6 +109,9 @@ const UnifiedNavigation: React.FC = () => {
 
   const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => {
     setNotificationAnchor(event.currentTarget);
+    
+    // Show demo notification
+    showInfo('דוגמת התראה', 'זוהי התראת דוגמה מהמערכת החדשה! 🎉');
   };
 
   const handleNotificationClose = () => {
@@ -192,6 +197,7 @@ const UnifiedNavigation: React.FC = () => {
       console.error('Registration error:', error);
       const errorMessage = error instanceof Error ? error.message : 'שגיאה ביצירת המשתמש. נסה שוב.';
       setRegisterError(errorMessage);
+      showError('שגיאה ביצירת משתמש', errorMessage);
     } finally {
       setRegisterLoading(false);
     }
@@ -252,6 +258,7 @@ const UnifiedNavigation: React.FC = () => {
       console.error('Category creation error:', error);
       const errorMessage = error instanceof Error ? error.message : 'שגיאה ביצירת הקטגוריה. נסה שוב.';
       setCategoryError(errorMessage);
+      showError('שגיאה ביצירת קטגוריה', errorMessage);
     } finally {
       setCategoryLoading(false);
     }
@@ -382,12 +389,13 @@ const UnifiedNavigation: React.FC = () => {
 
   return (
     <AppBar 
-      position="sticky" 
+      position="fixed" 
       elevation={0}
       sx={{
         background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
         borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
         backdropFilter: 'blur(20px)',
+        zIndex: (theme) => theme.zIndex.appBar,
       }}
     >
       <Toolbar sx={{ px: { xs: 2, sm: 3 }, minHeight: { xs: 64, sm: 70 } }}>
