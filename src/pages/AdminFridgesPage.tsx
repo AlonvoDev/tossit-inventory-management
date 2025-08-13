@@ -76,7 +76,7 @@ const AdminFridgesPage: React.FC = () => {
       try {
         const data = await getBusinessFridges(businessId);
         setFridges(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to load fridges:', err);
         setError('טעינת המקררים נכשלה. בדוק הרשאות או נסה שוב מאוחר יותר.');
       } finally {
@@ -192,9 +192,10 @@ const AdminFridgesPage: React.FC = () => {
       }
       // Close modal after success
       setShowModal(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving fridge:', err);
-      setError(err.message || 'אירעה שגיאה בשמירת המקרר');
+      const errorMessage = err instanceof Error ? err.message : 'אירעה שגיאה בשמירת המקרר';
+      setError(errorMessage);
     }
   };
 
@@ -210,9 +211,10 @@ const AdminFridgesPage: React.FC = () => {
         setFridges((prev) => prev.filter((f) => f.id !== fridge.id));
         setSuccess(`"${fridge.name}" נמחק בהצלחה`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting fridge:', err);
-      setError(err.message || 'מחיקת המקרר נכשלה');
+      const errorMessage = err instanceof Error ? err.message : 'מחיקת המקרר נכשלה';
+      setError(errorMessage);
     }
   };
 
@@ -465,7 +467,7 @@ const AdminFridgesPage: React.FC = () => {
                   name="department"
                   value={formData.department}
                   label="מחלקה"
-                  onChange={handleInputChange as any}
+                  onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement>)}
                 >
                   <MenuItem value="bar">בר</MenuItem>
                   <MenuItem value="kitchen">מטבח</MenuItem>

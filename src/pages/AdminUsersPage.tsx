@@ -187,9 +187,10 @@ const AdminUsersPage: React.FC = () => {
       });
       setEditMode(false);
       setEditingUser(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving user:', err);
-      setError(err.message || 'Failed to save user. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save user. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -247,9 +248,10 @@ const AdminUsersPage: React.FC = () => {
       setSuccess(`User "${user.fullName || user.email}" deleted successfully!`);
       // Remove deleted user from local state without reloading all users
       setUsers(prev => prev.filter(u => u.uid !== user.uid));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting user:', err);
-      setError(err.message || 'Failed to delete user. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -519,7 +521,7 @@ const AdminUsersPage: React.FC = () => {
                       {user.createdAt ? 
                         (user.createdAt.toMillis ? 
                           new Date(user.createdAt.toMillis()).toLocaleDateString() :
-                          new Date(user.createdAt as any).toLocaleDateString()
+                          new Date((user.createdAt as any).toMillis()).toLocaleDateString()
                         ) : 
                         '-'
                       }

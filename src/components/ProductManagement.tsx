@@ -381,7 +381,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         localStorage.setItem(cachedProductsKey, JSON.stringify(cachedProducts));
         
         // Update local state
-        setProducts([...products, offlineProduct as any]);
+        setProducts([...products, offlineProduct as Product]);
         setSuccess(`המוצר "${name}" נוסף במצב לא מקוון (יסונכרן כשהחיבור יחזור)`);
         
         // Add to pending operations queue

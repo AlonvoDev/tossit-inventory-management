@@ -330,7 +330,7 @@ const MaterialUIShowcase: React.FC = () => {
                           <Paper
                             sx={{
                               height: 100,
-                              background: getGradient(key as any),
+                              background: getGradient(key as 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'),
                               borderRadius: 2,
                               display: 'flex',
                               alignItems: 'center',

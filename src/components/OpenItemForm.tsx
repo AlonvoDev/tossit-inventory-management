@@ -15,13 +15,12 @@ import {
   Alert, 
   Box, 
   Typography,
-  Grid as MuiGrid,
+
   FormHelperText,
   SelectChangeEvent
 } from '@mui/material';
 
-// Easier to use Grid component with proper typing
-const Grid = (props: any) => <MuiGrid {...props} />;
+// Using Box flexbox layout for better compatibility
 
 interface OpenItemFormProps {
   businessId?: string;
@@ -119,10 +118,11 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
         } else if (!navigator.onLine || disabled) {
           setIsOfflineMode(true);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error loading products:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         if (isMounted) {
-          setError(`Failed to load products: ${error.message}`);
+          setError(`Failed to load products: ${errorMessage}`);
           setIsOfflineMode(!navigator.onLine || disabled);
         }
       } finally {
@@ -275,9 +275,10 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
       setSelectedProduct(null);
       setAmount(1);
       setSelectedFridgeId('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding item:', error);
-      const errorMessage = error?.message || 'אירעה שגיאה בהוספת הפריט';
+      const firebaseError = error as { code?: string; message?: string };
+      const errorMessage = firebaseError?.message || 'אירעה שגיאה בהוספת הפריט';
       setError(errorMessage);
       
       if (onError) {
@@ -285,7 +286,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
       }
       
       // If we get a network error, try to store offline
-      if (error.code === 'unavailable' || error.message.includes('network') || !navigator.onLine) {
+      if (firebaseError.code === 'unavailable' || firebaseError.message?.includes('network') || !navigator.onLine) {
         setIsOfflineMode(true);
         // Store the pending operation
         const pendingOperations = JSON.parse(localStorage.getItem('pendingOperations') || '[]');
@@ -367,113 +368,114 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({
         הוספת פריט חדש
       </Typography>
       
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth margin="normal" disabled={isLoading || disabled}>
-            <InputLabel id="area-select-label">אזור</InputLabel>
-            <Select
-              labelId="area-select-label"
-              id="area-select"
-              value={area}
-              label="אזור"
-              onChange={handleAreaChange}
-            >
-              {areas.map((areaOption) => (
-                <MenuItem key={areaOption} value={areaOption}>
-                  {areaOption}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth margin="normal" disabled={isLoading || disabled}>
-            <InputLabel id="product-select-label">מוצר</InputLabel>
-            <Select
-              labelId="product-select-label"
-              id="product-select"
-              value={selectedProduct?.id || ''}
-              label="מוצר"
-              onChange={handleProductChange}
-            >
-              {products.map((product) => (
-                <MenuItem key={product.id} value={product.id}>
-                  {product.name}
-                </MenuItem>
-              ))}
-            </Select>
-            {products.length === 0 && !isLoading && (
-              <FormHelperText error>
-                {userDepartment 
-                  ? `אין מוצרים זמינים עבור מחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`
-                  : 'אין מוצרים זמינים'
-                }
-              </FormHelperText>
-            )}
-          </FormControl>
-        </Grid>
-
-        {/* Fridge selection */}
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth margin="normal" disabled={isLoading || disabled || fridges.length === 0}>
-            <InputLabel id="fridge-select-label">מקרר</InputLabel>
-            <Select
-              labelId="fridge-select-label"
-              id="fridge-select"
-              value={selectedFridgeId}
-              label="מקרר"
-              onChange={(e) => setSelectedFridgeId(e.target.value as string)}
-            >
-              {fridges.length === 0 && (
-                <MenuItem value="" disabled>
-                  אין מקררים זמינים
-                </MenuItem>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 300px' }}>
+            <FormControl fullWidth margin="normal" disabled={isLoading || disabled}>
+              <InputLabel id="area-select-label">אזור</InputLabel>
+              <Select
+                labelId="area-select-label"
+                id="area-select"
+                value={area}
+                label="אזור"
+                onChange={handleAreaChange}
+              >
+                {areas.map((areaOption) => (
+                  <MenuItem key={areaOption} value={areaOption}>
+                    {areaOption}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ flex: '1 1 300px' }}>
+            <FormControl fullWidth margin="normal" disabled={isLoading || disabled}>
+              <InputLabel id="product-select-label">מוצר</InputLabel>
+              <Select
+                labelId="product-select-label"
+                id="product-select"
+                value={selectedProduct?.id || ''}
+                label="מוצר"
+                onChange={handleProductChange}
+              >
+                {products.map((product) => (
+                  <MenuItem key={product.id} value={product.id}>
+                    {product.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {products.length === 0 && !isLoading && (
+                <FormHelperText error>
+                  {userDepartment 
+                    ? `אין מוצרים זמינים עבור מחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`
+                    : 'אין מוצרים זמינים'
+                  }
+                </FormHelperText>
               )}
-              {fridges.map((fridge) => (
-                <MenuItem key={fridge.id} value={fridge.id || ''}>
-                  {fridge.name}
-                </MenuItem>
-              ))}
-            </Select>
-            {fridges.length === 0 && (
-              <FormHelperText error>
-                אין מקררים זמינים עבור אזור {area}
-              </FormHelperText>
-            )}
-          </FormControl>
-        </Grid>
+            </FormControl>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 300px' }}>
+            <FormControl fullWidth margin="normal" disabled={isLoading || disabled || fridges.length === 0}>
+              <InputLabel id="fridge-select-label">מקרר</InputLabel>
+              <Select
+                labelId="fridge-select-label"
+                id="fridge-select"
+                value={selectedFridgeId}
+                label="מקרר"
+                onChange={(e) => setSelectedFridgeId(e.target.value as string)}
+              >
+                {fridges.length === 0 && (
+                  <MenuItem value="" disabled>
+                    אין מקררים זמינים
+                  </MenuItem>
+                )}
+                {fridges.map((fridge) => (
+                  <MenuItem key={fridge.id} value={fridge.id || ''}>
+                    {fridge.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {fridges.length === 0 && (
+                <FormHelperText error>
+                  אין מקררים זמינים עבור אזור {area}
+                </FormHelperText>
+              )}
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ flex: '1 1 300px' }}>
+            <TextField
+              fullWidth
+              label="כמות"
+              type="number"
+              inputProps={{ min: 1, dir: 'ltr' }}
+              value={amount}
+              onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
+              margin="normal"
+              disabled={isLoading || disabled}
+              sx={{ 
+                '& input': { color: 'text.primary' },
+                '& label': { color: 'text.secondary' }
+              }}
+            />
+          </Box>
+        </Box>
         
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="כמות"
-            type="number"
-            inputProps={{ min: 1, dir: 'ltr' }}
-            value={amount}
-            onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
-            margin="normal"
-            disabled={isLoading || disabled}
-            sx={{ 
-              '& input': { color: 'text.primary' },
-              '& label': { color: 'text.secondary' }
-            }}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            disabled={isLoading || !selectedProduct || disabled}
-            sx={{ mt: 2 }}
-          >
-            {isLoading ? 'מוסיף...' : 'הוסף פריט'}
-          </Button>
-        </Grid>
-      </Grid>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          disabled={isLoading || !selectedProduct || disabled}
+          sx={{ mt: 2 }}
+        >
+          {isLoading ? 'מוסיף...' : 'הוסף פריט'}
+        </Button>
+      </Box>
     </Box>
   );
 };
