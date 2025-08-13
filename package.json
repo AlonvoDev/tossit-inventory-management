@@ -10,8 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "serve -s dist -p $PORT",
-    "start": "serve -s dist -p $PORT",
+    "preview": "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}",
+    "start": "serve -s dist -l tcp://0.0.0.0:$PORT",
     "emulators": "firebase emulators:start",
     "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\""
   },
@@ -24,6 +24,7 @@
     "@mui/material": "^7.1.0",
     "@types/react-router-dom": "^5.3.3",
     "@types/stylis": "^4.2.7",
+    "express": "^5.1.0",
     "firebase": "^11.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -35,7 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^8.2.2",
