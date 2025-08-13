@@ -170,7 +170,7 @@ const AdminPanel: React.FC = () => {
       )}
 
       {canAccessAdminPanel && !isLoading && (
-        <Container maxWidth="xl" sx={{ flexGrow: 1, py: { xs: 2, sm: 4 } }}>
+        <Container maxWidth={false} sx={{ flexGrow: 1, py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3, md: 4, lg: 6 }, maxWidth: '1920px', margin: '0 auto' }}>
           {/* Page Header */}
           <Box sx={{ mb: 4 }}>
             <Typography 
@@ -243,10 +243,11 @@ const AdminPanel: React.FC = () => {
                 sx={{
                   '& .MuiTab-root': {
                     fontWeight: 600,
-                    fontSize: '0.9rem',
-                    minHeight: 64,
+                    fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                    minHeight: { xs: 56, sm: 64 },
                     textTransform: 'none',
-                    minWidth: 140,
+                    minWidth: { xs: 120, sm: 140, md: 160 },
+                    padding: { xs: '12px 16px', sm: '12px 24px' },
                     '&.Mui-selected': {
                       color: theme.palette.primary.main,
                     },
@@ -255,6 +256,9 @@ const AdminPanel: React.FC = () => {
                     height: 3,
                     borderRadius: '3px 3px 0 0',
                     background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  },
+                  '& .MuiTabs-scrollButtons': {
+                    '&.Mui-disabled': { opacity: 0.3 },
                   },
                 }}
               >
@@ -298,7 +302,7 @@ const AdminPanel: React.FC = () => {
               </Tabs>
             </Box>
             
-            <Box sx={{ p: 3 }}>
+            <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
               {activeTab === 'inventory' && (
                 <Box>
                   <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -381,7 +385,7 @@ const AdminPanel: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         מוצרים שנזרקו עם פירוט סיבת הזריקה וכמות.
                       </Typography>
-                      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+                      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr' } }}>
                         <Card sx={{ p: 2 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
                             מוצרים שפג תוקפם

@@ -15,3 +15,6 @@ export type { EmptyStateProps } from './EmptyState';
 
 export { ItemActionModal } from './ItemActionModal';
 export type { ItemActionModalProps } from './ItemActionModal';
+
+export { GridView } from './GridView';
+export { MultiColumnLayout } from './MultiColumnLayout';

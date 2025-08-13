@@ -62,14 +62,19 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
         disabled={isDisabled}
         sx={{
           position: 'fixed',
-          bottom: { xs: 24, sm: 32 },
-          right: { xs: 24, sm: 32 },
+          bottom: { xs: 16, sm: 24, md: 32 },
+          right: { xs: 16, sm: 24, md: 32 },
+          width: { xs: 56, sm: 64 },
+          height: { xs: 56, sm: 64 },
           background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+          boxShadow: { xs: '0 4px 20px rgba(0,0,0,0.15)', sm: '0 8px 32px rgba(0,0,0,0.15)' },
           '&:hover': {
-            boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+            boxShadow: { xs: '0 6px 24px rgba(0,0,0,0.2)', sm: '0 12px 40px rgba(0,0,0,0.2)' },
             transform: 'scale(1.05)',
             background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+          },
+          '&:active': {
+            transform: 'scale(0.95)',
           },
           '&:disabled': {
             background: theme.palette.grey[400],
@@ -80,7 +85,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
         }}
         title={isDisabled ? 'לא זמין במצב לא מקוון' : 'הוסף מוצר חדש'}
       >
-        <AddIcon sx={{ fontSize: '2rem' }} />
+        <AddIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
       </Fab>
 
       {/* Modern Modal with OpenItemForm */}
@@ -91,7 +96,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          p: 2,
+          p: { xs: 1, sm: 2 },
         }}
       >
         <Box
@@ -101,9 +106,9 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
             borderRadius: 4,
             border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
-            maxWidth: 600,
+            maxWidth: { xs: '95vw', sm: 600 },
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: { xs: '95vh', sm: '90vh' },
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -116,7 +121,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              p: 3,
+              p: { xs: 2, sm: 3 },
               borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
               background: alpha(theme.palette.primary.main, 0.05),
             }}
@@ -147,7 +152,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           </Box>
 
           {/* Modal Body */}
-          <Box sx={{ p: 3, overflow: 'auto', flexGrow: 1 }}>
+          <Box sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto', flexGrow: 1 }}>
             <OpenItemForm
               area={area}
               businessId={profile?.businessId}

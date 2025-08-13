@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Container maxWidth="xl" sx={{ flexGrow: 1, py: { xs: 2, sm: 4 } }}>
+              <Container maxWidth="xl" sx={{ flexGrow: 1, py: { xs: 1, sm: 2, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
         {/* Welcome Section */}
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: 3 }}>
@@ -123,6 +123,7 @@ const Dashboard: React.FC = () => {
                 sx={{ 
                   fontWeight: 700,
                   mb: 1,
+                  fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' },
                   background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
@@ -180,12 +181,16 @@ const Dashboard: React.FC = () => {
             <Tabs 
               value={activeTab} 
               onChange={(_, newValue) => setActiveTab(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
               sx={{
                 '& .MuiTab-root': {
                   fontWeight: 600,
-                  fontSize: '1rem',
-                  minHeight: 64,
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  minHeight: { xs: 56, sm: 64 },
+                  minWidth: { xs: 100, sm: 120 },
                   textTransform: 'none',
+                  padding: { xs: '8px 16px', sm: '12px 24px' },
                   '&.Mui-selected': {
                     color: theme.palette.primary.main,
                   },
@@ -195,28 +200,31 @@ const Dashboard: React.FC = () => {
                   borderRadius: '3px 3px 0 0',
                   background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                 },
+                '& .MuiTabs-scrollButtons': {
+                  '&.Mui-disabled': { opacity: 0.3 },
+                },
               }}
             >
               <Tab 
                 value="bar" 
                 label="בר" 
-                icon={<BarIcon />} 
+                icon={<BarIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />} 
                 iconPosition="start"
-                sx={{ minWidth: 120 }}
+                sx={{ minWidth: { xs: 100, sm: 120 } }}
               />
               <Tab 
                 value="kitchen" 
                 label="מטבח" 
-                icon={<KitchenIcon />} 
+                icon={<KitchenIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />} 
                 iconPosition="start"
-                sx={{ minWidth: 120 }}
+                sx={{ minWidth: { xs: 100, sm: 120 } }}
               />
               <Tab 
                 value="discarded" 
                 label="פריטים נזרקים" 
-                icon={<DiscardedIcon />} 
+                icon={<DiscardedIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />} 
                 iconPosition="start"
-                sx={{ minWidth: 160 }}
+                sx={{ minWidth: { xs: 140, sm: 160 } }}
               />
             </Tabs>
           </Box>
@@ -225,10 +233,10 @@ const Dashboard: React.FC = () => {
             {activeTab === 'discarded' ? (
               <Box>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1, fontSize: { xs: '1.3rem', sm: '1.5rem' } }}>
                     פריטים נזרקים
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                     רשימת כל הפריטים שנזרקו במערכת
                   </Typography>
                 </Box>
@@ -249,10 +257,10 @@ const Dashboard: React.FC = () => {
                 
                 {/* Enhanced inventory display with grouping */}
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1, fontSize: { xs: '1.3rem', sm: '1.5rem' } }}>
                     מלאי {activeTab === 'bar' ? 'בר' : activeTab === 'kitchen' ? 'מטבח' : activeTab}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                     פריטים פעילים מקובצים לפי מקרר ומסומנים לפי סטטוס תוקף
                   </Typography>
                 </Box>

@@ -1006,53 +1006,211 @@ const ItemsList: React.FC<ItemsListProps> = ({
           font-style: italic;
         }
         
-        /* Enhanced mobile responsiveness */
+        /* Enhanced mobile responsiveness with touch-friendly design */
         @media (max-width: 768px) {
+          .list-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 15px;
+          }
+
+          .filter-row {
+            flex-direction: column;
+            gap: 12px !important;
+          }
+
+          .search-input {
+            padding: 12px 16px !important;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            min-height: 44px; /* Touch-friendly minimum */
+          }
+
+          .fridge-filter select {
+            padding: 12px 16px !important;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            min-height: 44px;
+            width: 100%;
+          }
+
           .department-title {
             font-size: 16px;
-            padding: 12px 15px;
+            padding: 16px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
           }
 
           .fridge-title {
             font-size: 14px;
-            padding: 8px 12px;
+            padding: 12px 16px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
           }
 
           .items-grid {
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 16px;
           }
 
           .item-card {
-            padding: 15px;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          }
+
+          .item-header {
+            margin-bottom: 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .item-header h3 {
+            font-size: 18px;
+            line-height: 1.3;
+            margin-left: 0;
+          }
+
+          .status-badge-enhanced {
+            align-self: flex-start;
+            font-size: 12px;
+            padding: 8px 16px;
+          }
+
+          .item-details p {
+            font-size: 15px;
+            line-height: 1.6;
+            margin: 12px 0;
+          }
+
+          .quick-action-btn {
+            padding: 16px 20px;
+            font-size: 16px;
+            min-height: 48px; /* Touch-friendly */
+            border-radius: 12px;
+          }
+
+          .action-icon {
+            font-size: 18px;
+          }
+
+          .fridge-groups {
+            padding: 16px;
+          }
+
+          .discard-info, .finished-info {
+            padding: 16px;
+            margin-top: 16px;
+            border-radius: 12px;
+          }
+
+          .discard-info p, .finished-info p {
+            font-size: 14px;
+            line-height: 1.5;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .item-card {
+            padding: 16px;
+            margin: 0 -4px; /* Slightly wider on very small screens */
+          }
+
+          .department-title {
+            font-size: 14px;
+            padding: 12px 16px;
+          }
+
+          .fridge-title {
+            font-size: 13px;
+            padding: 10px 12px;
           }
 
           .item-header h3 {
             font-size: 16px;
           }
 
+          .status-badge-enhanced {
+            font-size: 11px;
+            padding: 6px 12px;
+          }
+
+          .item-details p {
+            font-size: 14px;
+          }
+
+          .quick-action-btn {
+            padding: 14px 16px;
+            font-size: 15px;
+          }
+
           .fridge-groups {
-            padding: 10px;
+            padding: 12px;
+          }
+
+          .items-grid {
+            gap: 12px;
           }
         }
 
-        @media (max-width: 599px) {
-          .search-container {
-            margin-top: 15px;
-            width: 100%;
+        /* Ultra-wide screen optimization */
+        @media (min-width: 1400px) {
+          .items-grid {
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
           }
-          
-          .item-header h3 {
-            font-size: 1rem;
+
+          .item-card {
+            padding: 24px;
+          }
+
+          .department-title {
+            font-size: 20px;
+            padding: 20px 24px;
+          }
+
+          .fridge-title {
+            font-size: 18px;
+            padding: 16px 20px;
+          }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+          .item-card {
+            background-color: #2d2d2d;
+            border-color: #444;
+            color: #fff;
+          }
+
+          .item-details p {
+            color: #ccc;
+          }
+
+          .item-details strong {
+            color: #fff;
           }
 
           .department-group {
-            margin-bottom: 20px;
+            border-color: #444;
           }
 
-          .status-badge-enhanced {
-            font-size: 10px;
-            padding: 4px 8px;
+          .fridge-groups {
+            background-color: #1e1e1e;
+          }
+
+          .fridge-title {
+            background-color: #333;
+            color: #fff;
+          }
+
+          .discard-info, .finished-info {
+            background-color: #333;
           }
         }
       `}</style>
