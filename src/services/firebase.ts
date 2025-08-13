@@ -138,11 +138,14 @@ if (isLocalhost) {
 export const enhancedSignIn = async (email: string, password: string) => {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Sign-in error:', error);
     
+    // Type-safe error handling
+    const firebaseError = error as { code?: string };
+    
     // Special handling for development mode
-    if (isLocalhost && error?.code === 'auth/network-request-failed') {
+    if (isLocalhost && firebaseError?.code === 'auth/network-request-failed') {
       console.log('⚠️ Network error during sign-in. If using emulators, make sure they are running.');
       console.log('ℹ️ You can use the demo login in development to bypass this error.');
     }

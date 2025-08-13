@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getBusinessItems, getExpiredNotDiscardedItems, getDiscardedItems } from '../api/firestoreAPI';
 import { getBusinessFridges } from '../api/fridgesAPI';
@@ -30,7 +30,7 @@ const DashboardKPIs: React.FC = () => {
     loading: true
   });
 
-  const loadKPIData = async () => {
+  const loadKPIData = useCallback(async () => {
     if (!businessId || isOffline) {
       setKpiData(prev => ({ ...prev, loading: false }));
       return;
@@ -103,13 +103,13 @@ const DashboardKPIs: React.FC = () => {
       console.error('Error loading KPI data:', error);
       setKpiData(prev => ({ ...prev, loading: false }));
     }
-  };
+  }, [businessId, isOffline, profile]);
 
   useEffect(() => {
     if (businessId && profile) {
       loadKPIData();
     }
-  }, [businessId, profile, isOffline]);
+  }, [businessId, profile, isOffline, loadKPIData]);
 
   if (kpiData.loading) {
     return (

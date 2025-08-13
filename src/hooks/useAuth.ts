@@ -2,16 +2,7 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserProfile } from '../api/firestoreAPI';
-
-// Define the user profile type
-interface UserProfile {
-  uid: string;
-  email: string;
-  displayName: string;
-  businessId: string;
-  role: 'admin' | 'user';
-  isOnShift?: boolean;
-}
+import { UserProfile } from '../types/UserProfile';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);

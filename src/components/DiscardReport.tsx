@@ -36,8 +36,13 @@ import {
 type SortKey = 'productName' | 'totalQuantity' | 'discardCount' | 'averageQuantity' | 'lastDiscarded';
 type SortOrder = 'asc' | 'desc';
 
-const DiscardReport: React.FC = () => {
-  const { businessId } = useAuth();
+interface DiscardReportProps {
+  businessId: string;
+}
+
+const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessId }) => {
+  const { businessId: authBusinessId } = useAuth();
+  const businessId = propBusinessId || authBusinessId;
   const theme = useTheme();
   const [reportData, setReportData] = useState<DiscardReportItem[]>([]);
   const [filteredData, setFilteredData] = useState<DiscardReportItem[]>([]);

@@ -40,24 +40,27 @@ const LoginPage: React.FC = () => {
     try {
       await signIn(email, password);
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       
+      // Type-safe error handling
+      const firebaseError = error as { code?: string; message?: string };
+      
       // Improved error handling
-      if (error?.code === 'auth/network-request-failed') {
+      if (firebaseError?.code === 'auth/network-request-failed') {
         if (window.location.hostname === 'localhost') {
           setError('שגיאת רשת. ייתכן שהאמולטור לא פועל או שלא הותקן Java. נסה להשתמש בחיבור רגיל.');
         } else {
           setError('שגיאת רשת. בדוק את חיבור האינטרנט ונסה שוב.');
         }
-      } else if (error?.code === 'auth/invalid-credential' || error?.code === 'auth/wrong-password') {
+      } else if (firebaseError?.code === 'auth/invalid-credential' || firebaseError?.code === 'auth/wrong-password') {
         setError('שם משתמש או סיסמה שגויים');
-      } else if (error?.code === 'auth/user-not-found') {
+      } else if (firebaseError?.code === 'auth/user-not-found') {
         setError('חשבון לא נמצא. בדוק את כתובת האימייל או צור חשבון חדש');
-      } else if (error?.code === 'auth/too-many-requests') {
+      } else if (firebaseError?.code === 'auth/too-many-requests') {
         setError('יותר מדי ניסיונות התחברות כושלים. נסה שוב מאוחר יותר');
       } else {
-        setError(error.message || 'ההתחברות נכשלה. אנא נסה שוב.');
+        setError(firebaseError?.message || 'ההתחברות נכשלה. אנא נסה שוב.');
       }
     } finally {
       setIsLoading(false);
@@ -71,20 +74,23 @@ const LoginPage: React.FC = () => {
     try {
       await signInWithGoogle();
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google login error:', error);
       
+      // Type-safe error handling
+      const firebaseError = error as { code?: string; message?: string };
+      
       // Improved error handling
-      if (error?.code === 'auth/network-request-failed') {
+      if (firebaseError?.code === 'auth/network-request-failed') {
         if (window.location.hostname === 'localhost') {
           setError('שגיאת רשת. ייתכן שהאמולטור לא פועל או שלא הותקן Java.');
         } else {
           setError('שגיאת רשת. בדוק את חיבור האינטרנט ונסה שוב.');
         }
-      } else if (error?.code === 'auth/popup-closed-by-user') {
+      } else if (firebaseError?.code === 'auth/popup-closed-by-user') {
         setError('החלון נסגר לפני סיום ההתחברות. אנא נסה שוב.');
       } else {
-        setError(error.message || 'ההתחברות עם גוגל נכשלה. אנא נסה שוב.');
+        setError(firebaseError?.message || 'ההתחברות עם גוגל נכשלה. אנא נסה שוב.');
       }
     } finally {
       setIsLoading(false);

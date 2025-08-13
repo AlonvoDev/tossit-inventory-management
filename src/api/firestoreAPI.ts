@@ -93,7 +93,7 @@ export const getBusinessProducts = async (businessId: string): Promise<Product[]
 };
 
 // Original addItem function
-export const addItemOriginal = async (item: any): Promise<string> => {
+export const addItemOriginal = async (item: Omit<Item, 'id'>): Promise<string> => {
   try {
     // Extra safety: ensure no undefined or null values
     const safeItem = Object.fromEntries(
@@ -113,8 +113,8 @@ export const addItemOriginal = async (item: any): Promise<string> => {
     // Store successfully added item in local cache
     try {
       const cachedItems = localStorage.getItem(`cachedItems_${item.area}`) || '[]';
-      const parsedItems = JSON.parse(cachedItems) as any[];
-      parsedItems.push({ ...safeItem, id: docRef.id });
+      const parsedItems = JSON.parse(cachedItems) as Item[];
+      parsedItems.push({ ...safeItem, id: docRef.id } as Item);
       localStorage.setItem(`cachedItems_${item.area}`, JSON.stringify(parsedItems));
       localStorage.setItem(`cachedItems_all`, JSON.stringify(parsedItems));
     } catch (cacheError) {
@@ -676,41 +676,41 @@ export const getExpiredNotDiscardedItems = async (businessId: string): Promise<I
 };
 
 // Helper function to process Firestore query snapshots
-const processQuerySnapshot = (querySnapshot: { size: number; forEach: (callback: (doc: { id: string; data: () => any }) => void) => void }): Item[] => {
+const processQuerySnapshot = (querySnapshot: { size: number; forEach: (callback: (doc: { id: string; data: () => Record<string, unknown> }) => void) => void }): Item[] => {
   const items: Item[] = [];
   console.log('processQuerySnapshot: processing', querySnapshot.size, 'documents');
   
-  querySnapshot.forEach((doc: { id: string; data: () => any }) => {
+  querySnapshot.forEach((doc: { id: string; data: () => Record<string, unknown> }) => {
     const data = doc.data();
     const item: Item = {
       id: doc.id,
-      productName: data.productName || '',
-      type: data.type || 'units',
-      amount: data.amount || 0,
-      openingTime: data.openingTime,
-      expiryTime: data.expiryTime,
-      userId: data.userId || '',
-      businessId: data.businessId || '',
-      area: data.area || '',
-      isThrown: data.isThrown || false,
+      productName: (data.productName as string) || '',
+      type: (data.type as 'kg' | 'units') || 'units',
+      amount: (data.amount as number) || 0,
+      openingTime: data.openingTime as Timestamp,
+      expiryTime: data.expiryTime as Timestamp,
+      userId: (data.userId as string) || '',
+      businessId: (data.businessId as string) || '',
+      area: (data.area as string) || '',
+      isThrown: (data.isThrown as boolean) || false,
       
       // New discard tracking fields with safe defaults
-      discarded: data.discarded || false,
+      discarded: (data.discarded as boolean) || false,
       // Only include optional fields if they exist in the data
-      discardedAt: data.discardedAt || undefined,
-      discardedBy: data.discardedBy || undefined,
-      discardedByName: data.discardedByName || undefined,
+      discardedAt: data.discardedAt ? (data.discardedAt as Timestamp) : undefined,
+      discardedBy: data.discardedBy ? (data.discardedBy as string) : undefined,
+      discardedByName: data.discardedByName ? (data.discardedByName as string) : undefined,
       
       // Notification tracking with safe defaults
-      reminderSent: data.reminderSent || false,
-      adminNotified: data.adminNotified || false,
-      finished: data.finished || false
+      reminderSent: (data.reminderSent as boolean) || false,
+      adminNotified: (data.adminNotified as boolean) || false,
+      finished: (data.finished as boolean) || false
     };
 
     // Include fridgeId if it exists on the document. This enables
     // grouping and filtering inventory by fridge.
     if (data.fridgeId) {
-      (item as any).fridgeId = data.fridgeId;
+      item.fridgeId = data.fridgeId as string;
     }
     
     console.log('Processed item:', {

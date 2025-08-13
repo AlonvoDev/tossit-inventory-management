@@ -472,7 +472,7 @@ const AdminPanel: React.FC = () => {
 
           {activeTab === 'reports' && (
                 <Box>
-                  <DiscardReport />
+                  <DiscardReport businessId={profile?.businessId || ''} />
                 </Box>
               )}
 
