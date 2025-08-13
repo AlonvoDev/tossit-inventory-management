@@ -34,6 +34,7 @@ export const PWAPrompt: React.FC = () => {
   const [, setUpdateAvailable] = useState(false);
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
+  const [updateSWFunction, setUpdateSWFunction] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     // Check if already dismissed install prompt
@@ -48,12 +49,8 @@ export const PWAPrompt: React.FC = () => {
       const promptEvent = e as BeforeInstallPromptEvent;
       setDeferredPrompt(promptEvent);
       
-      // Show install prompt after a delay if not dismissed
-      if (!dismissed) {
-        setTimeout(() => {
-          setShowInstallPrompt(true);
-        }, 3000); // Show after 3 seconds
-      }
+      // Show install prompt only on user interaction, not automatically
+      // We'll show it when user clicks on something or after significant usage
     };
 
     // Listen for app installed
@@ -65,9 +62,15 @@ export const PWAPrompt: React.FC = () => {
     };
 
     // Listen for service worker updates from vite-plugin-pwa
-    const handleServiceWorkerUpdate = () => {
+    const handleServiceWorkerUpdate = (event: CustomEvent) => {
       setUpdateAvailable(true);
-      setShowUpdatePrompt(true);
+      if (event.detail?.updateSW) {
+        setUpdateSWFunction(() => event.detail.updateSW);
+      }
+      // Show update prompt only if user is active, not immediately
+      setTimeout(() => {
+        setShowUpdatePrompt(true);
+      }, 2000); // Wait 2 seconds before showing
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -108,12 +111,31 @@ export const PWAPrompt: React.FC = () => {
   };
 
   const handleUpdateClick = () => {
-    window.location.reload();
+    if (updateSWFunction) {
+      updateSWFunction();
+    } else {
+      window.location.reload();
+    }
   };
 
   const handleUpdateDismiss = () => {
     setShowUpdatePrompt(false);
   };
+
+  // Manual trigger for install prompt (can be called from other components)
+  const triggerInstallPrompt = () => {
+    if (deferredPrompt && !installDismissed) {
+      setShowInstallPrompt(true);
+    }
+  };
+
+  // Expose the trigger function globally for other components to use
+  useEffect(() => {
+    (window as Record<string, unknown>).triggerPWAInstall = triggerInstallPrompt;
+    return () => {
+      delete (window as Record<string, unknown>).triggerPWAInstall;
+    };
+  }, [deferredPrompt, installDismissed]);
 
   return (
     <>

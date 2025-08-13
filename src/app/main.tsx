@@ -33,11 +33,19 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Register service worker for PWA functionality using vite-plugin-pwa
-registerSW({
+const updateSW = registerSW({
   onNeedRefresh() {
-    // Trigger update prompt in PWAPrompt component
-    const event = new CustomEvent('pwa-update-available');
-    window.dispatchEvent(event);
+    // Check if we should prompt for update (don't prompt too often)
+    const lastPrompt = localStorage.getItem('last-update-prompt');
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+    
+    if (!lastPrompt || (now - parseInt(lastPrompt)) > oneHour) {
+      localStorage.setItem('last-update-prompt', now.toString());
+      // Trigger update prompt in PWAPrompt component
+      const event = new CustomEvent('pwa-update-available', { detail: { updateSW } });
+      window.dispatchEvent(event);
+    }
   },
   onOfflineReady() {
     console.log('App ready to work offline');
