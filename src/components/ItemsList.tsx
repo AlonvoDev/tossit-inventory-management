@@ -6,6 +6,7 @@ import { Item, getBusinessItems, markItemAsDiscarded, getDiscardedItems, markIte
 import { getBusinessFridges } from '../api/fridgesAPI';
 import { Fridge } from '../types/Fridge';
 import { formatExpiryTime, getExpiryStatus } from '../utils/expiryUtils';
+import { ItemActionModal } from './ui/ItemActionModal';
 
 interface ItemsListProps {
   areaFilter?: 'bar' | 'kitchen' | 'בר' | 'מטבח';
@@ -14,8 +15,6 @@ interface ItemsListProps {
   showExpiringsSoon?: boolean; // Items expiring within 3 days
   showActiveOnly?: boolean; // Active items only
   showFinishedOnly?: boolean; // Items that were used up completely
-  showQuantityInput?: boolean; // Show quantity input for discarded items
-  showDiscardReason?: boolean; // Show discard reason selection
   refreshTrigger: number;
   isOffline?: boolean;
   onItemUpdated?: () => void; // Callback for when items are updated
@@ -28,8 +27,6 @@ const ItemsList: React.FC<ItemsListProps> = ({
   showExpiringsSoon = false,
   showActiveOnly = false,
   showFinishedOnly = false,
-  showQuantityInput = false,
-  showDiscardReason = false,
   refreshTrigger,
   isOffline = false,
   onItemUpdated
@@ -41,15 +38,10 @@ const ItemsList: React.FC<ItemsListProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // State for quantity input dialog
-  const [showQuantityDialog, setShowQuantityDialog] = useState(false);
-  const [quantityDialogItem, setQuantityDialogItem] = useState<Item | null>(null);
-  const [discardQuantity, setDiscardQuantity] = useState<number>(0);
-  const [discardReason, setDiscardReason] = useState<'expired' | 'damaged' | 'other'>('expired');
-  
-  // State for finished dialog
-  const [showFinishedDialog, setShowFinishedDialog] = useState(false);
-  const [finishedDialogItem, setFinishedDialogItem] = useState<Item | null>(null);
+  // State for unified item action modal
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [actionModalItem, setActionModalItem] = useState<Item | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
 
   // Fridges for filtering and name lookup
@@ -160,21 +152,37 @@ const ItemsList: React.FC<ItemsListProps> = ({
     }
   }, [businessId, areaFilter, showFinishedOnly, showDiscardedOnly, userDepartment, canSeeAllDepartments, showActiveOnly, showExpiringsSoon, showExpiredOnly]);
 
-  // Open quantity dialog for discard
-  const openDiscardDialog = (item: Item) => {
-    setQuantityDialogItem(item);
-    setDiscardQuantity(item.amount || 0); // Default to full amount
-    // Auto-set reason based on expiry status
-    const now = new Date();
-    const expiryDate = item.expiryTime.toDate();
-    setDiscardReason(expiryDate <= now ? 'expired' : 'damaged');
-    setShowQuantityDialog(true);
+  // Open unified action modal
+  const openActionModal = (item: Item) => {
+    setActionModalItem(item);
+    setShowActionModal(true);
   };
 
-  // Open finished dialog
-  const openFinishedDialog = (item: Item) => {
-    setFinishedDialogItem(item);
-    setShowFinishedDialog(true);
+  // Handle action confirmation from modal
+  const handleActionConfirm = async (action: 'finished' | 'discarded', quantity?: number, reason?: string) => {
+    if (!actionModalItem || !profile || !actionModalItem.id) return;
+
+    setIsActionLoading(true);
+    
+    try {
+      if (action === 'finished') {
+        await handleMarkAsFinished(actionModalItem);
+      } else {
+        // Convert reason string to proper type
+        const discardReason = reason === 'פג תוקף' ? 'expired' : 
+                             reason === 'נפגם' ? 'damaged' : 'other';
+        await handleMarkAsDiscarded(actionModalItem, quantity, discardReason);
+      }
+      
+      // Close modal
+      setShowActionModal(false);
+      setActionModalItem(null);
+    } catch (error) {
+      console.error('Error processing action:', error);
+      // Error is already handled in the individual functions
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   // Handle marking item as discarded
@@ -235,25 +243,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
     }
   };
 
-  // Confirm discard with quantity
-  const handleConfirmDiscard = async () => {
-    if (!quantityDialogItem) return;
-    
-    await handleMarkAsDiscarded(quantityDialogItem, discardQuantity, discardReason);
-    setShowQuantityDialog(false);
-    setQuantityDialogItem(null);
-    setDiscardQuantity(0);
-    setDiscardReason('expired');
-  };
 
-  // Confirm finished
-  const handleConfirmFinished = async () => {
-    if (!finishedDialogItem) return;
-    
-    await handleMarkAsFinished(finishedDialogItem);
-    setShowFinishedDialog(false);
-    setFinishedDialogItem(null);
-  };
 
   // Only load items if user profile is loaded
   useEffect(() => {
@@ -551,20 +541,11 @@ const ItemsList: React.FC<ItemsListProps> = ({
                                 <div className="action-buttons">
                                   <button
                                     className={`quick-action-btn ${statusText.toLowerCase()}-action`}
-                                    onClick={() => showQuantityInput || showDiscardReason ? openDiscardDialog(item) : handleMarkAsDiscarded(item)}
+                                    onClick={() => openActionModal(item)}
                                     disabled={isOffline}
                                   >
                                     <span className="action-icon">🗑️</span>
-                                    {statusText === 'Expired' ? 'השלך עכשיו' : 'סמן להשלכה'}
-                                  </button>
-                                  
-                                  <button
-                                    className="quick-action-btn finished-action"
-                                    onClick={() => openFinishedDialog(item)}
-                                    disabled={isOffline}
-                                  >
-                                    <span className="action-icon">✅</span>
-                                    נגמר
+                                    עדכן סטטוס
                                   </button>
                                 </div>
                               )}
@@ -930,6 +911,57 @@ const ItemsList: React.FC<ItemsListProps> = ({
           font-size: 16px;
         }
 
+        /* Action buttons */
+        .action-buttons {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: center;
+          margin-top: 12px;
+        }
+
+        /* Enhanced Finished Label */
+        .finished-label-enhanced {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          background: linear-gradient(135deg, #4CAF50, #45a049);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .finished-icon {
+          font-size: 0.8rem;
+        }
+
+        .item-card.finished {
+          border: 2px solid #4CAF50;
+          background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(69, 160, 73, 0.05));
+          opacity: 0.9;
+        }
+
+        .finished-info {
+          background: rgba(76, 175, 80, 0.1);
+          padding: 8px;
+          border-radius: 6px;
+          margin-top: 8px;
+          border-left: 3px solid #4CAF50;
+        }
+
+        .finished-info p {
+          margin: 4px 0;
+          font-size: 0.85rem;
+          color: #2e7d32;
+        }
+
         /* Enhanced Discarded Label */
         .discarded-label-enhanced {
           background: linear-gradient(135deg, #757575 0%, #616161 100%);
@@ -1025,279 +1057,23 @@ const ItemsList: React.FC<ItemsListProps> = ({
         }
       `}</style>
 
-      {/* Quantity Input Dialog */}
-      {showQuantityDialog && quantityDialogItem && (
-        <div className="quantity-dialog-overlay">
-          <div className="quantity-dialog">
-            <h3>כמות זריקה - {quantityDialogItem.productName}</h3>
-            <p>כמות מקורית: {quantityDialogItem.amount} {quantityDialogItem.type === 'kg' ? 'ק"ג' : 'יחידות'}</p>
-            
-            <div className="quantity-input-container">
-              <label htmlFor="discard-quantity">כמות נזרקת:</label>
-              <input
-                id="discard-quantity"
-                type="number"
-                min="0"
-                max={quantityDialogItem.amount}
-                step={quantityDialogItem.type === 'kg' ? '0.1' : '1'}
-                value={discardQuantity}
-                onChange={(e) => setDiscardQuantity(Number(e.target.value))}
-                className="quantity-input"
-              />
-              <span className="quantity-unit">
-                {quantityDialogItem.type === 'kg' ? 'ק"ג' : 'יחידות'}
-              </span>
-            </div>
-
-            <div className="reason-input-container">
-              <label htmlFor="discard-reason">סיבת זריקה:</label>
-              <select
-                id="discard-reason"
-                value={discardReason}
-                onChange={(e) => setDiscardReason(e.target.value as 'expired' | 'damaged' | 'other')}
-                className="reason-select"
-              >
-                <option value="expired">פג תוקף</option>
-                <option value="damaged">נפגם</option>
-                <option value="other">אחר</option>
-              </select>
-            </div>
-            
-            <div className="dialog-buttons">
-              <button
-                className="cancel-btn"
-                onClick={() => {
-                  setShowQuantityDialog(false);
-                  setQuantityDialogItem(null);
-                  setDiscardQuantity(0);
-                }}
-              >
-                ביטול
-              </button>
-              <button
-                className="confirm-btn"
-                onClick={handleConfirmDiscard}
-                disabled={discardQuantity <= 0 || discardQuantity > quantityDialogItem.amount}
-              >
-                אשר זריקה
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Unified Item Action Modal */}
+      {showActionModal && actionModalItem && (
+        <ItemActionModal
+          open={showActionModal}
+          onClose={() => {
+            setShowActionModal(false);
+            setActionModalItem(null);
+          }}
+          onConfirm={handleActionConfirm}
+          itemName={actionModalItem.productName}
+          itemAmount={actionModalItem.amount}
+          itemType={actionModalItem.type}
+          loading={isActionLoading}
+        />
       )}
 
-      {/* Finished Confirmation Dialog */}
-      {showFinishedDialog && finishedDialogItem && (
-        <div className="quantity-dialog-overlay">
-          <div className="quantity-dialog">
-            <h3>אישור סיום - {finishedDialogItem.productName}</h3>
-            <p>האם אתה בטוח שהמוצר נגמר (נוצל עד התום)?</p>
-            <p>כמות מקורית: {finishedDialogItem.amount} {finishedDialogItem.type === 'kg' ? 'ק"ג' : 'יחידות'}</p>
-            
-            <div className="dialog-buttons">
-              <button
-                className="cancel-btn"
-                onClick={() => {
-                  setShowFinishedDialog(false);
-                  setFinishedDialogItem(null);
-                }}
-              >
-                ביטול
-              </button>
-              <button
-                className="confirm-btn"
-                onClick={handleConfirmFinished}
-              >
-                אשר נגמר
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <style>{`
-        .quantity-dialog-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-
-        .quantity-dialog {
-          background: white;
-          padding: 24px;
-          border-radius: 12px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-          min-width: 300px;
-          max-width: 90vw;
-        }
-
-        .quantity-dialog h3 {
-          margin: 0 0 16px 0;
-          color: #333;
-          font-size: 18px;
-        }
-
-        .quantity-input-container {
-          margin: 16px 0;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .quantity-input-container label {
-          font-weight: 600;
-          min-width: 100px;
-        }
-
-        .quantity-input {
-          padding: 8px 12px;
-          border: 2px solid #ddd;
-          border-radius: 6px;
-          font-size: 16px;
-          width: 100px;
-        }
-
-        .quantity-input:focus {
-          outline: none;
-          border-color: #4CAF50;
-        }
-
-        .quantity-unit {
-          font-weight: 600;
-          color: #666;
-        }
-
-        .dialog-buttons {
-          display: flex;
-          gap: 12px;
-          justify-content: center;
-          margin-top: 24px;
-        }
-
-        .cancel-btn, .confirm-btn {
-          padding: 10px 20px;
-          border: none;
-          border-radius: 6px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .cancel-btn {
-          background: #f5f5f5;
-          color: #666;
-        }
-
-        .cancel-btn:hover {
-          background: #e0e0e0;
-        }
-
-        .confirm-btn {
-          background: #4CAF50;
-          color: white;
-        }
-
-        .confirm-btn:hover:not(:disabled) {
-          background: #45a049;
-        }
-
-        .confirm-btn:disabled {
-          background: #cccccc;
-          cursor: not-allowed;
-        }
-
-        .reason-input-container {
-          margin: 16px 0;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .reason-input-container label {
-          font-weight: 600;
-          min-width: 100px;
-        }
-
-        .reason-select {
-          padding: 8px 12px;
-          border: 2px solid #ddd;
-          border-radius: 6px;
-          font-size: 16px;
-          background: white;
-          min-width: 150px;
-        }
-
-        .reason-select:focus {
-          outline: none;
-          border-color: #4CAF50;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          justify-content: center;
-          align-items: center;
-          margin-top: 12px;
-        }
-
-        .finished-action {
-          background: linear-gradient(135deg, #4CAF50, #45a049);
-          color: white;
-        }
-
-        .finished-action:hover:not(:disabled) {
-          background: linear-gradient(135deg, #45a049, #4CAF50);
-          transform: translateY(-1px);
-        }
-
-        .finished-label-enhanced {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          background: linear-gradient(135deg, #4CAF50, #45a049);
-          color: white;
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-        }
-
-        .finished-icon {
-          font-size: 0.8rem;
-        }
-
-        .item-card.finished {
-          border: 2px solid #4CAF50;
-          background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(69, 160, 73, 0.05));
-          opacity: 0.9;
-        }
-
-        .finished-info {
-          background: rgba(76, 175, 80, 0.1);
-          padding: 8px;
-          border-radius: 6px;
-          margin-top: 8px;
-          border-left: 3px solid #4CAF50;
-        }
-
-        .finished-info p {
-          margin: 4px 0;
-          font-size: 0.85rem;
-          color: #2e7d32;
-        }
-      `}</style>
     </div>
   );
 };

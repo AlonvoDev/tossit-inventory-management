@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
                   refreshTrigger={refreshTrigger}
                   isOffline={isOffline}
                   onItemUpdated={handleItemUpdated}
-                  showQuantityInput={false}
+
                 />
               </Box>
             ) : (
@@ -264,8 +264,6 @@ const Dashboard: React.FC = () => {
                   refreshTrigger={refreshTrigger}
                   isOffline={isOffline}
                   onItemUpdated={handleItemUpdated}
-                  showQuantityInput={true}
-                  showDiscardReason={true}
                 />
               </Box>
             )}

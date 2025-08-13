@@ -351,8 +351,8 @@ const AdminPanel: React.FC = () => {
                         refreshTrigger={0}
                         isOffline={isOffline}
                         onItemUpdated={() => {}}
-                        showQuantityInput={false}
-                        showDiscardReason={true}
+
+
                       />
                     </Box>
                   )}
@@ -370,8 +370,7 @@ const AdminPanel: React.FC = () => {
                         refreshTrigger={0}
                         isOffline={isOffline}
                         onItemUpdated={() => {}}
-                        showQuantityInput={true}
-                        showDiscardReason={true}
+
                       />
                     </Box>
                   )}
@@ -394,7 +393,7 @@ const AdminPanel: React.FC = () => {
                             refreshTrigger={0}
                             isOffline={isOffline}
                             onItemUpdated={() => {}}
-                            showQuantityInput={false}
+
                           />
                         </Card>
                         <Card sx={{ p: 2 }}>
@@ -406,7 +405,7 @@ const AdminPanel: React.FC = () => {
                             refreshTrigger={0}
                             isOffline={isOffline}
                             onItemUpdated={() => {}}
-                            showQuantityInput={false}
+
                           />
                         </Card>
                       </Box>
@@ -426,7 +425,7 @@ const AdminPanel: React.FC = () => {
                         refreshTrigger={0}
                         isOffline={isOffline}
                         onItemUpdated={() => {}}
-                        showQuantityInput={false}
+
                       />
                     </Box>
                   )}
