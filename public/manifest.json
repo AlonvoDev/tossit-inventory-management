@@ -10,23 +10,18 @@
     "categories": ["business", "productivity", "utilities"],
     "lang": "he",
     "dir": "rtl",
-    "icons": [
-      {
-        "src": "/icon-192.png",
-        "sizes": "192x192",
-        "type": "image/png",
-        "purpose": "any maskable"
-      },
-      {
-        "src": "/icon-512.png",
-        "sizes": "512x512",
-        "type": "image/png",
-        "purpose": "any maskable"
-      },
-          {
-      "src": "/tossit-favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "icons": [
+    {
+      "src": "/A_digital_vector_graphic_icon_features_a_white_sym.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/A_digital_vector_graphic_icon_features_a_white_sym.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-    ]
+  ]
   }
