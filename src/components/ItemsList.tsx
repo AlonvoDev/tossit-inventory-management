@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import LoadingSkeleton from './LoadingSkeleton';
 import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -62,7 +62,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
   const canSeeAllDepartments = isManager || profile?.role === 'admin';
 
   // Load items
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     if (!businessId) return;
     
     console.log('loadItems called with:', {
@@ -158,7 +158,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [businessId, areaFilter, showFinishedOnly, showDiscardedOnly, userDepartment, canSeeAllDepartments, showActiveOnly, showExpiringsSoon, showExpiredOnly]);
 
   // Open quantity dialog for discard
   const openDiscardDialog = (item: Item) => {

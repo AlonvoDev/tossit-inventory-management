@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getAllUsers, createUserByAdmin, CreateUserData, updateUserByAdmin, deleteUserByAdmin, UpdateUserData } from '../api/authAPI';
 import { UserProfile } from '../types/UserProfile';
@@ -42,15 +42,8 @@ const AdminUsersPage: React.FC = () => {
     }
   }, [isAdmin, authLoading, navigate]);
 
-  // Load users on component mount
-  useEffect(() => {
-    if (isAdmin && businessId) {
-      loadUsers();
-    }
-  }, [isAdmin, businessId]);
-
-  // Load all users
-  const loadUsers = async () => {
+  // Load users from API
+  const loadUsers = useCallback(async () => {
     if (!businessId) return;
     
     setLoading(true);
@@ -71,13 +64,23 @@ const AdminUsersPage: React.FC = () => {
       }));
       
       setUsers(validUsers);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error loading users:', err);
-      setError('Failed to load users. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load users. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [businessId]);
+
+  // Load users on component mount
+  useEffect(() => {
+    if (isAdmin && businessId) {
+      loadUsers();
+    }
+  }, [isAdmin, businessId, loadUsers]);
+
+
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

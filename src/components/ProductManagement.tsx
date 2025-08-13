@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   getBusinessProducts,
@@ -138,7 +138,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
   const editExpiryInputRef = useRef<HTMLInputElement>(null);
 
   // Generate next product ID based on existing products
-  const generateNextProductId = () => {
+  const generateNextProductId = useCallback(() => {
     if (products.length === 0) return 'P001';
 
     // Extract numeric part of product IDs and find the highest
@@ -154,7 +154,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
     const highestId = Math.max(...numericIds);
     const nextId = highestId + 1;
     return `P${nextId.toString().padStart(3, '0')}`;
-  };
+  }, [products]);
 
   // Load products from API or cache
   useEffect(() => {

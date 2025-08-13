@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 export interface ToastNotification {
   id: string;
@@ -27,6 +27,11 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
 }) => {
   const [visibleNotifications, setVisibleNotifications] = useState<string[]>([]);
 
+  const handleDismiss = useCallback((id: string) => {
+    setVisibleNotifications(prev => prev.filter(nId => nId !== id));
+    setTimeout(() => onDismiss(id), 300); // Wait for animation
+  }, [onDismiss]);
+
   useEffect(() => {
     // Auto-dismiss notifications after their duration
     notifications.forEach(notification => {
@@ -44,12 +49,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         handleDismiss(notification.id);
       }, duration);
     });
-  }, [notifications]);
-
-  const handleDismiss = (id: string) => {
-    setVisibleNotifications(prev => prev.filter(nId => nId !== id));
-    setTimeout(() => onDismiss(id), 300); // Wait for animation
-  };
+  }, [notifications, handleDismiss]);
 
   const getToastStyles = (type: ToastNotification['type']) => {
     switch (type) {
