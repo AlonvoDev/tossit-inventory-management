@@ -48,7 +48,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import tossitFavicon from '../assets/tossit-favicon.svg';
+import tossitFavicon from '../assets/tossit-favicon.png';
 import ClockDisplay from './ClockDisplay';
 import { createUserByAdmin } from '../api/authAPI';
 

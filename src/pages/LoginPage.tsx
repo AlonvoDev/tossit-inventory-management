@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signIn, signInWithGoogle } from '../api/authAPI';
 import { Container, Grid } from '@mui/material';
-import tossitLogo from '../assets/tossit-logo.svg';
+import tossitLogo from '../assets/tossit-logo.png';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
