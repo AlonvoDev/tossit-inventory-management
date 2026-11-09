@@ -4,20 +4,21 @@ Implementation checkpoints are not production deployments. Do not deploy the C1
 rules by themselves against an older client: the C2 inventory adapters and the
 reviewed Claude UI checkpoints must be integrated first.
 
-## Reproduce C1 checks
+## Reproduce integrated C5 checks
 
 Use the committed npm lockfiles. Install root dependencies with `npm ci` and
-server dependencies with `npm ci --prefix functions`. Functions target Node 22;
-the managed development host currently uses Node 24. Node 22 CI validation remains
-a release check until recorded in the integrated candidate.
+server dependencies with `npm ci --prefix functions`. Use Node 22 (`.node-version`) and Java 21 for CI emulators. The integrated candidate was locally verified on Node 22.23.4; GitHub Actions run 42708118669 also passed all three jobs on tested candidate `3be1d676aa66baf448a802521d9d29b60e8af64e`, including native Functions-worker startup and real Chromium browser checks.
 
 ```bash
 npm run build
+npm run build:functions
 npm run test:run
 npm run test:functions
 npm run test:rules
 npm run test:callables
 npm run lint
+npx playwright install --with-deps chromium
+npm run test:browser
 ```
 
 `test:rules` uses only the `demo-tossit-auth` Firestore emulator. `test:callables`
@@ -25,12 +26,15 @@ starts Auth/Firestore emulators and serves the actual Firebase `onCall` HTTP/aut
 wrappers over loopback TCP. It uses real Firebase client SDK requests and real
 Admin SDK adapters. It does not mock callable auth or bypass server authorization.
 The Firebase CLI Functions worker cannot start its Unix socket in the managed
-host (`listen EPERM`); that worker-specific startup test is NOT verified here.
+host (`listen EPERM`); GitHub CI verified native Node 22 worker startup, all
+seven exported definitions and the same three callable tests with
+`npm run test:callables:native`. The CI-only secret file contains a dummy value
+for emulator startup, never a usable production private key.
 The server TypeScript build is verified independently.
 
 No test may use production as a fallback. Emulator-only tests explicitly reject
 missing/non-loopback emulator hosts. UI/domain tests exclude emulator suites.
-When emulators are explicitly selected in the development app, Firebase services
+When emulators are explicitly selected on localhost (`VITE_USE_FIREBASE_EMULATORS=true`, including the built browser test), Firebase services
 connect synchronously to the local demo project; absent services fail locally.
 
 ## Prerequisites before approved deployment
@@ -64,7 +68,7 @@ connect synchronously to the local demo project; absent services fail locally.
 
 - Real-device PWA install/update, closed-app push delivery and scheduler setup.
 - Firestore indexes and performance for production-sized data.
-- End-to-end integration of both branches and owner review before updating main.
+- Owner review and U5 pilot/demo documentation before updating main. Both branches are integrated; local and GitHub CI checks pass.
 
 ## C1 provisioning coordination
 
@@ -166,10 +170,14 @@ Push-provider acceptance is not proof of phone display, and the external transpo
 cannot promise exactly-once display after an ambiguous crash/acknowledgement.
 Generic notification text includes a count, not item/employee/business names.
 
-Evidence:104client tests,41server tests,42rules/SDK tests,3actualcallable HTTP/Auth/
-Firestore integration tests; app/functions builds and changed-file lint pass (one
-existing Fast Refresh warning). Push transport in tests is stubbed. Native Functions
-worker startup and Node22 CI remain separate C5/release checks.
+C5 integrated local evidence on Node 22.23.4: 296 client tests, 41 server tests,
+42 rules/SDK tests, 3 actual callable HTTP/Auth/Firestore integration tests and
+4 real Chromium browser tests pass. App/Functions builds pass; full lint has
+zero errors and seven existing Fast Refresh warnings. Independent focused final
+review found no confirmed Critical/Important issue. Push transport in tests is
+stubbed. Remote CI run 42708118669 also passed native Functions startup and the same
+three callable tests, plus all four browser scenarios using the locked Playwright
+browser. Phone installation and actual delivery remain gates.
 
 Primary references used for deployment/transport details:
 - https://firebase.google.com/docs/functions/schedule-functions

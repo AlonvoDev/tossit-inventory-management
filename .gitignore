@@ -51,3 +51,7 @@ ui-debug.log
 
 # Compiled Firebase Functions
 functions/lib/
+
+# Browser verification artifacts
+test-results/
+playwright-report/

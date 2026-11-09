@@ -1,8 +1,27 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: C4 — server scheduling and explicit device push controls
-Status: C4 implementation DONE; READY for Claude U4c. No deployment.
-Last previously confirmed remote SHA: 27722cb41bd08f39a60496315a979c189b41478e
+Task / bounded subtask: C5 — integrated release candidate and CI
+Status: C5 DONE; integrated candidate READY for Claude U5. No deployment.
+Last previously confirmed remote SHA: 3be1d676aa66baf448a802521d9d29b60e8af64e
+
+## READY FOR CLAUDE — C5 complete / U5 unblocked
+
+Merged exactly Claude U4c `1cd48edadc9c718c0890244d2ede7c66ee450117` with a normal two-parent merge. U1–U4 are present. Main and live services are unchanged. The tested integrated code candidate is `3be1d676aa66baf448a802521d9d29b60e8af64e`; the subsequent handoff-only commit records the results and may also be merged. This is not production deployment approval.
+
+Verified locally on actual Node 22.23.4: 296 client tests, 41 Functions tests, 42 Firestore rules tests, 3 real callable/Auth/Firestore integration tests, and 4 real Chromium browser tests pass. Production app and Functions TypeScript builds pass. Lint: zero errors, seven existing Fast Refresh warnings. Browser checks cover one root worker/no permission prompt, offline deep-link reload, decimal opening/reload/reconnect exactly once, staff admin denial, and retained queue isolation across logout/different-business login/original-account return. Only synthetic accounts and local emulators were used.
+
+New CI reproduces build/unit/rules/callable/browser checks on Node 22 and Java 21, plus native Functions worker startup. GitHub Actions run 42708118669 completed SUCCESS in all three jobs (build-and-unit, firebase-emulators, browser): https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/42708118669 . The native Functions worker started on Node 22, loaded all seven exports and passed the same 3 callable integration tests. The managed host cannot start the native Functions Unix socket; the local callable suite uses real onCall HTTP/auth wrappers over loopback, and GitHub CI independently covers the native worker. Local browser validation used Chromium 153; the four browser tests also passed in CI with Playwright's locked Chromium. Real phones, real closed-app push, live project configuration/billing and production migration remain NOT RUN.
+
+Claude U5 requests now available in `src/utils/notificationUtils.ts`:
+- `isPushConfigured()` uses the same structural VAPID validation as enable; no permissions/network/subscription. It does not prove deployed backend readiness.
+- Error codes `not-configured`, `worker-not-ready`, `worker-outdated`, `offline` distinguish setup/connectivity failures. `useNotifications` additionally exposes `errorCode` while preserving `error` compatibility.
+- Please adopt the helper in your `src/pwa/pushEnv.ts` and map these codes in your UI error mapper during U5. Existing generic failure fallback remains safe; no rejected operation reports enabled.
+
+CI also removes shell interpolation of generated issue-summary text by passing it through the existing quoted environment variable. No issue comment was sent.
+
+Focused independent final review completed without confirmed Critical/Important findings. Scope: CI/browser harness, native worker mode, push configuration/error changes, account-scoped queue replay, terminal transaction handling and worker integration. This supplements prior C1–C4 reviews; real device/production validation is still outstanding.
+
+Next for Claude: merge pinned tested candidate `3be1d676aa66baf448a802521d9d29b60e8af64e` (or its handoff-only successor) with a normal merge; adopt the helper/error codes above and complete U5 README/pilot/demo docs against this candidate. Publish each completed checkpoint and verify origin. Do not merge to main or deploy automatically. See `docs/RELEASE.md` for commands and release gates.
 
 ## READY FOR CLAUDE — C4 COMPLETE / U4c unblocked
 Merge the pinned full C4 commit published with this handoff from codex/tossit-core (not C4a27722cb alone). Claude e7cc27b is fetched and acknowledged: U1/U2/U3/U4a/U4b complete, C3 mounted,275reported client tests and zero lint errors there. C4 does not edit any Claude-owned UI/worker file.

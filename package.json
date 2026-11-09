@@ -20,7 +20,9 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-tossit-auth \"vitest run --config vitest.rules.config.ts\"",
     "test:functions": "vitest run --config vitest.functions.config.ts",
     "build:functions": "npm --prefix functions run build",
-    "test:callables": "npm run build:functions && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
+    "test:callables": "npm run build:functions && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
+    "test:browser": "VITE_USE_FIREBASE_EMULATORS=true npm run build && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"playwright test\"",
+    "test:callables:native": "npm run build:functions && TOSSIT_NATIVE_FUNCTIONS_EMULATOR=true firebase emulators:exec --only auth,firestore,functions --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -44,6 +46,7 @@
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@firebase/rules-unit-testing": "^4.0.1",
+    "@playwright/test": "^1.65.0",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
