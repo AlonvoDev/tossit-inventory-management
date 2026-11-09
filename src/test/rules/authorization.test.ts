@@ -126,6 +126,13 @@ describe('business authorization', () => {
   it('denies unknown collections by default', async () => {
     await assertFails(setDoc(doc(db('admin'), 'unknown/record'), { businessId: 'a' }));
   });
+  it('keeps push subscriptions, capabilities, cancellation and delivery records server-only', async () => {
+    for (const name of ['pushDevices', 'pushEndpointClaims', 'pushRevocations', 'notificationDeliveries']) {
+      await env.withSecurityRulesDisabled(async context => { await setDoc(doc(context.firestore(), name, 'private'), { businessId: 'a', uid: 'admin', enabled: true }); });
+      await assertFails(getDoc(doc(db('admin'), name, 'private')));
+      await assertFails(setDoc(doc(db('admin'), name, 'fake'), { businessId: 'a', uid: 'admin', enabled: true }));
+    }
+  });
   it('rejects invalid or forged product-derived inventory values', async () => {
     for (const change of [{ amount: -1 }, { type: 'units' }, { productName: 'Forged' }, { productId: 'absent' }, { expiryTime: Timestamp.fromMillis(1700604800000) }]) {
       await assertFails(setDoc(doc(db('staff'), 'items/invalid'), item(change)));

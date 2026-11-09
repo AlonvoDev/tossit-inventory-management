@@ -31,3 +31,22 @@ export const deactivateEmployee = onCall(options, async request => {
     return { success: true };
   } catch (error) { return callableError(error); }
 });
+
+// Device writes are server-only; the capability permits scoped logout cleanup
+// even after Firebase Auth has changed. No token/endpoint is logged.
+import { firebaseNotificationService } from './firebaseNotifications';
+import { PushError } from './notifications';
+export { scheduledInventoryNotifications } from './scheduler';
+function pushError(error: unknown): never {
+  if (error instanceof PushError) throw new HttpsError(error.code, error.message);
+  throw new HttpsError('internal', 'Device operation failed; retry the same binding');
+}
+export const upsertPushDevice = onCall(options, async request => {
+  try { return await firebaseNotificationService().register(request.auth?.uid ?? null, request.data); } catch (error) { return pushError(error); }
+});
+export const revokePushDevice = onCall(options, async request => {
+  try { return await firebaseNotificationService().revoke(request.data, request.auth?.uid ?? null); } catch (error) { return pushError(error); }
+});
+export const getPushDeviceStatus = onCall(options, async request => {
+  try { return await firebaseNotificationService().status(request.auth?.uid ?? null, request.data); } catch (error) { return pushError(error); }
+});

@@ -271,11 +271,11 @@ Every task may be split into 30–90 minute bounded subtasks if it would otherwi
 **Files:** Create functions/src/notifications.ts, functions/src/scheduler.ts and function tests; modify notificationUtils, discardScheduler, expirationChecker, hooks/useNotifications, settings APIs and rules; update docs/RELEASE.md.
 **Consumes:** C1 security, C2 settings, PushPayload contract and Claude's U4 worker.
 **Produces:** enable/disablePushNotifications; callable subscription validation; reminder/summary jobs with timezone and deduplication.
-- [ ] Test 23:00/23:20/23:40 and 08:00 slots, DST transition, disabled settings, completed items, department filtering, duplicate scheduler requests and invalid endpoints.
-- [ ] Test per-device subscribe/logout/disable and worker-ready flow without a second registration.
-- [ ] Implement scheduled functions and durable delivery bookkeeping; remove browser timers as the authoritative scheduler.
-- [ ] Test sender with a stub transport and server logic with emulators. Record which real push/device tests remain release-blocked.
-- [ ] Build client/functions, run tests, publish C4 and the exact deployment prerequisites.
+- [x] Test 23:00/23:20/23:40 and 08:00 slots, DST transition, disabled settings, completed items, department filtering, duplicate scheduler requests and invalid endpoints.
+- [x] Test per-device subscribe/logout/disable and worker-ready flow without a second registration.
+- [x] Implement scheduled functions and durable delivery bookkeeping; remove browser timers as the authoritative scheduler.
+- [x] Test sender with a stub transport and server logic with emulators. Record which real push/device tests remain release-blocked.
+- [x] Build client/functions, run tests, publish C4 and the exact deployment prerequisites.
 **Acceptance:** Closed-app delivery has a real server path. Tests establish selection/deduplication; real-device delivery is not claimed without a live test.
 
 ### C5 — Integrated release candidate, checks and recovery
