@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { UseAuthReturn } from '../context/AuthContext';
 
 const authState: { current: Partial<UseAuthReturn> } = { current: {} };
@@ -76,6 +76,26 @@ describe('UnifiedNavigation menu matches route access', () => {
     expect(menu.getByText('מנהל מחלקה')).toBeInTheDocument();
     expect(menu.getByText('מטבח')).toBeInTheDocument();
     expect(menu.queryByText('kitchen')).not.toBeInTheDocument();
+  });
+
+  it('add user opens the single create form on the users page', async () => {
+    authState.current = as('admin');
+    const Where = () => {
+      const loc = useLocation();
+      return <div data-testid="where">{loc.pathname + loc.search}</div>;
+    };
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <UnifiedNavigation />
+        <Routes>
+          <Route path="*" element={<Where />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'menu' }));
+    await userEvent.click(within(screen.getByRole('menu')).getByText('הוסף משתמש חדש'));
+    expect(screen.getByTestId('where')).toHaveTextContent('/admin/users?add=1');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('renders nothing without a profile', () => {

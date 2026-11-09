@@ -22,9 +22,6 @@ import {
   DialogActions,
   TextField,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
 
   Alert,
   CircularProgress,
@@ -48,7 +45,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import tossitFavicon from '../assets/tossit-favicon.png';
 import ClockDisplay from './ClockDisplay';
-import { createUserByAdmin } from '../api/authAPI';
 
 import { addCustomCategory } from '../api/categoriesAPI';
 import { canAccessRoute, canManageBusiness, departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
@@ -71,23 +67,6 @@ const UnifiedNavigation: React.FC = () => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   
-  // User Registration Modal State
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [registerError, setRegisterError] = useState<string | null>(null);
-  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'staff' as 'admin' | 'manager' | 'staff',
-    department: 'bar' as 'bar' | 'kitchen',
-    phoneNumber: '',
-  });
-
-
-
   // Category Creation Modal State
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryLoading, setCategoryLoading] = useState(false);
@@ -114,83 +93,6 @@ const UnifiedNavigation: React.FC = () => {
       console.error('Error signing out:', error);
     }
   };
-
-  const handleRegisterModalOpen = () => {
-    setShowRegisterModal(true);
-    setRegisterError(null);
-    setRegisterSuccess(null);
-    setFormData({
-      fullName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: 'staff',
-      department: 'bar',
-      phoneNumber: '',
-    });
-    handleMenuClose();
-  };
-
-  const handleRegisterModalClose = () => {
-    setShowRegisterModal(false);
-    setRegisterError(null);
-    setRegisterSuccess(null);
-  };
-
-  const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: event.target.value
-    }));
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegisterError(null);
-    setRegisterSuccess(null);
-    
-    // Validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
-      setRegisterError('יש למלא את כל השדות הנדרשים');
-      return;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      setRegisterError('הסיסמאות אינן תואמות');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      setRegisterError('הסיסמה חייבת להכיל לפחות 6 תווים');
-      return;
-    }
-    
-    if (formData.role === 'staff' && (!formData.department || (formData.department !== 'bar' && formData.department !== 'kitchen'))) {
-      setRegisterError('יש לבחור מחלקה עבור עובדי צוות');
-      return;
-    }
-    
-    setRegisterLoading(true);
-    
-    try {
-      await createUserByAdmin(formData, profile?.businessId || '');
-      setRegisterSuccess('המשתמש נוצר בהצלחה!');
-      
-      // Reset form after 2 seconds and close modal
-      setTimeout(() => {
-        handleRegisterModalClose();
-      }, 2000);
-    } catch (error: unknown) {
-      console.error('Registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'שגיאה ביצירת המשתמש. נסה שוב.';
-      setRegisterError(errorMessage);
-      showError('שגיאה ביצירת משתמש', errorMessage);
-    } finally {
-      setRegisterLoading(false);
-    }
-  };
-
-
 
   // Category Modal Handlers
   const handleCategoryModalOpen = () => {
@@ -274,7 +176,7 @@ const UnifiedNavigation: React.FC = () => {
     { id: 'divider1', label: '', icon: <></>, onClick: () => {}, divider: true, visible: canSeeAdminPanel },
     { id: 'admin', label: 'ניהול מערכת', icon: <AdminIcon />, onClick: go('/admin'), visible: canSeeAdminPanel },
     { id: 'users', label: 'ניהול משתמשים', icon: <UsersIcon />, onClick: go('/admin/users'), visible: canAccessRoute(role, 'adminUsers') },
-    { id: 'add-user', label: 'הוסף משתמש חדש', icon: <PersonAddIcon />, onClick: handleRegisterModalOpen, visible: isBusinessAdmin },
+    { id: 'add-user', label: 'הוסף משתמש חדש', icon: <PersonAddIcon />, onClick: go('/admin/users?add=1'), visible: isBusinessAdmin },
     { id: 'fridges', label: 'ניהול מקררים', icon: <FridgeIcon />, onClick: go('/admin/fridges'), visible: canAccessRoute(role, 'adminFridges') },
     { id: 'add-category', label: 'הוסף קטגוריה חדשה', icon: <CategoryIcon />, onClick: handleCategoryModalOpen, visible: isBusinessAdmin },
     { id: 'reports', label: 'דוחות', icon: <ReportsIcon />, onClick: go('/reports'), visible: canAccessRoute(role, 'reports') },
@@ -478,167 +380,6 @@ const UnifiedNavigation: React.FC = () => {
           );
         })}
       </Menu>
-
-      {/* User Registration Modal */}
-      <Dialog 
-        open={showRegisterModal} 
-        onClose={handleRegisterModalClose}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.95)} 100%)`,
-            backdropFilter: 'blur(20px)',
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-          m: 0,
-        }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            הוסף משתמש חדש
-          </Typography>
-          <IconButton 
-            onClick={handleRegisterModalClose}
-            sx={{ color: 'white' }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 3 }}>
-          <Box component="form" onSubmit={handleRegisterSubmit} sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
-              <TextField
-                fullWidth
-                label="שם מלא"
-                value={formData.fullName}
-                onChange={handleInputChange('fullName')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                fullWidth
-                label="אימייל"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
-              <TextField
-                fullWidth
-                label="סיסמה"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange('password')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                fullWidth
-                label="אימות סיסמה"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange('confirmPassword')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
-              <FormControl fullWidth sx={{ flex: 1 }}>
-                <InputLabel>תפקיד</InputLabel>
-                <Select
-                  value={formData.role}
-                  label="תפקיד"
-                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'manager' | 'staff' }))}
-                  disabled={registerLoading}
-                >
-                  <MenuItem value="staff">עובד</MenuItem>
-                  <MenuItem value="manager">מנהל מחלקה</MenuItem>
-                  <MenuItem value="admin">מנהל מערכת</MenuItem>
-                </Select>
-              </FormControl>
-
-              {formData.role === 'staff' && (
-                <FormControl fullWidth sx={{ flex: 1 }}>
-                  <InputLabel>מחלקה</InputLabel>
-                  <Select
-                    value={formData.department}
-                    label="מחלקה"
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value as 'bar' | 'kitchen' }))}
-                    disabled={registerLoading}
-                  >
-                    <MenuItem value="bar">בר</MenuItem>
-                    <MenuItem value="kitchen">מטבח</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            </Box>
-
-            <TextField
-              fullWidth
-              label="מספר טלפון (אופציונלי)"
-              value={formData.phoneNumber}
-              onChange={handleInputChange('phoneNumber')}
-              disabled={registerLoading}
-              sx={{ mb: 3 }}
-            />
-
-            {registerError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {registerError}
-              </Alert>
-            )}
-
-            {registerSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                {registerSuccess}
-              </Alert>
-            )}
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button 
-            onClick={handleRegisterModalClose} 
-            disabled={registerLoading}
-            sx={{ mr: 1 }}
-          >
-            ביטול
-          </Button>
-          <Button 
-            onClick={handleRegisterSubmit}
-            variant="contained"
-            disabled={registerLoading}
-            startIcon={registerLoading ? <CircularProgress size={16} /> : <PersonAddIcon />}
-            sx={{
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-              }
-            }}
-          >
-            {registerLoading ? 'יוצר משתמש...' : 'צור משתמש'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-
 
       {/* Category Creation Modal */}
       <Dialog 

@@ -2,6 +2,23 @@
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 
+## From U3b (2026-11-09)
+
+1. **Manager department is overwritten with `bar`** in `src/api/authAPI.ts`:
+   `createUserByAdmin` stores `department: role === 'staff' ? department : 'bar'`, and `updateUserByAdmin` sets
+   `department = 'bar'` for admin/manager roles (the UI now always sends an explicit department, which wins on update,
+   but create still loses it). Under the C1b rules a manager's department *is* their scope, so a kitchen manager is
+   silently created as a bar manager. Please keep the submitted department for managers (admins may keep any value).
+2. **`createUserByAdmin` replaces the admin's session** (`createUserWithEmailAndPassword` on the client signs in as the
+   new user). This is the C1c callable-provisioning item; the UI calls it unchanged and will switch to the callable
+   signature when published. Please publish: create, update (name/phone/role/department) and deactivate/reactivate,
+   with error `code`s (`permission-denied`, `invalid-input`, `already-exists`, `unavailable`).
+3. **Deactivation:** the UI currently offers "הסרת גישה" (remove access) wired to `deleteUserByAdmin`, with copy that
+   says the sign-in account is NOT deleted. When C1c exposes deactivate/reactivate using `isActive`, I will switch the
+   button to deactivate and show inactive users with a reactivate action instead of hiding them.
+4. **Self-protection:** the UI prevents removing your own access and changing your own role. Please enforce the same
+   server-side (no self-demotion/self-deactivation, and keep at least one active admin per business).
+
 ## From U3a (2026-11-09)
 
 1. **Discard report must be department-scoped for managers** (`getDiscardReport` / `getDiscardedItemsWithDateFilter`

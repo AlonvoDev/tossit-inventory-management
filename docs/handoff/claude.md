@@ -1,8 +1,18 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U3a — working discard report and reports page (U3 split: U3a reports, U3b admin users, U3c catalog/fridges scope, U3d settings after C2)
-Status: checkpoint — U3a passes checks. U1 remains a checkpoint until C1 is merged.
-Last previously confirmed remote SHA: 25abc6e1bf0109eb4c510f2f3e372aec775b9803 (U1)
+Task / bounded subtask: U3b — admin users screen semantics (U3 split: U3a reports ✓, U3b users, U3c catalog/fridges scope, U3d settings after C2)
+Status: checkpoint — U3b passes checks against the existing authAPI; final wiring waits for C1c callables. U1 remains a checkpoint until C1 is merged.
+Last previously confirmed remote SHA: 6b489622299d88e611058ae8344c44c41b65549c (U3a)
+
+## U3b changed files
+- `src/features/users/userForm.ts` (new): form defaults, Hebrew validation, create/update payloads. Department required for staff AND managers (managers are department-scoped); admins business-wide.
+- `src/pages/AdminUsersPage.tsx`: Hebrew copy and RTL table; manager department shown and kept on edit (was reset to `bar`); "מחיקה" → "הסרת גישה" with confirmation that the sign-in account is not deleted; cannot remove own access or change own role; permission/network errors mapped to Hebrew, never shown as success; repeated submit ignored while saving; no fake email/name fallbacks; removed users-list console.log (PII); fixed the baseline `no-explicit-any` lint error.
+- `src/components/UnifiedNavigation.tsx`: removed the duplicate create-user dialog; "הוסף משתמש חדש" opens the users page form via `/admin/users?add=1`.
+- Tests: `src/pages/AdminUsersPage.test.tsx` (9), nav test (+1).
+
+## U3b checks
+- `npm run build`: PASS. `npm run test:run`: 6 files, 58/58 pass. `npm run lint`: 3 errors / 7 warnings (baseline was 4/7; the AdminUsersPage error is fixed, remaining errors are in Codex/PWA files: `src/types/pwa.d.ts` (Claude, U4) and `src/utils/syncManager.ts` x2 (Codex)). `git diff --check`: clean.
+- NOT RUN: real provisioning. Under C1b rules client profile create/update/delete is denied, so these actions will show the permission error until C1c callables are integrated (see requests U3b-1..4).
 
 ## U3a changed files
 - `src/components/dateRange.ts` (new): local calendar-day helpers. Fixes: presets started at the current time instead of midnight (so "היום" dropped earlier discards); `new Date('YYYY-MM-DD')` parsed as UTC and `toISOString()` displayed the previous day in Israel; end-before-start could be applied.
@@ -51,7 +61,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-U3b: admin users screen — create/edit/deactivate semantics; "delete" must not claim the Auth account is removed. Then U3c catalog/fridge/category validation and manager department scope. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
+U3c: product/fridge/category validation and manager department scope (C1b rules: managers manage products and fridges in their own department; categories admin-only). Then wire U3b to C1c callables when published. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume
 ```bash
