@@ -1,8 +1,15 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U2b — realtime item list and finished/discarded on C2 `closeInventoryItem` (U2 split: U2a open ✓, U2b list/close ✓, U2c shift button; pending/provider parts after C3c)
-Status: checkpoint. U1, U3 done; U4a done; U4b waits for C3c, U4c for C4.
-Last previously confirmed remote SHA: 51c3815955bb19eaeb97b016c67de1ebf0046692 (U2a)
+Task / bounded subtask: U2c — shift button. U2 online part complete (U2a open, U2b list/close, U2c shift).
+Status: U2 online done; U2 remaining: pending/failed presentation + OfflineProvider mount after Codex C3c. U1, U3 done. U4a done; U4b waits for C3c, U4c for C4. U5 after C5 candidate.
+Last previously confirmed remote SHA: 2b4f70bbf0fcd9d49421f6739d4fbac0e2f16613 (U2b)
+
+## U2c changed files
+- `src/components/ShiftButton.tsx`: server-derived state only (ShiftContext/AuthContext); confirmation before ending a shift; disabled offline with explanation (an offline shift write would leave the button stuck); start time shown in Asia/Jerusalem; "התחלת משמרת" label; errors as alerts.
+- Tests: `ShiftButton.test.tsx` (3).
+
+## U2c checks
+- `npm run build`: PASS. `npm run test:run`: 26 files, all pass. `npm run lint`: 2 errors / 6 warnings (Codex `syncManager.ts`). `git diff --check`: clean.
 
 ## U2b changed files
 - `src/components/ItemsList.tsx` (data/action logic rewritten, rendering kept): one realtime `subscribeBusinessItems` subscription (server-scoped; other devices' opens/closes appear live; `refreshTrigger` now optional/unused); tab filtering via pure `selectItems` (canonical + legacy Hebrew departments, expiry re-evaluated every minute); closes via `useCloseItem`; success notice only after a receipt; already-closed and load errors explained in Hebrew; off-shift staff cannot open the action dialog; removed the localStorage `cachedItems_*` offline view and English error strings; department names via `departmentLabel` (legacy Hebrew no longer shows the wrong department).
@@ -152,7 +159,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-U2c: ShiftButton (start/end shift via existing API, errors shown, no optimistic state). Then U2 online is done; pending/failed presentation and OfflineProvider mount wait for C3c. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+Wait for Codex C3c (OfflineProvider + live `subscribeSyncOperations`) and C4 (`enable/disablePushNotifications`). Then: mount OfflineProvider once in `src/app/main.tsx`, show pending/failed operations (U2 remainder + U4b), notification controls (U4c). Meanwhile, U5 docs can be drafted but must wait for the C5 candidate before claims. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume
