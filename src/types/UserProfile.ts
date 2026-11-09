@@ -10,5 +10,7 @@ export interface UserProfile {
   phoneNumber?: string;
   createdAt?: Timestamp;
   isOnShift?: boolean;
+  /** Missing on legacy active profiles; false immediately revokes app access. */
+  isActive?: boolean;
   shiftStartedAt?: Timestamp;
-} 
+}

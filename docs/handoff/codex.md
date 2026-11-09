@@ -1,41 +1,31 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: P0 — shared plan and branch bootstrap
-Status: done
-Last previously confirmed remote SHA: 9cdd8561cfe769954a13bc25a24b93368373f936
+Task / bounded subtask: C1a — authoritative client identity and saved shift state
+Status: checkpoint (C1 is still in progress)
+Last previously confirmed remote SHA: d77fef258aec16c9163049b1a8b0a65054b908fb
 
-## Changed files
-- docs/superpowers/plans/2026-11-09-tossit-two-agent-delivery.md
-- docs/handoff/codex.md
+## Delivered
+- One AuthContext; hooks/useAuth is now a facade with userId and all existing aliases.
+- Profile snapshots drive role, active status and saved shift state.
+- UID changes/sign-out atomically revoke the previous profile; late callbacks are ignored.
+- Missing/disabled/malformed profiles grant no client authority; no business1 or local demo authority fallback in the context.
+- Legacy role=user becomes staff and Hebrew departments normalize safely. Existing profiles without a valid business/department need administrator repair, never invented authority.
+- Added optional UserProfile.isActive; missing means legacy-active, false denies access.
+- Added rules-unit-testing dev dependency for the next C1 emulator subtask.
 
-## Checks and exact results
-- Verified main: 9948d34bc9785b4aeed8eb6ffe9311621a727c9f.
-- No pre-existing source changes in the working checkout.
-- Plan structural check: passed; C1–C5 and U1–U5, ownership, contracts, dependency gates and push/recovery protocol present.
-- Planning-only change; no product code, dependency, rule, data or deployment changes.
-- Prior verified base build: PASS; existing tests: 5/5 PASS (Button only); lint baseline: 4 errors, 7 warnings. These were run during assessment, not repeated for the documentation-only P0.
+## Verification
+- Regression RED against baseline: 10 failures / 1 pass.
+- Updated full suite: 19/19 PASS (14 session tests and existing 5 Button tests).
+- npm run build: PASS, including worker generation.
+- npm run lint: existing 4 errors / 7 warnings; no new lint errors.
+- git diff --check: PASS after whitespace cleanup.
 
-## Known failures / NOT RUN checks
-- Real signed-in pilot and device push are NOT RUN.
-- Production Firebase rules/billing configuration have not been verified.
-- Claude has not started; the user must launch their separate Claude session.
-- No feature implementation has started. C1 is next.
+## Claude integration
+The identity contract is available for U1: useAuth exposes user/currentUser, profile/userProfile, uid/userId, loading/isLoading, isAuthenticated, role flags, businessId, isOnShift and shiftStartedAt. It also exposes error for unavailable profile data. Require isAuthenticated and a profile for protected routes; a Firebase User by itself is insufficient. Do not merge a moving tip: use this completed checkpoint SHA reported by Codex.
 
-## Integrated other-agent SHA
-None. Both branches are seeded from the same P0 checkpoint after this handoff is committed.
+## Not delivered / next steps
+C1 remains IN PROGRESS: Firestore rules are still the old permissive rules, privileged authAPI fallbacks/signup are not yet removed, server provisioning is not yet implemented. This checkpoint fixes client consistency, not server security. Production and real-device tests NOT RUN. No deployment or live writes.
+Next: emulator-backed rules tests and restrictive authorization, then callable provisioning/deactivation and authAPI cleanup.
 
-## API / dependency requests
-None for P0. Claude should begin U1 after reading the shared plan. Do not implement substitute domain APIs while waiting for C1/C2.
-
-## Next smallest action
-Start C1 with emulator authorization/auth regression tests in a Codex-only workspace, following the task and the shared-file ownership contract.
-Do not deploy or edit main. Publish a checkpoint before context runs low.
-
-## Commands to resume
-```bash
-git fetch origin
-git switch codex/tossit-core
-git status --short
-git log -3 --oneline
-```
-Read the plan and this handoff before implementation. Every task requires commit + push + remote SHA verification.
+## Rulings
+Use the existing Codex-only clone on codex/tossit-core; Claude uses a separate clone. Keep a compact tracked handoff plus a scoped scratch ledger instead of unavailable local skill shell helpers. Session regression tests use .tsx because they render actual consumers.
