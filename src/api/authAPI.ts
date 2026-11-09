@@ -4,6 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions, googleProvider, enhancedSignIn } from '../services/firebase';
 import { parseUserProfile } from '../domain/userProfile';
 import type { UserProfile } from '../types/UserProfile';
+import { disablePushNotifications } from '../utils/notificationUtils';
 
 export interface CreateUserData {
   fullName: string;
@@ -63,7 +64,7 @@ export const signIn = (email: string, password: string) => enhancedSignIn(email,
 export async function signInWithGoogle(): Promise<User> {
   return (await signInWithPopup(auth, googleProvider)).user;
 }
-export const signOut = (): Promise<void> => firebaseSignOut(auth);
+export const signOut = (): Promise<void> => { void disablePushNotifications().catch(() => undefined); return firebaseSignOut(auth); };
 export const resetPassword = (email: string): Promise<void> => sendPasswordResetEmail(auth, email);
 export const observeAuthState = (callback: (user: User | null) => void): (() => void) => onAuthStateChanged(auth, callback);
 

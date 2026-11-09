@@ -1,8 +1,27 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: C3c — connected offline inventory, cache and provider
-Status: C3 implementation DONE; READY for Claude integration/mount. No deployment.
-Last previously confirmed remote SHA: 0dc0b5040c7abaf02c7cdbd5a0378dc73453e071
+Task / bounded subtask: C4 — server scheduling and explicit device push controls
+Status: C4 implementation DONE; READY for Claude U4c. No deployment.
+Last previously confirmed remote SHA: 27722cb41bd08f39a60496315a979c189b41478e
+
+## READY FOR CLAUDE — C4 COMPLETE / U4c unblocked
+Merge the pinned full C4 commit published with this handoff from codex/tossit-core (not C4a27722cb alone). Claude e7cc27b is fetched and acknowledged: U1/U2/U3/U4a/U4b complete, C3 mounted,275reported client tests and zero lint errors there. C4 does not edit any Claude-owned UI/worker file.
+
+Exports from src/utils/notificationUtils.ts:
+- enablePushNotifications(): Promise<'enabled' | 'denied' | 'unsupported'> — call directly from an explicit button gesture. Missing config, missing/stale worker, unavailable backend, changed session and failed registration reject with an Error.code; never show enabled on rejection.
+- disablePushNotifications(): Promise<void> — marks durable device cleanup before browser/server work; a failed/offline revoke remains pending for retry, not silently completed.
+- getPushNotificationState(): Promise<'enabled' | 'disabled' | 'pending-disable' | 'denied' | 'unsupported'> — no permission prompt or subscription on read. Enabled requires existing browser subscription plus server confirmation for the current account/business/binding. A pending disable is a separate truthful state.
+- syncPushNotificationsSession(uid, businessId?) retries retained cleanup and revokes previous-account/business bindings. AuthContext/authAPI now call cleanup on logout/UID/profile/online transitions. Cleanup is capability-scoped and works after Auth changes; it never auto-enables another account.
+- hooks/useNotifications is a facade with { permissionStatus,status,isSubscribed,isSupported,busy,error,refresh,enable,disable,requestPermission }. It observes existing state only on mount. requestPermission is compatibility for explicit enable. U4c can use the direct helpers or this hook; map technical errors to Hebrew, do not expose key/config names in normal product copy.
+
+Integration notes:
+- Keep the ONE existing worker at `/service-worker.js`, root scope. C4 uses serviceWorker.ready only and validates that worker URL before opt-in. No register(), new Notification(), page reminder interval or client auto-end-shift path remains. Legacy notification sender exports are inert compatibility returns, and old scheduler entry points do not schedule anything.
+- Shared PushPayloadv1 matches your parser: bounded generic title/body, same-origin `/dashboard`, stable per-device/user/slot tag. Actual subscription uses the public VAPID key only, after an explicit gesture; nothing prompts on startup.
+- Public Vite configuration is VITE_VAPID_PUBLIC_KEY. Functions use matching WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_CONTACT and secret WEB_PUSH_VAPID_PRIVATE_KEY. These are not configured/deployed in this session. Until configured, show unavailable rather than a working-enabled claim. Details in docs/RELEASE.md and .env.example files.
+- getPushNotificationState/disable errors should remain visible/retryable. Permission denied needs browser settings guidance. Unsupported should not offer a fake enable. Offline cleanup can finish after next online/auth transition; it is not a new inventory queue.
+- Expected callable errors include functions/unauthenticated, permission-denied, invalid-argument, already-exists, failed-precondition, internal/unavailable; local errors use unauthenticated/permission-denied/unavailable. Device limit is10enabled per user. A cancelled binding needs a fresh explicit opt-in; do not reuse a cancelled request ID.
+- Do not call the old scheduler or local send functions from U4c. Settings page preferences now have a server path but remain informational until deployment/device opt-in. A real-device push/closed-app test is still NOT RUN.
+- Finish U4c and publish its pinned passing checkpoint; C5 will then merge the stable UI branch and perform combined CI/release-candidate checks. Main/live site remain unchanged.
 
 ## READY FOR CLAUDE — C3c supersedes earlier foundation-only status
 The C3 implementation is connected and tested in the published commit containing this handoff. Merge its pinned SHA from codex/tossit-core, then mount OfflineProvider and complete U2/U4b; C4 notification controls still wait for C4.
@@ -172,3 +191,11 @@ C4 scheduled push and C5 integrated candidate remain untouched.
 - Real transport uses web-push with WEB_PUSH_VAPID_PUBLIC_KEY, secret WEB_PUSH_VAPID_PRIVATE_KEY and WEB_PUSH_CONTACT; TTL600s/socket timeout10s. No keys generated/saved/deployed; server collections remain client-denied under existing default-deny rules.
 - Verification: server domain39/39 PASS (23push+16users); functions build PASS; real callable HTTP/Auth/Firestore integration3/3 PASS, including endpoint/device capability enforcement, signed-out revoke, stale-binding fence, concurrent delivery claims and opt-in midnight/new-shift protection. Actual network push transport is stubbed; native Functions worker limitations fromC1 remain.
 - C4 is NOT ready for U4c yet: next add client enable/disable/status/session cleanup and remove old browser notification/timer paths. Claude meanwhile can integrate C3 pinned89920b2 for U2/U4b.
+
+## C4 final verification / review
+- Client104/104PASS,server41/41PASS (25push+16users),rules/actualSDK42/42PASS,actualcallable HTTP/Auth/Firestore3/3PASS. App+Functions TypeScript/buildPASS; all changed TS lint zeroerrors, one pre-existing FastRefresh warning. No Claude branch test count is claimed as rerun here.
+- Fresh independent C4 review found two Important races, both reproduced RED→GREEN and fixed: a late enable could erase pending-disable, and receipt persistence failure after confirmed provider acceptance released the claim and resent. State fencing and completion-only retries now prevent those immediate regressions. No other Critical/Important findings reported.
+- Additional real emulator RED→GREEN: stale/cancelled binding could resurrect after a newer opt-in, and cancellation-before-registration could be undone by its delayed request. Server capability-bound cancellation tombstones now fence both. Unknown signed-out IDs are not written anonymously; their cleanup stays pending for retry. Expired subscriptions also cannot report enabled (RED→GREEN).
+- New private collections are explicitly tested client-denied for reads/writes even for an app admin. Token/endpoint data is never logged by application code. Public key examples only, no secrets generated or persisted in source.
+- NOT RUN: actual push-provider network delivery, real iPhone/Android/closed-app/background/logout delivery, production environment/billing/API/secret setup, native Firebase Functions worker startup, Node22CI. Tests stub external transport and use real local Auth/Firestore/HTTP wrappers as inC1. No deployment/live writes/billing changes.
+- C4 complete in code; U4c integration/device pilot and C5 integrated candidate remain. Current Codex standalone PWA build still uses its old config until the pinned Claude worker branch is merged; do not deploy Codex alone.

@@ -5,6 +5,7 @@ import { observeAuthState } from '../api/authAPI';
 import { auth, db } from '../services/firebase';
 import { parseUserProfile } from '../domain/userProfile';
 import type { UserProfile } from '../types/UserProfile';
+import { disablePushNotifications, syncPushNotificationsSession } from '../utils/notificationUtils';
 import { offlineStore, readRememberedProfile, rememberProfile } from '../offline/storage';
 
 export interface UseAuthReturn {
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>({ user: null, profile: null, loading: true, profileNotFound: false, error: null });
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine);
   useEffect(() => {
-    const online = () => setIsOffline(false);
+    const online = () => { setIsOffline(false); void syncPushNotificationsSession(auth.currentUser?.uid ?? null).catch(() => undefined); };
     const offline = () => setIsOffline(true);
     window.addEventListener('online', online);
     window.addEventListener('offline', offline);
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let stopProfile: (() => void) | undefined;
     const stopAuth = observeAuthState(user => {
       const currentGeneration = ++generation;
+      void syncPushNotificationsSession(user?.uid ?? null).catch(() => undefined);
       stopProfile?.();
       stopProfile = undefined;
       // Revoke the old profile atomically before subscribing to a new identity.
@@ -91,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!snapshot.exists() && snapshot.metadata?.fromCache && !navigator.onLine) { void restoreOffline(); return; }
         profileRevision++;
         const profile = snapshot.exists() ? parseUserProfile(user.uid, snapshot.data()) : null;
+        void syncPushNotificationsSession(profile ? user.uid : null, profile?.businessId).catch(() => undefined);
         if (!snapshot.metadata?.fromCache) {
           if (profile) void rememberProfile(profile).catch(() => undefined);
           else void offlineStore.removeProfile(user.uid).catch(() => undefined);
@@ -130,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     shiftStartedAt: profile?.shiftStartedAt ?? null,
     hasRole: target => role === target,
     isInDepartment: target => department === target,
-    logout: () => signOut(auth),
+    logout: () => { void disablePushNotifications().catch(() => undefined); return signOut(auth); },
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

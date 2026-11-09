@@ -1,383 +1,151 @@
-import { getFirestore, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../services/firebase';
+import { getCurrentActor } from '../api/access';
+import { InventoryError } from '../domain/errors';
 
-/**
- * Check if notifications are supported by the browser
- * @returns Boolean indicating if notifications are supported
- */
-export const isNotificationsSupported = (): boolean => {
-  return 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
-};
-
-/**
- * Check the current notification permission status
- * @returns The current notification permission status
- */
-export const checkNotificationPermission = async (): Promise<NotificationPermission | 'unsupported'> => {
-  if (!isNotificationsSupported()) {
-    return 'unsupported';
-  }
-  
-  return Notification.permission;
-};
-
-/**
- * Request notification permission from the user
- * @returns The updated notification permission status
- */
-export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
-  if (!isNotificationsSupported()) {
-    throw new Error('Notifications are not supported in this browser');
-  }
-
-  return await Notification.requestPermission();
-};
-
-/**
- * Register the service worker and subscribe to push notifications
- * @returns The push subscription if successful
- */
-export const registerServiceWorker = async (): Promise<PushSubscription | null> => {
-  if (!isNotificationsSupported()) {
-    throw new Error('Push notifications are not supported in this browser');
-  }
-  
-  try {
-    // Register service worker
-    const registration = await navigator.serviceWorker.register('/service-worker.js');
-    console.log('Service Worker registered with scope:', registration.scope);
-    
-    // Wait for the service worker to be ready
-    await navigator.serviceWorker.ready;
-    
-    // Get the subscription
-    const subscription = await registration.pushManager.getSubscription();
-    
-    if (subscription) {
-      return subscription;
-    }
-    
-    // Create a new subscription
-    const newSubscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(
-        process.env.REACT_APP_VAPID_PUBLIC_KEY || ''
-      )
-    });
-    
-    return newSubscription;
-  } catch (error) {
-    console.error('Error registering service worker or subscribing to push:', error);
-    return null;
-  }
-};
-
-/**
- * Send the push subscription to the server
- * @param userId - The user ID
- * @param businessId - The business ID
- * @param subscription - The push subscription
- */
-export const saveSubscription = async (
-  userId: string,
-  businessId: string,
-  subscription: PushSubscription
-): Promise<void> => {
-  try {
-    const db = getFirestore();
-    const subscriptionDoc = doc(db, 'pushSubscriptions', userId);
-    
-    await setDoc(subscriptionDoc, {
-      userId,
-      businessId,
-      subscription: JSON.stringify(subscription),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-      platform: 'web'
-    }, { merge: true });
-    
-    console.log('Push subscription saved to database');
-  } catch (error) {
-    console.error('Error saving push subscription:', error);
-  }
-};
-
-/**
- * Display a local notification
- * @param title - The notification title
- * @param options - The notification options
- */
-export const showLocalNotification = (
-  title: string,
-  options: NotificationOptions = {}
-): void => {
-  if (!isNotificationsSupported() || Notification.permission !== 'granted') {
-    console.log('Notifications not supported or permission denied');
-    return;
-  }
-  
-  try {
-    if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready.then(registration => {
-        registration.showNotification(title, options);
-      });
-    } else {
-      new Notification(title, options);
-    }
-  } catch (error) {
-    console.error('Error showing notification:', error);
-  }
-};
-
-/**
- * Convert a base64 string to Uint8Array for applicationServerKey
- * @param base64String - The base64 string to convert
- * @returns The converted Uint8Array
- */
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-  
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  
-  return outputArray;
+export type PushNotificationState = 'enabled' | 'disabled' | 'pending-disable' | 'denied' | 'unsupported';
+interface DeviceState {
+  deviceId: string; deviceToken: string; bindingId?: string; uid?: string; businessId?: string;
+  state: 'new' | 'pending-enable' | 'enabled' | 'pending-disable';
 }
-
-// Send a browser notification
-export const sendNotification = (
-  title: string,
-  options: NotificationOptions = {}
-): Notification | null => {
-  if (!isNotificationsSupported() || Notification.permission !== 'granted') {
-    console.warn('Cannot send notification: not supported or permission not granted');
-    return null;
-  }
-  
+const storageKey = 'tossit.push.device.v1';
+export const isNotificationsSupported = () => typeof window !== 'undefined' && typeof Notification !== 'undefined'
+  && typeof PushManager !== 'undefined' && 'serviceWorker' in navigator;
+export async function checkNotificationPermission(): Promise<NotificationPermission | 'unsupported'> { return isNotificationsSupported() ? Notification.permission : 'unsupported'; }
+export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (!isNotificationsSupported()) throw new InventoryError('unavailable', 'Notifications are not supported');
+  return Notification.requestPermission(); // Explicit user action only; never called by startup/status helpers.
+}
+function readDevice(): DeviceState | null {
+  const raw = localStorage.getItem(storageKey); if (!raw) return null;
   try {
-    return new Notification(title, {
-      icon: '/icon-192.png',
-      ...options,
-    });
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    return null;
-  }
-};
+    const state = JSON.parse(raw) as DeviceState;
+    if (!/^[A-Za-z0-9_-]{16,80}$/.test(state.deviceId) || !/^[A-Za-z0-9_-]{43,128}$/.test(state.deviceToken)
+        || !['new', 'pending-enable', 'enabled', 'pending-disable'].includes(state.state)
+        || (state.state !== 'new' && (!state.bindingId || !state.uid || !state.businessId))) throw new Error('invalid');
+    return state;
+  } catch { throw new InventoryError('unavailable', 'Saved device state needs review; no subscription data was discarded'); }
+}
+function writeDevice(state: DeviceState): void {
+  try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch { throw new InventoryError('unavailable', 'Device settings cannot be saved on this browser'); }
+}
+function currentUid(expected?: string): string {
+  const uid = auth.currentUser?.uid;
+  if (!uid || (expected && uid !== expected)) throw new InventoryError('unauthenticated', 'Account changed during notification setup');
+  return uid;
+}
+function keyBytes(): Uint8Array {
+  const key = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+  if (!key || !/^[A-Za-z0-9_-]+={0,2}$/.test(key)) throw new InventoryError('unavailable', 'Notifications are not configured for this deployment');
+  let bytes: Uint8Array;
+  try { const binary = atob(key.replace(/-/g, '+').replace(/_/g, '/')); bytes = Uint8Array.from(binary, letter => letter.charCodeAt(0)); }
+  catch { throw new InventoryError('unavailable', 'Invalid public push configuration'); }
+  if (bytes.length !== 65 || bytes[0] !== 4) throw new InventoryError('unavailable', 'Invalid public push configuration');
+  return bytes;
+}
+async function bounded<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try { return await Promise.race([promise, new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new InventoryError('unavailable', 'The app worker is not ready; update the app and retry')), timeoutMs); })]); }
+  finally { if (timer) clearTimeout(timer); }
+}
+async function readyWorker(requireCurrent = true): Promise<ServiceWorkerRegistration> {
+  const registration = await bounded(navigator.serviceWorker.ready, requireCurrent ? 8000 : 2000);
+  if (requireCurrent && (registration.scope !== location.origin + '/' || registration.active?.scriptURL !== location.origin + '/service-worker.js')) throw new InventoryError('unavailable', 'Update TossIt before enabling notifications');
+  return registration;
+}
+async function call<T>(name: string, input: unknown): Promise<T> { return (await httpsCallable<unknown, T>(functions, name, { timeout: 10000 })(input)).data; }
+const credentials = (state: DeviceState) => ({ deviceId: state.deviceId, deviceToken: state.deviceToken, bindingId: state.bindingId });
+function stillCurrent(state: DeviceState): boolean { const latest = readDevice(); return !!latest && latest.state === state.state && latest.bindingId === state.bindingId && latest.uid === state.uid && latest.businessId === state.businessId; }
 
-// Send a notification for an expired item
-export const sendExpiredItemNotification = (
-  productName: string, 
-  area: string,
-  openingTime: string
-): Notification | null => {
-  return sendNotification('Item Expired!', {
-    body: `${productName} in ${area} (opened at ${openingTime}) has expired and needs to be thrown away.`,
-    tag: `expired-${productName}-${Date.now()}`,
-    requireInteraction: true
-  });
-};
-
-// Send a notification for multiple expired items
-export const sendMultipleExpiredItemsNotification = (
-  count: number,
-  businessName?: string
-) => {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const notification = new Notification(`פריטים פגי תוקף - ${count} פריטים`, {
-      body: `יש ${count} פריטים שפג תוקפם${businessName ? ` ב-${businessName}` : ''}`,
-      icon: '/icon-192.png',
-      tag: 'multiple-expired-items',
-      requireInteraction: true
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
-
-    setTimeout(() => {
-      notification.close();
-    }, 20000);
-
-    return notification;
-  }
-  return null;
-};
-
-// Send a daily summary notification to admin
-export const sendDailySummaryNotification = (
-  count: number
-): Notification | null => {
-  return sendNotification('Daily Expiry Summary', {
-    body: `There ${count === 1 ? 'is' : 'are'} ${count} expired item${count === 1 ? '' : 's'} that need${count === 1 ? 's' : ''} attention.`,
-    tag: 'daily-summary',
-    requireInteraction: true
-  });
-};
-
-// Send a notification for auto-disconnecting shift
-export const sendShiftEndingNotification = (): Notification | null => {
-  return sendNotification('Shift Ending Soon', {
-    body: 'Your shift will automatically end at midnight. Please complete any pending tasks.',
-    tag: 'shift-ending',
-    requireInteraction: false
-  });
-};
-
-// Send a notification for shift ended
-export const sendShiftEndedNotification = (): Notification | null => {
-  return sendNotification('Shift Ended', {
-    body: 'Your shift has been automatically ended by the system.',
-    tag: 'shift-ended',
-    requireInteraction: false
-  });
-};
-
-// Setup notification click event handlers
-export const setupNotificationClickHandlers = (
-  // swRegistration: ServiceWorkerRegistration
-): void => {
-  // Handle notification click events
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    const { action, notification } = event.data;
-    
-    if (!action || !notification) return;
-    
-    console.log('Notification action clicked:', action, notification);
-    
-    // Handle different actions here
-    switch (action) {
-      case 'view':
-        // Navigate to the item
-        window.open('/dashboard', '_blank');
-        break;
-      case 'mark-thrown':
-        // Mark item as thrown
-        // This would call your API
-        console.log('Marking item as thrown:', notification);
-        break;
-      case 'view-all':
-        // Navigate to the expired items list
-        window.open('/dashboard', '_blank');
-        break;
-      case 'view-admin':
-        // Navigate to the admin panel
-        window.open('/admin', '_blank');
-        break;
-      default:
-        // Default action - open the app
-        window.open('/', '_blank');
-    }
-  });
-}; 
-
-// Discard reminder notifications
-export const sendDiscardReminderNotification = (productName: string, area: string, expiryTime: string) => {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const notification = new Notification(`תזכורת השלכה - ${productName}`, {
-      body: `${productName} במחלקת ${area === 'bar' ? 'הבר' : 'המטבח'} פג תוקף ב-${expiryTime} ויש לזרוק אותו`,
-      icon: '/icon-192.png',
-      tag: `discard-reminder-${productName}`,
-      requireInteraction: true
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
-
-    // Auto close after 30 seconds
-    setTimeout(() => {
-      notification.close();
-    }, 30000);
-  }
-};
-
-// Admin notification for unattended expired items
-export const sendAdminExpiredItemsNotification = (count: number, businessName?: string) => {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const notification = new Notification(`התראת מנהל - פריטים לא נזרקו`, {
-      body: `${count} פריטים שפג תוקפם לא נזרקו מאתמול. נדרשת בדיקה${businessName ? ` ב-${businessName}` : ''}`,
-      icon: '/icon-192.png',
-      tag: 'admin-expired-items',
-      requireInteraction: true,
-      badge: '/icon-192.png'
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-      // Navigate to expired items view
-      window.location.href = '/admin?tab=expired';
-    };
-
-    // Auto close after 60 seconds
-    setTimeout(() => {
-      notification.close();
-    }, 60000);
-  }
-};
-
-// Send multiple discard reminders for evening check (23:00)
-export const sendEveningDiscardReminders = (expiredItems: Array<{
-  productName: string;
-  area: string;
-  expiryTime: string;
-}>) => {
-  if (expiredItems.length === 0) return;
-  
-  if (expiredItems.length === 1) {
-    sendDiscardReminderNotification(
-      expiredItems[0].productName,
-      expiredItems[0].area,
-      expiredItems[0].expiryTime
-    );
-  } else {
-    // Send summary notification for multiple items
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const notification = new Notification(`תזכורת השלכה - ${expiredItems.length} פריטים`, {
-        body: `יש ${expiredItems.length} פריטים שפג תוקפם ויש לזרוק אותם`,
-        icon: '/icon-192.png',
-        tag: 'evening-discard-reminders',
-        requireInteraction: true
-      });
-
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-        // Navigate to expired items view
-        window.location.href = '/dashboard?tab=expired';
-      };
-
-      setTimeout(() => {
-        notification.close();
-      }, 45000);
+export async function disablePushNotifications(): Promise<void> {
+  const state = readDevice(); if (!state?.bindingId) return;
+  const pending = { ...state, state: 'pending-disable' as const }; writeDevice(pending);
+  const local = (async () => {
+    if (!isNotificationsSupported()) return;
+    const registration = await readyWorker(false); const subscription = await registration.pushManager.getSubscription();
+    if (subscription && !await subscription.unsubscribe()) throw new InventoryError('unavailable', 'Browser subscription could not be disabled');
+  })();
+  const remote = (async () => {
+    if (navigator.onLine === false) throw new InventoryError('unavailable', 'Device cleanup is saved and will retry online');
+    await call('revokePushDevice', credentials(pending));
+  })();
+  const results = await Promise.allSettled([local, remote]);
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason; // Keep the original binding/capability for retry.
+  if (stillCurrent(pending)) writeDevice({ deviceId: pending.deviceId, deviceToken: pending.deviceToken, state: 'new' });
+}
+export async function syncPushNotificationsSession(uid: string | null, businessId?: string): Promise<void> {
+  const state = readDevice();
+  if (state?.bindingId && (state.state === 'pending-disable' || state.uid !== uid || (businessId !== undefined && state.businessId !== businessId))) await disablePushNotifications();
+}
+export async function enablePushNotifications(): Promise<'enabled' | 'denied' | 'unsupported'> {
+  if (!isNotificationsSupported()) return 'unsupported';
+  const expectedUid = currentUid(); const key = keyBytes();
+  // Call immediately on the button gesture, before asynchronous profile/network reads.
+  const permission = Notification.permission === 'default' ? await requestNotificationPermission() : Notification.permission;
+  currentUid(expectedUid); if (permission !== 'granted') return 'denied';
+  const actor = await getCurrentActor(); currentUid(expectedUid);
+  let previous = readDevice();
+  if (previous?.bindingId && (previous.state === 'pending-disable' || previous.uid !== actor.uid || previous.businessId !== actor.businessId)) { await disablePushNotifications(); currentUid(expectedUid); previous = readDevice(); }
+  const registration = await readyWorker(); currentUid(expectedUid);
+  let subscription = await registration.pushManager.getSubscription(); currentUid(expectedUid);
+  if (subscription?.options?.applicationServerKey) {
+    const oldKey = new Uint8Array(subscription.options.applicationServerKey);
+    if (oldKey.length !== key.length || oldKey.some((byte, index) => byte !== key[index])) {
+      if (previous?.bindingId) await disablePushNotifications(); else await subscription.unsubscribe();
+      subscription = null; previous = readDevice(); currentUid(expectedUid);
     }
   }
-}; 
-
-export const sendSingleExpiredItemNotification = (productName: string, area: string, expiryTime: string) => {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const notification = new Notification(`פריט פג תוקף - ${productName}`, {
-      body: `${productName} במחלקת ${area === 'bar' ? 'הבר' : 'המטבח'} פג תוקף ב-${expiryTime}`,
-      icon: '/icon-192.png',
-      tag: `expired-item-${productName}`,
-      requireInteraction: true
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
-
-    setTimeout(() => {
-      notification.close();
-    }, 30000);
-  }
-}; 
+  const state: DeviceState = previous?.state === 'pending-enable' && previous.uid === actor.uid && previous.businessId === actor.businessId ? previous : {
+    deviceId: previous?.deviceId ?? crypto.randomUUID(), deviceToken: previous?.deviceToken ?? crypto.randomUUID() + crypto.randomUUID(),
+    bindingId: crypto.randomUUID(), uid: actor.uid, businessId: actor.businessId, state: 'pending-enable',
+  };
+  writeDevice(state); // Persist a revocable intent before browser/server subscription writes.
+  if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key.buffer as ArrayBuffer });
+  currentUid(expectedUid);
+  const response = await call<{ enabled: boolean; bindingId: string }>('upsertPushDevice', { ...credentials(state), subscription: subscription.toJSON(), expectedActorUid: actor.uid, expectedBusinessId: actor.businessId });
+  currentUid(expectedUid);
+  const current = await getCurrentActor(); currentUid(expectedUid);
+  if (current.businessId !== actor.businessId || response.bindingId !== state.bindingId || response.enabled !== true || !stillCurrent(state)) throw new InventoryError('unauthenticated', 'Device or business changed during registration');
+  writeDevice({ ...state, state: 'enabled' }); return 'enabled';
+}
+export async function getPushNotificationState(): Promise<PushNotificationState> {
+  if (!isNotificationsSupported()) return 'unsupported';
+  const state = readDevice();
+  if (state?.state === 'pending-disable') return 'pending-disable';
+  if (Notification.permission === 'denied') return 'denied';
+  if (!state || state.state !== 'enabled' || state.uid !== auth.currentUser?.uid) return 'disabled';
+  const actor = await getCurrentActor(); currentUid(state.uid);
+  if (actor.businessId !== state.businessId) return 'disabled';
+  const registration = await readyWorker(); const subscription = await registration.pushManager.getSubscription(); currentUid(state.uid);
+  if (!subscription || Notification.permission !== 'granted') return 'disabled';
+  const response = await call<{ enabled: boolean }>('getPushDeviceStatus', { ...credentials(state), expectedActorUid: actor.uid, expectedBusinessId: actor.businessId });
+  currentUid(state.uid); return response.enabled === true && stillCurrent(state) ? 'enabled' : 'disabled';
+}
+/** Compatibility lookup only; it never registers a worker or creates a subscription. */
+export async function registerServiceWorker(): Promise<PushSubscription | null> {
+  if (!isNotificationsSupported()) return null;
+  return (await readyWorker()).pushManager.getSubscription();
+}
+export async function saveSubscription(userId: string, businessId: string, subscription: PushSubscription): Promise<void> {
+  const actor = await getCurrentActor();
+  if (actor.uid !== userId || actor.businessId !== businessId) throw new InventoryError('permission-denied', 'Subscription belongs to another account');
+  const state = readDevice();
+  if (!state?.bindingId || state.uid !== actor.uid || state.businessId !== actor.businessId) throw new InventoryError('unavailable', 'Enable notifications explicitly first');
+  await call('upsertPushDevice', { ...credentials(state), subscription: subscription.toJSON(), expectedActorUid: actor.uid, expectedBusinessId: actor.businessId });
+}
+// Retired compatibility exports: only the app worker displays server pushes.
+// No page timers, new Notification, window-open message handler or fake send success.
+const retired = (...args: unknown[]): null => { void args; return null; };
+export const showLocalNotification = retired;
+export const sendNotification = retired;
+export const sendExpiredItemNotification = retired;
+export const sendMultipleExpiredItemsNotification = retired;
+export const sendDailySummaryNotification = retired;
+export const sendShiftEndingNotification = retired;
+export const sendShiftEndedNotification = retired;
+export const setupNotificationClickHandlers = retired;
+export const sendDiscardReminderNotification = retired;
+export const sendAdminExpiredItemsNotification = retired;
+export const sendEveningDiscardReminders = retired;
+export const sendSingleExpiredItemNotification = retired;

@@ -117,3 +117,61 @@ single-worker app on actual devices, including offline reload, reconnect, two ta
 logout/account changes, low/quota storage and updates. Current evidence is95client
 and41realFirebaseSDK/rules-emulator tests; no real mobile/device persistence or live
 server notification delivery is claimed. C4/C5 gates still apply.
+
+## C4 server push and device controls
+
+C4 code is implemented, not deployed. Client activation is explicit; startup reads
+status and performs only pending revocation cleanup. The helper waits for the
+existing root `/service-worker.js` registration and never registers another worker
+or uses page notifications/timers. Claude must merge this C4 checkpoint and finish
+U4c before the combined candidate is tested.
+
+Configuration before any reviewed deployment:
+
+1. Use one VAPID key pair for this environment. Keep its private key only in Firebase
+   Secret Manager as `WEB_PUSH_VAPID_PRIVATE_KEY`, bound to the scheduled function.
+   Never put it in a Vite variable, source, logs or these examples. No real keys have
+   been generated or stored by this work.
+2. Set Functions `WEB_PUSH_VAPID_PUBLIC_KEY` and `WEB_PUSH_CONTACT` (an actual mailto
+   contact or HTTPS contact URL). Set Render build `VITE_VAPID_PUBLIC_KEY` to the same
+   public key. `.env.example` files contain placeholders only; environment files are
+   ignored. Rotating the key requires device resubscription.
+3. Verify the Firebase billing/deployment prerequisites and enabled Cloud Scheduler
+   API in the target project. The reviewed deployment must include callables and
+   `scheduledInventoryNotifications`, not only client code. No billing/API settings
+   or deployments were changed during implementation.
+4. The scheduled function uses `Asia/Jerusalem`: 23:00/23:20/23:40 to active on-shift
+   staff with unhandled expired items in their department; 08:00 to active admins
+   business-wide/managers in their department; optional 00:00 shift ending only if
+   explicitly enabled. Morning means all currently overdue unhandled items. Invalid
+   settings fail closed. One cron invokes nine times/day, of which five are action
+   slots. Retries older than ten minutes are ignored.
+5. `pushDevices`, `pushEndpointClaims`, `pushRevocations` and `notificationDeliveries`
+   are server-only under default-deny rules. Device capabilities are stored hashed;
+   per-binding cancellation prevents a late register from undoing logout/disable.
+   Unknown signed-out revocations remain pending until registration can be found;
+   an authenticated cancellation may create the exact capability-bound tombstone.
+   Consider the supplied `expiresAt` fields for 14-day Firestore TTL on delivery and
+   cancellation bookkeeping after reviewing retention; TTL is not configured here.
+6. Verify actual browser/device install, explicit permission, subscribe, locked/closed
+   app push, safe click navigation, duplicate schedule, two accounts, offline logout,
+   reconnect cleanup, disable and re-enable. iPhone Home Screen behavior and Android
+   delivery remain NOT RUN. Record the exact deployed key/environment and browser.
+
+Delivery jobs recheck profile, binding, settings and remaining inventory before
+sending. Confirmed sends are not released for redispatch just because receipt
+persistence failed. Transient transport errors retain retry state; 404/410 disables
+only the exact obsolete binding. Stable tags replace a retry's prior notification.
+Push-provider acceptance is not proof of phone display, and the external transport
+cannot promise exactly-once display after an ambiguous crash/acknowledgement.
+Generic notification text includes a count, not item/employee/business names.
+
+Evidence:104client tests,41server tests,42rules/SDK tests,3actualcallable HTTP/Auth/
+Firestore integration tests; app/functions builds and changed-file lint pass (one
+existing Fast Refresh warning). Push transport in tests is stubbed. Native Functions
+worker startup and Node22 CI remain separate C5/release checks.
+
+Primary references used for deployment/transport details:
+- https://firebase.google.com/docs/functions/schedule-functions
+- https://github.com/web-push-libs/web-push/blob/master/README.md
+- https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers

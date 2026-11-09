@@ -45,7 +45,7 @@ export const upsertPushDevice = onCall(options, async request => {
   try { return await firebaseNotificationService().register(request.auth?.uid ?? null, request.data); } catch (error) { return pushError(error); }
 });
 export const revokePushDevice = onCall(options, async request => {
-  try { return await firebaseNotificationService().revoke(request.data); } catch (error) { return pushError(error); }
+  try { return await firebaseNotificationService().revoke(request.data, request.auth?.uid ?? null); } catch (error) { return pushError(error); }
 });
 export const getPushDeviceStatus = onCall(options, async request => {
   try { return await firebaseNotificationService().status(request.auth?.uid ?? null, request.data); } catch (error) { return pushError(error); }

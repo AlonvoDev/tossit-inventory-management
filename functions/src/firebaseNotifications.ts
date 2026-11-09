@@ -10,13 +10,22 @@ export function firebaseNotificationService(options: { store?: Firestore; send?:
   const now = options.now ?? Date.now;
   const deviceRef = (id: string) => store.doc(`pushDevices/${id}`);
   const claimRef = (endpoint: string) => store.doc(`pushEndpointClaims/${digest(endpoint)}`);
-  async function revoke(id: string, bindingId: string, capabilityHash?: string): Promise<boolean> {
+  const cancellationRef = (id: string, bindingId: string, capabilityHash: string) => store.doc(`pushRevocations/${digest(JSON.stringify([id, bindingId, capabilityHash]))}`);
+  async function revoke(id: string, bindingId: string, capabilityHash?: string, allowMissing = false): Promise<boolean> {
     return store.runTransaction(async tx => {
       const ref = deviceRef(id); const old = (await tx.get(ref)).data() as PushDevice | undefined;
-      if (!old) return false;
+      if (!old) {
+        if (!allowMissing || !capabilityHash) throw new PushError('failed-precondition', 'Device registration may still be pending; retain cleanup and retry');
+        tx.set(cancellationRef(id, bindingId, capabilityHash), { cancelledAt: stamp(), expiresAt: Timestamp.fromMillis(now() + 14 * 86400000) });
+        return false;
+      }
       if (capabilityHash !== undefined && old.capabilityHash !== capabilityHash) throw new PushError('permission-denied', 'Device capability does not match');
-      if (old.bindingId !== bindingId) return false;
+      if (old.bindingId !== bindingId) {
+        tx.set(cancellationRef(id, bindingId, old.capabilityHash), { cancelledAt: stamp(), expiresAt: Timestamp.fromMillis(now() + 14 * 86400000) });
+        return false;
+      }
       const endpoint = claimRef(old.subscription.endpoint); const claim = (await tx.get(endpoint)).data();
+      tx.set(cancellationRef(id, bindingId, old.capabilityHash), { cancelledAt: stamp(), expiresAt: Timestamp.fromMillis(now() + 14 * 86400000) });
       tx.update(ref, { enabled: false, updatedAt: stamp() });
       if (claim?.deviceId === id && claim.bindingId === bindingId) tx.delete(endpoint);
       return true;
@@ -29,10 +38,11 @@ export function firebaseNotificationService(options: { store?: Firestore; send?:
       get: async id => { const doc = await deviceRef(id).get(); return doc.exists ? { ...doc.data(), id: doc.id } as PushDevice : null; },
       put: async device => store.runTransaction(async tx => {
         const ref = deviceRef(device.id); const endpoint = claimRef(device.subscription.endpoint);
-        const [oldDoc, profileDoc, claimDoc, owned] = await Promise.all([tx.get(ref), tx.get(store.doc(`users/${device.uid}`)), tx.get(endpoint), tx.get(store.collection('pushDevices').where('uid', '==', device.uid))]);
+        const [oldDoc, profileDoc, claimDoc, owned, cancelled] = await Promise.all([tx.get(ref), tx.get(store.doc(`users/${device.uid}`)), tx.get(endpoint), tx.get(store.collection('pushDevices').where('uid', '==', device.uid)), tx.get(cancellationRef(device.id, device.bindingId, device.capabilityHash))]);
         const old = oldDoc.data() as PushDevice | undefined;
         const profile: Record<string, unknown> | null = profileDoc.exists ? { ...profileDoc.data(), uid: profileDoc.id } : null;
         if (!validProfile(profile) || profile?.businessId !== device.businessId) throw new PushError('permission-denied', 'Profile changed before device registration');
+        if (cancelled.exists) throw new PushError('failed-precondition', 'This device binding was cancelled; use a fresh explicit opt-in');
         if (old && old.capabilityHash !== device.capabilityHash) throw new PushError('permission-denied', 'Device capability does not match');
         if (old?.bindingId === device.bindingId) {
           if (old.uid !== device.uid || old.businessId !== device.businessId || JSON.stringify(old.subscription) !== JSON.stringify(device.subscription)) throw new PushError('invalid-argument', 'Binding ID already belongs to another subscription intent');
@@ -49,7 +59,7 @@ export function firebaseNotificationService(options: { store?: Firestore; send?:
         if (oldEndpoint && oldClaim?.deviceId === device.id) tx.delete(oldEndpoint);
         return device;
       }),
-      revoke: (id, capabilityHash, bindingId) => revoke(id, bindingId, capabilityHash),
+      revoke: (id, capabilityHash, bindingId, allowMissing) => revoke(id, bindingId, capabilityHash, allowMissing),
       invalidate: async (id, bindingId) => { await revoke(id, bindingId); },
     },
     context: async device => {

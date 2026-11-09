@@ -52,7 +52,7 @@ beforeAll(async () => {
 afterAll(async () => {
   if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
   if (admin) {
-    for (const name of ['pushDevices', 'pushEndpointClaims', 'notificationDeliveries']) {
+    for (const name of ['pushDevices', 'pushEndpointClaims', 'pushRevocations', 'notificationDeliveries']) {
       for (const doc of (await adminStore(admin).collection(name).get()).docs) await doc.ref.delete();
     }
     await adminStore(admin).doc('items/push-expired-fixture').delete();
@@ -103,11 +103,15 @@ describe('real push callables and scheduler persistence', () => {
     await expect(register({ ...input, deviceId: `device-${randomUUID()}` })).rejects.toMatchObject({ code: 'functions/already-exists' });
     const next = { ...input, bindingId: `binding-${randomUUID()}` }; await register(next);
     expect((await revoke(input)).data).toEqual({ revoked: false });
+    await expect(register(input)).rejects.toMatchObject({ code: 'functions/failed-precondition' });
     expect((await status(next)).data).toEqual({ enabled: true });
     const { signOut } = await import('firebase/auth'); await signOut(getAuth(client));
     expect((await revoke(next)).data).toEqual({ revoked: true });
     expect((await store.doc(`pushDevices/${input.deviceId}`).get()).data()!.enabled).toBe(false);
     await signInWithEmailAndPassword(getAuth(client), ownerEmail, password);
+    const cancelled = { ...input, deviceId: `device-${randomUUID()}`, bindingId: `binding-${randomUUID()}`, subscription: { ...input.subscription, endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID()}` } };
+    await revoke(cancelled); // Cancellation can arrive before an in-flight registration.
+    await expect(register(cancelled)).rejects.toMatchObject({ code: 'functions/failed-precondition' });
   });
   it('uses actual Firestore delivery claims to deduplicate and ends shifts only with opt-in and a safe cutoff', async () => {
     const { firebaseNotificationService } = await import('../src/firebaseNotifications');

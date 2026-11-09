@@ -73,6 +73,13 @@ describe('subscription boundaries', () => {
     expect(devices.get(input.deviceId)).toMatchObject({ uid: 'staff', businessId: 'a', enabled: true });
     expect(devices.get(input.deviceId)).not.toHaveProperty('deviceToken');
   });
+  it('does not report an expired subscription enabled', async () => {
+    const { service, deps, devices } = setup();
+    const input = { deviceId: 'expiry-device-12345', deviceToken: 'a'.repeat(64), bindingId: 'expiry-binding-12345', expectedActorUid: 'staff', expectedBusinessId: 'a', subscription: subscription() };
+    await expect(service.register('staff', { ...input, subscription: { ...subscription(), expirationTime: deps.now() - 1 } })).rejects.toMatchObject({ code: 'failed-precondition' });
+    await service.register('staff', input); devices.get(input.deviceId)!.subscription.expirationTime = deps.now() - 1;
+    expect(await service.status('staff', input)).toEqual({ enabled: false });
+  });
 });
 describe('durable delivery dispatch', () => {
   it('deduplicates duplicate/concurrent scheduler invocations for each device and slot', async () => {
@@ -99,5 +106,13 @@ describe('durable delivery dispatch', () => {
     setContext({ profile: profile(), settings: { timezone: 'UTC' }, items: [expired()] });
     await expect(service.run(evening())).rejects.toThrow(); expect(send).not.toHaveBeenCalled();
     await service.run({ ...evening(), kind: 'midnight' }); expect(deps.endShifts).toHaveBeenCalledOnce();
+  });
+  it('does not release a confirmed delivery for redispatch when receipt persistence fails', async () => {
+    const { service, deps, send } = setup();
+    const release = vi.spyOn(deps.jobs, 'release');
+    vi.spyOn(deps.jobs, 'finish').mockRejectedValue(new Error('Firestore unavailable'));
+    await expect(service.run(evening())).rejects.toThrow();
+    await service.run(evening());
+    expect(send).toHaveBeenCalledTimes(1); expect(release).not.toHaveBeenCalled();
   });
 });

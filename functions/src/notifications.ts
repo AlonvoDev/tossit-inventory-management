@@ -70,7 +70,7 @@ export interface NotificationDependencies {
   devices: {
     list(): Promise<PushDevice[]>; get(id: string): Promise<PushDevice | null>;
     put(device: PushDevice): Promise<PushDevice>;
-    revoke(id: string, capabilityHash: string, bindingId: string): Promise<boolean>;
+    revoke(id: string, capabilityHash: string, bindingId: string, allowMissing?: boolean): Promise<boolean>;
     invalidate(id: string, bindingId: string): Promise<void>;
   };
   context(device: PushDevice): Promise<NotificationContext>;
@@ -99,13 +99,22 @@ export function createNotificationService(deps: NotificationDependencies) {
   return {
     async register(uid: string | null, input: unknown) {
       const data = record(input); const profile = await actor(uid, data); const capability = credentials(data);
-      const device = await deps.devices.put({ ...capability, uid: profile.uid as string, businessId: profile.businessId as string, enabled: true, subscription: validateSubscription(data.subscription) });
+      const subscription = validateSubscription(data.subscription);
+      if (subscription.expirationTime !== null && subscription.expirationTime <= deps.now()) throw new PushError('failed-precondition', 'Subscription has expired; subscribe this device again');
+      const device = await deps.devices.put({ ...capability, uid: profile.uid as string, businessId: profile.businessId as string, enabled: true, subscription });
       return { deviceId: device.id, bindingId: device.bindingId, enabled: true };
     },
-    async revoke(input: unknown) { const data = credentials(record(input)); return { revoked: await deps.devices.revoke(data.id, data.capabilityHash, data.bindingId) }; },
+    async revoke(input: unknown, uid?: string | null) {
+      const data = credentials(record(input));
+      // A known capability can revoke after logout. Creating a cancellation for
+      // an as-yet unregistered ID additionally requires an authenticated profile.
+      const allowMissing = !!uid && validProfile(await deps.profile(uid));
+      return { revoked: await deps.devices.revoke(data.id, data.capabilityHash, data.bindingId, allowMissing) };
+    },
     async status(uid: string | null, input: unknown) {
       const data = record(input); const profile = await actor(uid, data); const capability = credentials(data); const device = await deps.devices.get(capability.id);
-      const enabled = !!device && device.capabilityHash === capability.capabilityHash && device.bindingId === capability.bindingId && device.enabled && device.uid === profile.uid && device.businessId === profile.businessId;
+      const enabled = !!device && device.capabilityHash === capability.capabilityHash && device.bindingId === capability.bindingId && device.enabled && device.uid === profile.uid && device.businessId === profile.businessId
+        && (device.subscription.expirationTime === null || device.subscription.expirationTime > deps.now());
       return { enabled };
     },
     async run(slot: NotificationSlot) {
@@ -119,13 +128,22 @@ export function createNotificationService(deps: NotificationDependencies) {
         if (!selectNotification(device, await deps.context(device), slot)) return;
         const id = digest(JSON.stringify([slot.id, device.id, device.uid])); const token = randomUUID();
         if (!await deps.jobs.claim(id, token, now)) return;
+        let accepted = false;
         try {
           const current = await deps.devices.get(device.id);
           const selected = current && current.bindingId === device.bindingId && current.uid === device.uid && current.businessId === device.businessId ? selectNotification(current, await deps.context(current), slot) : null;
           if (!selected) { await deps.jobs.finish(id, token, 'skipped'); return; }
           await deps.send(current!.subscription, selected.payload);
+          accepted = true;
           await deps.jobs.finish(id, token, 'sent');
         } catch (error) {
+          if (accepted) {
+            // A known accepted send must not be reset for immediate redispatch.
+            // Retry only the receipt write and retain the fencing claim if DB
+            // persistence is unavailable; crash/lease ambiguity remains audited.
+            try { await deps.jobs.finish(id, token, 'sent'); } catch { retry = true; }
+            return;
+          }
           const status = error && typeof error === 'object' && 'statusCode' in error ? Number(error.statusCode) : 0;
           if (status === 404 || status === 410) { await deps.devices.invalidate(device.id, device.bindingId); await deps.jobs.finish(id, token, 'invalid'); }
           else if (!status || status === 401 || status === 403 || status === 429 || status >= 500) { await deps.jobs.release(id, token); retry = true; }
