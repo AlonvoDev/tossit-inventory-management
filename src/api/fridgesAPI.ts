@@ -1,19 +1,17 @@
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocFromServer, getDocsFromServer, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocFromServer, serverTimestamp } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import type { Fridge } from '../types/Fridge';
 import type { UserProfile } from '../types/UserProfile';
 import { InventoryError, invalid } from '../domain/errors';
 import { normalizeDepartment } from '../domain/normalizeItem';
-import { assertCurrentActor, getCurrentActor, scopedBusinessQuery } from './access';
+import { assertCurrentActor, getCurrentActor, readScopedCollection } from './access';
 function manages(actor: UserProfile, fridge: Fridge) {
   if (!['admin', 'manager'].includes(actor.role) || fridge.businessId !== actor.businessId || !normalizeDepartment(fridge.department) || (actor.role !== 'admin' && normalizeDepartment(fridge.department) !== actor.department)) throw new InventoryError('permission-denied', 'Fridge is outside your management scope');
   if (typeof fridge.name !== 'string' || !fridge.name.trim()) invalid('Fridge name is required');
 }
 export async function getBusinessFridges(businessId: string): Promise<Fridge[]> {
-  const uid = auth.currentUser?.uid;
-  const snapshot = await getDocsFromServer(await scopedBusinessQuery('fridges', 'department', businessId));
-  if (!uid || auth.currentUser?.uid !== uid) throw new InventoryError('unauthenticated', 'Account changed during fridge read');
-  return snapshot.docs.map(snapshot => ({ ...snapshot.data(), id: snapshot.id, department: normalizeDepartment(snapshot.data().department) } as Fridge));
+  const { records } = await readScopedCollection('fridges', 'department', businessId);
+  return records.map(record => ({ ...record, department: normalizeDepartment(record.department) } as unknown as Fridge));
 }
 export async function addFridge(fridge: Omit<Fridge, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const actor = await getCurrentActor(); manages(actor, fridge); assertCurrentActor(actor);

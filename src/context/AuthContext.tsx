@@ -5,6 +5,7 @@ import { observeAuthState } from '../api/authAPI';
 import { auth, db } from '../services/firebase';
 import { parseUserProfile } from '../domain/userProfile';
 import type { UserProfile } from '../types/UserProfile';
+import { offlineStore, readRememberedProfile, rememberProfile } from '../offline/storage';
 
 export interface UseAuthReturn {
   user: User | null;
@@ -77,12 +78,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Revoke the old profile atomically before subscribing to a new identity.
       setSession({ user, profile: null, loading: !!user, profileNotFound: false, error: null });
       if (!user) return;
+      let profileRevision = 0;
+      const restoreOffline = async () => {
+        const restoringRevision = profileRevision;
+        const profile = await readRememberedProfile(user.uid).catch(() => null);
+        if (generation !== currentGeneration || restoringRevision !== profileRevision || navigator.onLine) return;
+        setSession({ user, profile, loading: false, profileNotFound: !profile, error: profile ? null : 'profile-unavailable' });
+      };
+      if (!navigator.onLine) void restoreOffline();
       stopProfile = onSnapshot(doc(db, 'users', user.uid), snapshot => {
         if (generation !== currentGeneration) return;
+        if (!snapshot.exists() && snapshot.metadata?.fromCache && !navigator.onLine) { void restoreOffline(); return; }
+        profileRevision++;
         const profile = snapshot.exists() ? parseUserProfile(user.uid, snapshot.data()) : null;
+        if (!snapshot.metadata?.fromCache) {
+          if (profile) void rememberProfile(profile).catch(() => undefined);
+          else void offlineStore.removeProfile(user.uid).catch(() => undefined);
+        }
         setSession({ user, profile, loading: false, profileNotFound: !profile, error: profile ? null : 'profile-unavailable' });
       }, () => {
         if (generation !== currentGeneration) return;
+        if (!navigator.onLine) { void restoreOffline(); return; }
+        profileRevision++;
         setSession({ user, profile: null, loading: false, profileNotFound: false, error: 'profile-unavailable' });
       });
     });

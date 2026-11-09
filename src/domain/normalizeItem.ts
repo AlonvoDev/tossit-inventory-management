@@ -8,7 +8,7 @@ export function normalizeDepartment(value: unknown): Department | null {
 export function departmentValues(value: Department): [Department, string] {
   return [value, value === 'bar' ? 'בר' : 'מטבח'];
 }
-function timestamp(value: unknown): Timestamp {
+export function normalizeTimestamp(value: unknown): Timestamp {
   if (value instanceof Timestamp) return value;
   if (value && typeof value === 'object' && 'seconds' in value && 'nanoseconds' in value
       && Number.isInteger(value.seconds) && Number.isInteger(value.nanoseconds)) {
@@ -27,7 +27,7 @@ export function normalizeItem(id: string, data: Record<string, unknown>): Invent
   const item: InventoryItem = {
     id, productName: data.productName as string, userId: data.userId as string,
     businessId: data.businessId as string, type: data.type as InventoryItem['type'], amount: data.amount as number,
-    area, openingTime: timestamp(data.openingTime), expiryTime: timestamp(data.expiryTime),
+    area, openingTime: normalizeTimestamp(data.openingTime), expiryTime: normalizeTimestamp(data.expiryTime),
     isThrown: data.isThrown === true || data.discarded === true,
     discarded: data.discarded === true || data.isThrown === true, finished: data.finished === true,
   };
@@ -35,7 +35,7 @@ export function normalizeItem(id: string, data: Record<string, unknown>): Invent
     if (typeof data[key] === 'string') item[key] = data[key];
   }
   for (const key of ['discardedAt', 'finishedAt'] as const) {
-    if (data[key] !== undefined && data[key] !== null) item[key] = timestamp(data[key]);
+    if (data[key] !== undefined && data[key] !== null) item[key] = normalizeTimestamp(data[key]);
   }
   if (data.discardedQuantity !== undefined) {
     if (typeof data.discardedQuantity !== 'number' || !Number.isFinite(data.discardedQuantity) || data.discardedQuantity < 0 || data.discardedQuantity > item.amount) invalid('Invalid discarded quantity');
