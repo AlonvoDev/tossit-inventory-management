@@ -8,7 +8,6 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Badge,
   Box,
   Divider,
   ListItemIcon,
@@ -23,9 +22,6 @@ import {
   DialogActions,
   TextField,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
 
   Alert,
   CircularProgress,
@@ -35,62 +31,47 @@ import {
   Dashboard as DashboardIcon,
   AdminPanelSettings as AdminIcon,
   People as UsersIcon,
-  Settings as SettingsIcon,
   Logout as LogoutIcon,
-  Notifications as NotificationsIcon,
   Store as FridgeIcon,
   PersonAdd as PersonAddIcon,
   Close as CloseIcon,
   Add as AddIcon,
   Category as CategoryIcon,
-  BugReport as BugReportIcon,
+  Assessment as ReportsIcon,
+  Settings as SettingsIcon,
+  NotificationsActive as DeviceNotificationsIcon,
 
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useOffline } from '../offline/OfflineProvider';
+import { SyncStatus } from '../pwa/SyncStatus';
+import { NotificationControls } from '../pwa/NotificationControls';
 import tossitFavicon from '../assets/tossit-favicon.png';
 import ClockDisplay from './ClockDisplay';
-import { createUserByAdmin } from '../api/authAPI';
 
 import { addCustomCategory } from '../api/categoriesAPI';
+import { canAccessRoute, canManageBusiness, departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
 
 interface NavigationItem {
   id: string;
   label: string;
   icon: React.ReactElement;
   onClick: () => void;
-  badge?: number;
   divider?: boolean;
-  adminOnly?: boolean;
-  managerOnly?: boolean;
+  /** Whether the current role may see this entry; derived from src/app/access.ts. */
+  visible: boolean;
 }
 
 const UnifiedNavigation: React.FC = () => {
-  const { user, profile, isAdmin, isManager, isOffline, logout } = useAuth();
-  const { showInfo, showError } = useNotifications();
+  const { user, profile, role, isOffline, logout } = useAuth();
+  const { showError } = useNotifications();
+  const { pendingCount, failedCount } = useOffline();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
   
-  // User Registration Modal State
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [registerError, setRegisterError] = useState<string | null>(null);
-  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'staff' as 'admin' | 'manager' | 'staff',
-    department: 'bar' as 'bar' | 'kitchen',
-    phoneNumber: '',
-  });
-
-
-
   // Category Creation Modal State
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryLoading, setCategoryLoading] = useState(false);
@@ -100,6 +81,9 @@ const UnifiedNavigation: React.FC = () => {
     name: '',
   });
 
+  // Per-device notification opt-in, reachable by every role (staff receive the evening reminders).
+  const [showNotificationsDialog, setShowNotificationsDialog] = useState(false);
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -108,18 +92,17 @@ const UnifiedNavigation: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setNotificationAnchor(event.currentTarget);
-    
-    // Show demo notification
-    showInfo('דוגמת התראה', 'זוהי התראת דוגמה מהמערכת החדשה! 🎉');
-  };
-
-  const handleNotificationClose = () => {
-    setNotificationAnchor(null);
-  };
-
   const handleSignOut = async () => {
+    // Unsent inventory work stays on this device, bound to this account (Codex C3); say so.
+    const unsent = pendingCount + failedCount;
+    if (
+      unsent > 0 &&
+      !window.confirm(
+        `יש ${unsent} פעולות מלאי שעדיין לא נשמרו בשרת. הן יישארו במכשיר הזה ויישלחו רק כשתתחבר שוב לאותו חשבון. להתנתק?`,
+      )
+    ) {
+      return;
+    }
     try {
       await logout();
       navigate('/login');
@@ -128,83 +111,6 @@ const UnifiedNavigation: React.FC = () => {
       console.error('Error signing out:', error);
     }
   };
-
-  const handleRegisterModalOpen = () => {
-    setShowRegisterModal(true);
-    setRegisterError(null);
-    setRegisterSuccess(null);
-    setFormData({
-      fullName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: 'staff',
-      department: 'bar',
-      phoneNumber: '',
-    });
-    handleMenuClose();
-  };
-
-  const handleRegisterModalClose = () => {
-    setShowRegisterModal(false);
-    setRegisterError(null);
-    setRegisterSuccess(null);
-  };
-
-  const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: event.target.value
-    }));
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegisterError(null);
-    setRegisterSuccess(null);
-    
-    // Validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
-      setRegisterError('יש למלא את כל השדות הנדרשים');
-      return;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      setRegisterError('הסיסמאות אינן תואמות');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      setRegisterError('הסיסמה חייבת להכיל לפחות 6 תווים');
-      return;
-    }
-    
-    if (formData.role === 'staff' && (!formData.department || (formData.department !== 'bar' && formData.department !== 'kitchen'))) {
-      setRegisterError('יש לבחור מחלקה עבור עובדי צוות');
-      return;
-    }
-    
-    setRegisterLoading(true);
-    
-    try {
-      await createUserByAdmin(formData, profile?.businessId || '');
-      setRegisterSuccess('המשתמש נוצר בהצלחה!');
-      
-      // Reset form after 2 seconds and close modal
-      setTimeout(() => {
-        handleRegisterModalClose();
-      }, 2000);
-    } catch (error: unknown) {
-      console.error('Registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'שגיאה ביצירת המשתמש. נסה שוב.';
-      setRegisterError(errorMessage);
-      showError('שגיאה ביצירת משתמש', errorMessage);
-    } finally {
-      setRegisterLoading(false);
-    }
-  };
-
-
 
   // Category Modal Handlers
   const handleCategoryModalOpen = () => {
@@ -271,118 +177,34 @@ const UnifiedNavigation: React.FC = () => {
     if (path === '/admin') return 'ניהול מערכת';
     if (path === '/admin/users') return 'ניהול משתמשים';
     if (path === '/admin/fridges') return 'ניהול מקררים';
+    if (path === '/reports') return 'דוחות';
+    if (path === '/settings') return 'הגדרות';
     return 'TossIt Pro';
   };
 
-  const navigationItems: NavigationItem[] = [
-    {
-      id: 'dashboard',
-      label: 'לוח הבקרה',
-      icon: <DashboardIcon />,
-      onClick: () => {
-        navigate('/dashboard');
-        handleMenuClose();
-      },
-    },
-    {
-      id: 'divider1',
-      label: '',
-      icon: <></>,
-      onClick: () => {},
-      divider: true,
-    },
-    {
-      id: 'admin',
-      label: 'ניהול מערכת',
-      icon: <AdminIcon />,
-      onClick: () => {
-        navigate('/admin');
-        handleMenuClose();
-      },
-      managerOnly: true,
-    },
-    {
-      id: 'users',
-      label: 'ניהול משתמשים',
-      icon: <UsersIcon />,
-      onClick: () => {
-        navigate('/admin/users');
-        handleMenuClose();
-      },
-      adminOnly: true,
-    },
-    {
-      id: 'add-user',
-      label: 'הוסף משתמש חדש',
-      icon: <PersonAddIcon />,
-      onClick: handleRegisterModalOpen,
-      adminOnly: true,
-    },
-    {
-      id: 'fridges',
-      label: 'ניהול מקררים',
-      icon: <FridgeIcon />,
-      onClick: () => {
-        navigate('/admin/fridges');
-        handleMenuClose();
-      },
-      adminOnly: true,
-    },
+  const go = (path: string) => () => {
+    navigate(path);
+    handleMenuClose();
+  };
+  const canSeeAdminPanel = canAccessRoute(role, 'admin');
+  const isBusinessAdmin = canManageBusiness(role);
 
-    {
-      id: 'add-category',
-      label: 'הוסף קטגוריה חדשה',
-      icon: <CategoryIcon />,
-      onClick: handleCategoryModalOpen,
-      adminOnly: true,
-    },
-    {
-      id: 'divider2',
-      label: '',
-      icon: <></>,
-      onClick: () => {},
-      divider: true,
-      managerOnly: true,
-    },
-    {
-      id: 'settings',
-      label: 'הגדרות',
-      icon: <SettingsIcon />,
-      onClick: () => {
-        // TODO: Navigate to settings page
-        handleMenuClose();
-      },
-    },
-    {
-      id: 'qa-tests',
-      label: 'בדיקת איכות',
-      icon: <BugReportIcon />,
-      onClick: () => {
-        navigate('/admin?tab=qa');
-        handleMenuClose();
-      },
-      managerOnly: true,
-    },
-    {
-      id: 'divider3',
-      label: '',
-      icon: <></>,
-      onClick: () => {},
-      divider: true,
-    },
-    {
-      id: 'logout',
-      label: 'התנתק',
-      icon: <LogoutIcon />,
-      onClick: handleSignOut,
-    },
+  const navigationItems: NavigationItem[] = [
+    { id: 'dashboard', label: 'לוח הבקרה', icon: <DashboardIcon />, onClick: go('/dashboard'), visible: canAccessRoute(role, 'dashboard') },
+    { id: 'divider1', label: '', icon: <></>, onClick: () => {}, divider: true, visible: canSeeAdminPanel },
+    { id: 'admin', label: 'ניהול מערכת', icon: <AdminIcon />, onClick: go('/admin'), visible: canSeeAdminPanel },
+    { id: 'users', label: 'ניהול משתמשים', icon: <UsersIcon />, onClick: go('/admin/users'), visible: canAccessRoute(role, 'adminUsers') },
+    { id: 'add-user', label: 'הוסף משתמש חדש', icon: <PersonAddIcon />, onClick: go('/admin/users?add=1'), visible: isBusinessAdmin },
+    { id: 'fridges', label: 'ניהול מקררים', icon: <FridgeIcon />, onClick: go('/admin/fridges'), visible: canAccessRoute(role, 'adminFridges') },
+    { id: 'add-category', label: 'הוסף קטגוריה חדשה', icon: <CategoryIcon />, onClick: handleCategoryModalOpen, visible: isBusinessAdmin },
+    { id: 'reports', label: 'דוחות', icon: <ReportsIcon />, onClick: go('/reports'), visible: canAccessRoute(role, 'reports') },
+    { id: 'settings', label: 'הגדרות', icon: <SettingsIcon />, onClick: go('/settings'), visible: canAccessRoute(role, 'settings') },
+    { id: 'device-notifications', label: 'התראות במכשיר', icon: <DeviceNotificationsIcon />, onClick: () => { setShowNotificationsDialog(true); handleMenuClose(); }, visible: true },
+    { id: 'divider3', label: '', icon: <></>, onClick: () => {}, divider: true, visible: true },
+    { id: 'logout', label: 'התנתק', icon: <LogoutIcon />, onClick: handleSignOut, visible: true },
   ];
 
-  const filteredNavigationItems = navigationItems.filter(item => {
-    if (item.adminOnly && !isAdmin) return false;
-    if (item.managerOnly && !isAdmin && !isManager) return false;
-    return true;
-  });
+  const filteredNavigationItems = navigationItems.filter(item => item.visible);
 
   if (!user || !profile) {
     return null;
@@ -467,6 +289,9 @@ const UnifiedNavigation: React.FC = () => {
 
         {/* Action Buttons */}
         <Stack direction="row" spacing={1} alignItems="center">
+          {/* Durable queue state (separate from connectivity) */}
+          <SyncStatus />
+
           {/* Offline Indicator */}
           {isOffline && (
             <Chip 
@@ -480,23 +305,6 @@ const UnifiedNavigation: React.FC = () => {
             />
           )}
 
-          {/* Notifications */}
-          <IconButton 
-            color="inherit"
-            onClick={handleNotificationOpen}
-            sx={{
-              background: alpha(theme.palette.common.white, 0.1),
-              '&:hover': {
-                background: alpha(theme.palette.common.white, 0.2),
-              },
-              width: { xs: 40, sm: 48 },
-              height: { xs: 40, sm: 48 },
-            }}
-          >
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-            </Badge>
-          </IconButton>
 
           {/* User Profile */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
@@ -542,13 +350,11 @@ const UnifiedNavigation: React.FC = () => {
             {profile.fullName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {profile.role === 'admin' ? 'מנהל מערכת' : 
-             profile.role === 'manager' ? 'מנהל מחלקה' : 
-             'עובד'}
+            {ROLE_LABELS[toAppRole(profile.role) ?? 'staff']}
           </Typography>
-          {profile.department && (
+          {departmentLabel(profile.department) && (
             <Chip 
-              label={profile.department} 
+              label={departmentLabel(profile.department)}
               size="small" 
               sx={{ mt: 1, fontSize: '0.7rem' }}
             />
@@ -591,174 +397,21 @@ const UnifiedNavigation: React.FC = () => {
                   }
                 }}
               />
-              {item.badge && (
-                <Badge badgeContent={item.badge} color="primary" />
-              )}
             </MenuItem>
           );
         })}
       </Menu>
 
-      {/* User Registration Modal */}
-      <Dialog 
-        open={showRegisterModal} 
-        onClose={handleRegisterModalClose}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.95)} 100%)`,
-            backdropFilter: 'blur(20px)',
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-          m: 0,
-        }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            הוסף משתמש חדש
-          </Typography>
-          <IconButton 
-            onClick={handleRegisterModalClose}
-            sx={{ color: 'white' }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 3 }}>
-          <Box component="form" onSubmit={handleRegisterSubmit} sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
-              <TextField
-                fullWidth
-                label="שם מלא"
-                value={formData.fullName}
-                onChange={handleInputChange('fullName')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                fullWidth
-                label="אימייל"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
-              <TextField
-                fullWidth
-                label="סיסמה"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange('password')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                fullWidth
-                label="אימות סיסמה"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange('confirmPassword')}
-                required
-                disabled={registerLoading}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
-              <FormControl fullWidth sx={{ flex: 1 }}>
-                <InputLabel>תפקיד</InputLabel>
-                <Select
-                  value={formData.role}
-                  label="תפקיד"
-                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'manager' | 'staff' }))}
-                  disabled={registerLoading}
-                >
-                  <MenuItem value="staff">עובד</MenuItem>
-                  <MenuItem value="manager">מנהל מחלקה</MenuItem>
-                  <MenuItem value="admin">מנהל מערכת</MenuItem>
-                </Select>
-              </FormControl>
-
-              {formData.role === 'staff' && (
-                <FormControl fullWidth sx={{ flex: 1 }}>
-                  <InputLabel>מחלקה</InputLabel>
-                  <Select
-                    value={formData.department}
-                    label="מחלקה"
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value as 'bar' | 'kitchen' }))}
-                    disabled={registerLoading}
-                  >
-                    <MenuItem value="bar">בר</MenuItem>
-                    <MenuItem value="kitchen">מטבח</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            </Box>
-
-            <TextField
-              fullWidth
-              label="מספר טלפון (אופציונלי)"
-              value={formData.phoneNumber}
-              onChange={handleInputChange('phoneNumber')}
-              disabled={registerLoading}
-              sx={{ mb: 3 }}
-            />
-
-            {registerError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {registerError}
-              </Alert>
-            )}
-
-            {registerSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                {registerSuccess}
-              </Alert>
-            )}
-          </Box>
+      {/* Device notifications */}
+      <Dialog open={showNotificationsDialog} onClose={() => setShowNotificationsDialog(false)} maxWidth="sm" fullWidth dir="rtl">
+        <DialogTitle>התראות במכשיר</DialogTitle>
+        <DialogContent>
+          {showNotificationsDialog && <NotificationControls />}
         </DialogContent>
-
-        <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button 
-            onClick={handleRegisterModalClose} 
-            disabled={registerLoading}
-            sx={{ mr: 1 }}
-          >
-            ביטול
-          </Button>
-          <Button 
-            onClick={handleRegisterSubmit}
-            variant="contained"
-            disabled={registerLoading}
-            startIcon={registerLoading ? <CircularProgress size={16} /> : <PersonAddIcon />}
-            sx={{
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-              }
-            }}
-          >
-            {registerLoading ? 'יוצר משתמש...' : 'צור משתמש'}
-          </Button>
+        <DialogActions>
+          <Button onClick={() => setShowNotificationsDialog(false)}>סגור</Button>
         </DialogActions>
       </Dialog>
-
-
 
       {/* Category Creation Modal */}
       <Dialog 
@@ -845,35 +498,6 @@ const UnifiedNavigation: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Notifications Menu */}
-      <Menu
-        anchorEl={notificationAnchor}
-        open={Boolean(notificationAnchor)}
-        onClose={handleNotificationClose}
-        sx={{
-          '& .MuiPaper-root': {
-            borderRadius: 3,
-            minWidth: 300,
-            mt: 1,
-            background: alpha(theme.palette.background.paper, 0.95),
-            backdropFilter: 'blur(20px)',
-          },
-        }}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        <Box sx={{ px: 3, py: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            התראות
-          </Typography>
-        </Box>
-        <Divider />
-        <Box sx={{ px: 3, py: 2, textAlign: 'center', color: 'text.secondary' }}>
-          <Typography variant="body2">
-            אין התראות חדשות
-          </Typography>
-        </Box>
-      </Menu>
     </AppBar>
   );
 };

@@ -282,12 +282,14 @@ Every task may be split into 30–90 minute bounded subtasks if it would otherwi
 **Files:** Codex-owned CI/test configs, docs/RELEASE.md, own handoff; merge reviewed Claude gates.
 **Consumes:** C1–C4 and U1–U4 completed checkpoints.
 **Produces:** Integrated candidate on codex/tossit-core, reproducible checks, release checklist.
-- [ ] Add CI for build, unit/integration and rules checks; keep secrets out.
-- [ ] Resolve remaining owner-specific lint errors and record any warnings.
-- [ ] Merge pinned Claude checkpoints, verify no placeholders are represented as functioning features, run the complete check set.
+- [x] Add CI for build, unit/integration and rules checks; keep secrets out.
+- [x] Resolve remaining owner-specific lint errors and record any warnings.
+- [x] Merge pinned Claude checkpoints, verify no placeholders are represented as functioning features, run the complete check set.
 - [ ] Review cross-worker boundaries: profile/route authorization, receipts/notifications, logout/push/queue, worker registration and item terminal states.
 - [ ] Push and publish candidate SHA plus release instructions. Coordinate U5 findings and fix each issue in an owner-scoped commit.
 **Acceptance:** Clean build and zero lint errors; meaningful domain/rules tests plus UI tests pass; release blockers explicitly listed.
+
+C5 checkpoint evidence: Node 22.23.4, client296/server41/rules42/callables3/browser4 passing; build and lint0errors/7warnings. Final independent review and remote CI/native worker pending. See latest Codex handoff.
 
 ## Tasks — Claude
 

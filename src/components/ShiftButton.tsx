@@ -1,22 +1,29 @@
 import React from 'react';
 import { useShift } from '../context/ShiftContext';
-import { formatExpiryTime } from '../utils/expiryUtils';
-import { Timestamp } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
+import type { Timestamp } from 'firebase/firestore';
 
+const formatShiftTime = (timestamp: Timestamp | null) =>
+  timestamp
+    ? new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }).format(timestamp.toDate())
+    : '';
+
+/**
+ * Start/end shift. State shown is the server profile's (via ShiftContext/AuthContext), never
+ * optimistic. Ending asks for confirmation; changes need a connection.
+ */
 const ShiftButton: React.FC = () => {
   const { isOnShift, shiftStartedAt, startUserShift, endUserShift, isLoading, error } = useShift();
+  const { isOffline } = useAuth();
 
   const handleClick = async () => {
+    if (isLoading || isOffline) return;
     if (isOnShift) {
+      if (!window.confirm('לסיים את המשמרת? לאחר הסיום לא ניתן לפתוח או לסגור פריטים עד שמשמרת חדשה תתחיל.')) return;
       await endUserShift();
     } else {
       await startUserShift();
     }
-  };
-
-  const formatShiftTime = (timestamp: Timestamp | null) => {
-    if (!timestamp) return '';
-    return formatExpiryTime(timestamp);
   };
 
   return (
@@ -24,19 +31,21 @@ const ShiftButton: React.FC = () => {
       <button
         className={`shift-button ${isOnShift ? 'active' : ''}`}
         onClick={handleClick}
-        disabled={isLoading}
+        disabled={isLoading || !!isOffline}
+        title={isOffline ? 'אין חיבור' : undefined}
       >
-        {isLoading ? 'מעבד...' : isOnShift ? 'סיום משמרת' : 'אני עובד עכשיו'}
+        {isLoading ? 'מעדכן...' : isOnShift ? 'סיום משמרת' : 'התחלת משמרת'}
       </button>
-      
-      {isOnShift && shiftStartedAt && (
-        <div className="shift-info">
-          <p>המשמרת התחילה: {formatShiftTime(shiftStartedAt)}</p>
+
+      {isOnShift && (
+        <div className="shift-info" role="status">
+          <p>במשמרת{shiftStartedAt ? ` מאז ${formatShiftTime(shiftStartedAt)}` : ''}</p>
         </div>
       )}
-      
-      {error && <p className="error-message">{error}</p>}
-      
+
+      {isOffline && <p className="shift-info">אין חיבור. אפשר לשנות משמרת רק כשיש חיבור.</p>}
+      {error && <p className="error-message" role="alert">{error}</p>}
+
       <style>{`
         .shift-button-container {
           display: flex;

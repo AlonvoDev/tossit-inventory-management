@@ -16,8 +16,8 @@ const firebaseConfig = {
 };
 
 const localhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const emulate = localhost && import.meta.env.DEV
-  && (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true' || localStorage.getItem('useFirebaseEmulators') === 'true');
+const emulate = localhost && (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
+  || (import.meta.env.DEV && localStorage.getItem('useFirebaseEmulators') === 'true'));
 // An explicitly selected emulator environment never falls back to production.
 const app = initializeApp(emulate ? {
   ...firebaseConfig, projectId: 'demo-tossit-auth',

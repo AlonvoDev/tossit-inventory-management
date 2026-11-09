@@ -3,12 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ItemsList from '../components/ItemsList';
 import ProductManagement from '../components/ProductManagement';
-import QATestSuite from '../components/QATestSuite';
 import DiscardReport from '../components/DiscardReport';
 // UnifiedNavigation is already rendered in App.tsx
 import {
   Alert,
-  Button,
   CircularProgress,
   Container,
   Box,
@@ -27,17 +25,16 @@ import {
   WifiOff as WifiOffIcon,
   People as UsersIcon,
   Inventory as ProductsIcon,
-  BugReport as QAIcon,
   Category as CatalogIcon,
   Assessment as ReportsIcon,
 } from '@mui/icons-material';
 
 const AdminPanel: React.FC = () => {
-  const { user, profile, isAdmin, isManager, loading: isLoading, isOffline, logout } = useAuth();
+  const { profile, isAdmin, isManager, loading: isLoading, isOffline, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'inventory' | 'reports' | 'qa'>('inventory');
+  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'inventory' | 'reports'>('inventory');
   const [inventorySubTab, setInventorySubTab] = useState<'active' | 'expiring' | 'discarded' | 'finished'>('active');
   const [networkError, setNetworkError] = useState<string | null>(null);
   
@@ -45,8 +42,8 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['users', 'products', 'inventory', 'reports', 'qa'].includes(tabParam)) {
-      setActiveTab(tabParam as 'users' | 'products' | 'inventory' | 'reports' | 'qa');
+    if (tabParam && ['users', 'products', 'inventory', 'reports'].includes(tabParam)) {
+      setActiveTab(tabParam as 'users' | 'products' | 'inventory' | 'reports');
     }
   }, [location.search]);
   
@@ -268,13 +265,16 @@ const AdminPanel: React.FC = () => {
                   icon={<CatalogIcon />} 
                   iconPosition="start"
                 />
-                <Tab 
-                  value="users" 
-                  label="ניהול משתמשים" 
-                  icon={<UsersIcon />} 
-                  iconPosition="start"
-                  onClick={handleUsersTab}
-                />
+                {/* User management is admin-only (see src/app/access.ts); managers never see a dead-end tab. */}
+                {isAdmin && (
+                  <Tab
+                    value="users"
+                    label="ניהול משתמשים"
+                    icon={<UsersIcon />}
+                    iconPosition="start"
+                    onClick={handleUsersTab}
+                  />
+                )}
                 <Tab 
                   value="products" 
                   label="ניהול מוצרים" 
@@ -287,18 +287,6 @@ const AdminPanel: React.FC = () => {
                   icon={<ReportsIcon />} 
                   iconPosition="start"
                 />
-
-                {(isAdmin || isManager) && (
-                  <>
-                    <Tab 
-                      value="qa" 
-                      label="בדיקת איכות" 
-                      icon={<QAIcon />} 
-                      iconPosition="start"
-                    />
-
-                  </>
-                )}
               </Tabs>
             </Box>
             
@@ -388,7 +376,7 @@ const AdminPanel: React.FC = () => {
                       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr' } }}>
                         <Card sx={{ p: 2 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                            מוצרים שפג תוקפם
+                            פג תוקף וממתינים לטיפול
                           </Typography>
                           <ItemsList 
                             showExpiredOnly={true}
@@ -481,88 +469,12 @@ const AdminPanel: React.FC = () => {
           
 
 
-              {activeTab === 'qa' && (isAdmin || isManager) && (
-                <Box>
-                  <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      🧪 בדיקת איכות
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      בדיקות איכות מתקדמות ומערכות ניהול עבור המערכת.
-                    </Typography>
-                    <Alert severity="info" sx={{ mb: 3, textAlign: 'right' }}>
-                      <Typography variant="body2">
-                        🔗 <strong>טיפ:</strong> ניתן לגשת ישירות לטאב זה באמצעות הקישור: <code>/admin?tab=qa</code>
-                      </Typography>
-                    </Alert>
-                  </Box>
-                  <QATestSuite />
-                </Box>
-              )}
 
-              {/* Information for non-admin/manager users */}
-              {!isAdmin && !isManager && (
-                <Box sx={{ mt: 4 }}>
-                  <Alert severity="info" sx={{ textAlign: 'right' }}>
-                    <Typography variant="body2">
-                      💡 <strong>הערה:</strong> טאב "בדיקת איכות" זמין רק למנהלים ומנהלי מערכת. 
-                      לקבלת הרשאות נוספות, פנה למנהל המערכת שלך.
-                    </Typography>
-                  </Alert>
-                </Box>
-              )}
 
 
             </Box>
           </Paper>
 
-          {/* Debug info - Development only */}
-          {window.location.hostname === 'localhost' && (
-            <Card sx={{ mt: 4, border: '2px dashed orange', bgcolor: alpha('#ff9800', 0.05) }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: '#f57c00', mb: 2, fontWeight: 600 }}>
-                  🛠️ Debug Information
-                </Typography>
-                <Box sx={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'text.secondary' }}>
-                  <Typography>User ID: {user?.uid || 'Not logged in'}</Typography>
-                  <Typography>Is Admin: {isAdmin ? 'Yes' : 'No'}</Typography>
-                  <Typography>Is Manager: {isManager ? 'Yes' : 'No'}</Typography>
-                  <Typography>Can Access QA Tab: {(isAdmin || isManager) ? 'Yes' : 'No'}</Typography>
-                  <Typography>Current Active Tab: {activeTab}</Typography>
-                  <Typography>Role: {profile?.role || 'Unknown'}</Typography>
-                  <Typography>Department: {profile?.department || 'Unknown'}</Typography>
-                  <Typography>Full Name: {profile?.fullName || 'Unknown'}</Typography>
-                  <Typography>Business ID: {profile?.businessId || 'None'}</Typography>
-                  <Typography>Offline Mode: {isOffline ? 'Yes' : 'No'}</Typography>
-                  <Typography>Connected to Emulator: {localStorage.getItem('useFirebaseEmulators') === 'true' ? 'Yes' : 'No'}</Typography>
-                </Box>
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      setActiveTab('qa');
-                      const newSearchParams = new URLSearchParams(location.search);
-                      newSearchParams.set('tab', 'qa');
-                      navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-                    }}
-                    disabled={!(isAdmin || isManager)}
-                    sx={{ mr: 1 }}
-                  >
-                    🧪 בדוק טאב QA
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => window.open('/admin?tab=qa', '_blank')}
-                    disabled={!(isAdmin || isManager)}
-                  >
-                    🔗 פתח QA בטאב חדש
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          )}
         </Container>
       )}
     </Box>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { enablePushNotifications, disablePushNotifications, getPushNotificationState, syncPushNotificationsSession } from '../../utils/notificationUtils';
+import { enablePushNotifications, disablePushNotifications, getPushNotificationState, isPushConfigured, syncPushNotificationsSession } from '../../utils/notificationUtils';
 const state = vi.hoisted(() => ({ uid: 'staff' as string | null, denied: false, failRegister: false, failRevoke: false, holdRegister: false, resumeRegister: undefined as undefined | (() => void), calls: [] as { name: string; input: Record<string, unknown> }[], request: undefined as undefined | (() => Promise<NotificationPermission>) }));
 vi.mock('../../services/firebase', () => ({ functions: {}, auth: { get currentUser() { return state.uid ? { uid: state.uid } : null; } } }));
 vi.mock('../../api/access', () => ({ getCurrentActor: async () => {
@@ -51,7 +51,7 @@ describe('explicit device notification controls', () => {
   });
   it('does not prompt with missing VAPID config and never reports enabled after a failed server write', async () => {
     vi.stubEnv('VITE_VAPID_PUBLIC_KEY', '');
-    await expect(enablePushNotifications()).rejects.toMatchObject({ code: 'unavailable' }); expect(request).not.toHaveBeenCalled();
+    await expect(enablePushNotifications()).rejects.toMatchObject({ code: 'not-configured' }); expect(request).not.toHaveBeenCalled();
     const key = new Uint8Array(65).fill(1); key[0] = 4; vi.stubEnv('VITE_VAPID_PUBLIC_KEY', btoa(String.fromCharCode(...key)).replace(/=+$/, ''));
     state.failRegister = true; await expect(enablePushNotifications()).rejects.toMatchObject({ code: 'functions/unavailable' });
     expect(localStorage.getItem('tossit.push.device.v1')).toContain('pending-enable');
@@ -84,5 +84,19 @@ describe('explicit device notification controls', () => {
     state.resumeRegister!();
     await expect(enabling).rejects.toMatchObject({ code: 'unauthenticated' });
     expect(localStorage.getItem('tossit.push.device.v1')).toContain('pending-disable');
+  });
+  it('shares strict public-key format validation without prompting or touching the worker', () => {
+    expect(isPushConfigured()).toBe(true);
+    vi.stubEnv('VITE_VAPID_PUBLIC_KEY', 'nonempty-but-malformed'); expect(isPushConfigured()).toBe(false);
+    vi.stubEnv('VITE_VAPID_PUBLIC_KEY', ''); expect(isPushConfigured()).toBe(false);
+    expect(request).not.toHaveBeenCalled(); expect(register).not.toHaveBeenCalled();
+  });
+  it('distinguishes offline setup from stale worker and transport failures', async () => {
+    vi.stubGlobal('navigator', { onLine: false, serviceWorker: { ready: Promise.resolve(registration), register } });
+    await expect(enablePushNotifications()).rejects.toMatchObject({ code: 'offline' });
+    expect(request).not.toHaveBeenCalled();
+    vi.stubGlobal('navigator', { onLine: true, serviceWorker: { ready: Promise.resolve({ ...registration, active: { scriptURL: location.origin + '/sw.js' } }), register } });
+    await expect(enablePushNotifications()).rejects.toMatchObject({ code: 'worker-outdated' });
+    expect(state.calls).toEqual([]);
   });
 });

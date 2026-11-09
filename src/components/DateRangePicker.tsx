@@ -23,6 +23,7 @@ import {
   DateRange as DateRangeIcon,
   Check as CheckIcon,
 } from '@mui/icons-material';
+import { fromDateInputValue, isValidRange, presetRange, PresetId, toDateInputValue } from './dateRange';
 
 interface DateRangePickerProps {
   startDate?: Date | null;
@@ -35,8 +36,7 @@ interface DateRangePickerProps {
 interface PresetRange {
   label: string;
   icon: React.ReactNode;
-  getDates: () => { start: Date; end: Date };
-  value: string;
+  value: PresetId;
 }
 
 const DateRangePicker: React.FC<DateRangePickerProps> = ({
@@ -52,71 +52,14 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const [tempEndDate, setTempEndDate] = useState<Date | null>(endDate || null);
 
   const presetRanges: PresetRange[] = [
-    {
-      label: 'היום',
-      icon: <TodayIcon />,
-      value: 'today',
-      getDates: () => {
-        const today = new Date();
-        return { start: today, end: today };
-      },
-    },
-    {
-      label: 'שבוע אחרון',
-      icon: <CalendarIcon />,
-      value: 'week',
-      getDates: () => {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 7);
-        return { start, end };
-      },
-    },
-    {
-      label: 'חודש אחרון',
-      icon: <CalendarIcon />,
-      value: 'month',
-      getDates: () => {
-        const end = new Date();
-        const start = new Date();
-        start.setMonth(start.getMonth() - 1);
-        return { start, end };
-      },
-    },
-    {
-      label: '3 חודשים',
-      icon: <CalendarIcon />,
-      value: '3months',
-      getDates: () => {
-        const end = new Date();
-        const start = new Date();
-        start.setMonth(start.getMonth() - 3);
-        return { start, end };
-      },
-    },
-    {
-      label: '6 חודשים',
-      icon: <CalendarIcon />,
-      value: '6months',
-      getDates: () => {
-        const end = new Date();
-        const start = new Date();
-        start.setMonth(start.getMonth() - 6);
-        return { start, end };
-      },
-    },
-    {
-      label: 'שנה אחרונה',
-      icon: <CalendarIcon />,
-      value: 'year',
-      getDates: () => {
-        const end = new Date();
-        const start = new Date();
-        start.setFullYear(start.getFullYear() - 1);
-        return { start, end };
-      },
-    },
+    { label: 'היום', icon: <TodayIcon />, value: 'today' },
+    { label: 'שבוע אחרון', icon: <CalendarIcon />, value: 'week' },
+    { label: 'חודש אחרון', icon: <CalendarIcon />, value: 'month' },
+    { label: '3 חודשים', icon: <CalendarIcon />, value: '3months' },
+    { label: '6 חודשים', icon: <CalendarIcon />, value: '6months' },
+    { label: 'שנה אחרונה', icon: <CalendarIcon />, value: 'year' },
   ];
+  const rangeIsValid = isValidRange(tempStartDate, tempEndDate);
 
   const handleOpen = () => {
     setTempStartDate(startDate || null);
@@ -131,12 +74,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const handleApply = () => {
+    if (!rangeIsValid) return;
     onDateChange(tempStartDate, tempEndDate);
     setOpen(false);
   };
 
   const handlePresetSelect = (preset: PresetRange) => {
-    const { start, end } = preset.getDates();
+    const { start, end } = presetRange(preset.value);
     setTempStartDate(start);
     setTempEndDate(end);
   };
@@ -162,7 +106,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const isPresetSelected = (preset: PresetRange) => {
     if (!tempStartDate || !tempEndDate) return false;
-    const { start, end } = preset.getDates();
+    const { start, end } = presetRange(preset.value);
     return (
       tempStartDate.toDateString() === start.toDateString() &&
       tempEndDate.toDateString() === end.toDateString()
@@ -302,11 +246,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     <TextField
                       label="תאריך התחלה"
                       type="date"
-                      value={tempStartDate ? tempStartDate.toISOString().split('T')[0] : ''}
-                      onChange={(e) => {
-                        const newDate = e.target.value ? new Date(e.target.value) : null;
-                        setTempStartDate(newDate);
-                      }}
+                      value={toDateInputValue(tempStartDate)}
+                      onChange={(e) => setTempStartDate(fromDateInputValue(e.target.value))}
                       fullWidth
                       variant="outlined"
                       InputLabelProps={{
@@ -318,15 +259,14 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     <TextField
                       label="תאריך סיום"
                       type="date"
-                      value={tempEndDate ? tempEndDate.toISOString().split('T')[0] : ''}
-                      onChange={(e) => {
-                        const newDate = e.target.value ? new Date(e.target.value) : null;
-                        setTempEndDate(newDate);
-                      }}
+                      value={toDateInputValue(tempEndDate)}
+                      onChange={(e) => setTempEndDate(fromDateInputValue(e.target.value))}
                       fullWidth
                       variant="outlined"
+                      error={!rangeIsValid}
+                      helperText={rangeIsValid ? undefined : 'תאריך הסיום לפני תאריך ההתחלה'}
                       inputProps={{
-                        min: tempStartDate ? tempStartDate.toISOString().split('T')[0] : undefined,
+                        min: toDateInputValue(tempStartDate) || undefined,
                       }}
                       InputLabelProps={{
                         shrink: true,
@@ -389,6 +329,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
               <Button
                 variant="contained"
                 onClick={handleApply}
+                disabled={!rangeIsValid}
                 startIcon={<CheckIcon />}
                 sx={{ textTransform: 'none', minWidth: 100 }}
               >

@@ -6,10 +6,12 @@ import { theme } from './theme';
 import { AuthProvider } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { ShiftProvider } from '../context/ShiftContext';
+import { OfflineProvider } from '../offline/OfflineProvider';
 import App from './App';
 import { PWAPrompt } from '../pwa/PWAPrompt';
 import { OfflineIndicator } from '../pwa/OfflineIndicator';
 import { registerSW } from 'virtual:pwa-register';
+import { setUpdateAvailable } from '../pwa/updateStore';
 import '../index.css';
 
 // Initialize the app
@@ -19,37 +21,32 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <NotificationProvider>
-            <ShiftProvider>
-              <App />
-              <PWAPrompt />
-              <OfflineIndicator />
-            </ShiftProvider>
-          </NotificationProvider>
+          {/* Codex C3: durable inventory queue + replay lifecycle; mounted once, inside AuthProvider. */}
+          <OfflineProvider>
+            <NotificationProvider>
+              <ShiftProvider>
+                <App />
+                <PWAPrompt />
+                <OfflineIndicator />
+              </ShiftProvider>
+            </NotificationProvider>
+          </OfflineProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,
 );
 
-// Register service worker for PWA functionality using vite-plugin-pwa
-const updateSW = registerSW({
-  onNeedRefresh() {
-    // Check if we should prompt for update (don't prompt too often)
-    const lastPrompt = localStorage.getItem('last-update-prompt');
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
-    
-    if (!lastPrompt || (now - parseInt(lastPrompt)) > oneHour) {
-      localStorage.setItem('last-update-prompt', now.toString());
-      // Trigger update prompt in PWAPrompt component
-      const event = new CustomEvent('pwa-update-available', { detail: { updateSW } });
-      window.dispatchEvent(event);
-    }
-  },
-  onOfflineReady() {
-    console.log('App ready to work offline');
-    // Optional: show notification that app is ready for offline use
-  },
-  immediate: true
-});
+// The single service-worker registration (src/pwa/service-worker.ts, root scope).
+// A waiting update is kept until the user accepts it in PWAPrompt; it never activates on its own.
+if ('serviceWorker' in navigator) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      setUpdateAvailable(() => updateSW(true));
+    },
+    onRegisterError(error: unknown) {
+      console.error('Service worker registration failed:', error);
+    },
+  });
+}

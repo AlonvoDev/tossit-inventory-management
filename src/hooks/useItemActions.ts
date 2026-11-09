@@ -1,88 +1,63 @@
-import { useState, useCallback } from 'react';
-import { markItemAsFinished, markItemAsDiscarded } from '../api/firestoreAPI';
-import { useAuth } from './useAuth';
+import { useCallback, useRef, useState } from 'react';
+import { closeInventoryItem } from '../api/inventoryOperations';
+import type { DiscardReason, WriteReceipt } from '../domain/contracts';
+import { errorMessage } from '../features/common/errorMessage';
 
-export interface ItemActionsResult {
-  isModalOpen: boolean;
-  loading: boolean;
-  error: string | null;
-  openModal: () => void;
-  closeModal: () => void;
-  handleItemAction: (action: 'finished' | 'discarded', quantity?: number, reason?: string) => Promise<void>;
+export interface CloseRequest {
+  itemId: string;
+  action: 'finished' | 'discarded';
+  discardedAmount?: number;
+  reason?: DiscardReason;
 }
 
-export const useItemActions = (itemId: string, onSuccess?: () => void): ItemActionsResult => {
-  const { user, userProfile } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+/**
+ * Finished/discarded actions through C2 `closeInventoryItem`.
+ * One operation ID per intent (item + action + amount + reason), reused on retry so a lost
+ * acknowledgement cannot close twice; actor identity comes from the server, never the UI.
+ * Resolves with the receipt only after acknowledgement; otherwise sets `error` and resolves null.
+ */
+export const useCloseItem = () => {
+  const intent = useRef<{ key: string; operationId: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alreadyClosed, setAlreadyClosed] = useState(false);
+  const busy = useRef(false);
 
-  const openModal = useCallback(() => {
-    setIsModalOpen(true);
+  const reset = useCallback(() => {
+    intent.current = null;
     setError(null);
+    setAlreadyClosed(false);
   }, []);
 
-  const closeModal = useCallback(() => {
-    setIsModalOpen(false);
-    setError(null);
-  }, []);
-
-  const handleItemAction = useCallback(async (
-    action: 'finished' | 'discarded',
-    quantity?: number,
-    reason?: string
-  ) => {
-    if (!user || !userProfile) {
-      setError('משתמש לא מחובר');
-      return;
+  const submit = useCallback(async (request: CloseRequest): Promise<WriteReceipt | null> => {
+    if (busy.current) return null; // repeated click while sending
+    const key = JSON.stringify([request.itemId, request.action, request.discardedAmount ?? null, request.reason ?? null]);
+    if (!intent.current || intent.current.key !== key) {
+      intent.current = { key, operationId: crypto.randomUUID() };
     }
-
-    setLoading(true);
+    busy.current = true;
+    setSubmitting(true);
     setError(null);
-
+    setAlreadyClosed(false);
     try {
-      if (action === 'finished') {
-        await markItemAsFinished(itemId, user.uid, userProfile.fullName || user.email || 'משתמש');
-      } else if (action === 'discarded') {
-        if (!quantity || quantity <= 0) {
-          throw new Error('כמות נדרשת עבור פסולת');
-        }
-
-        // Determine discard reason
-        let discardReason: 'expired' | 'damaged' | 'other' = 'other';
-        if (reason) {
-          if (reason.includes('פג') || reason.includes('תוקף')) {
-            discardReason = 'expired';
-          } else if (reason.includes('נפגם') || reason.includes('פגום')) {
-            discardReason = 'damaged';
-          }
-        }
-
-        await markItemAsDiscarded(
-          itemId,
-          user.uid,
-          userProfile.fullName || user.email || 'משתמש',
-          quantity,
-          discardReason
-        );
-      }
-
-      setIsModalOpen(false);
-      onSuccess?.();
+      const receipt = await closeInventoryItem({ operationId: intent.current.operationId, ...request });
+      intent.current = null;
+      return receipt;
     } catch (err) {
-      console.error('Error updating item:', err);
-      setError(err instanceof Error ? err.message : 'שגיאה בעדכון הפריט');
+      console.error('Error closing item:', err);
+      const code = (err as { code?: unknown } | null)?.code;
+      if (code === 'already-closed') setAlreadyClosed(true);
+      setError(
+        code === 'unavailable'
+          ? 'השליחה לא הושלמה והפריט לא עודכן. נסה שוב — ניסיון חוזר לא יבצע את הפעולה פעמיים.'
+          : errorMessage(err, 'עדכון הפריט נכשל. הפריט לא עודכן.'),
+      );
+      return null;
     } finally {
-      setLoading(false);
+      busy.current = false;
+      setSubmitting(false);
     }
-  }, [itemId, user, userProfile, onSuccess]);
+  }, []);
 
-  return {
-    isModalOpen,
-    loading,
-    error,
-    openModal,
-    closeModal,
-    handleItemAction,
-  };
+  return { submit, submitting, error, alreadyClosed, reset };
 };

@@ -4,6 +4,10 @@ import { getCurrentActor } from '../api/access';
 import { InventoryError } from '../domain/errors';
 
 export type PushNotificationState = 'enabled' | 'disabled' | 'pending-disable' | 'denied' | 'unsupported';
+export type PushSetupErrorCode = 'not-configured' | 'worker-not-ready' | 'worker-outdated' | 'offline';
+export class PushSetupError extends Error {
+  constructor(public readonly code: PushSetupErrorCode, message: string) { super(message); this.name = 'PushSetupError'; }
+}
 interface DeviceState {
   deviceId: string; deviceToken: string; bindingId?: string; uid?: string; businessId?: string;
   state: 'new' | 'pending-enable' | 'enabled' | 'pending-disable';
@@ -36,21 +40,23 @@ function currentUid(expected?: string): string {
 }
 function keyBytes(): Uint8Array {
   const key = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
-  if (!key || !/^[A-Za-z0-9_-]+={0,2}$/.test(key)) throw new InventoryError('unavailable', 'Notifications are not configured for this deployment');
+  if (!key || !/^[A-Za-z0-9_-]+={0,2}$/.test(key)) throw new PushSetupError('not-configured', 'Notifications are not configured for this deployment');
   let bytes: Uint8Array;
   try { const binary = atob(key.replace(/-/g, '+').replace(/_/g, '/')); bytes = Uint8Array.from(binary, letter => letter.charCodeAt(0)); }
-  catch { throw new InventoryError('unavailable', 'Invalid public push configuration'); }
-  if (bytes.length !== 65 || bytes[0] !== 4) throw new InventoryError('unavailable', 'Invalid public push configuration');
+  catch { throw new PushSetupError('not-configured', 'Invalid public push configuration'); }
+  if (bytes.length !== 65 || bytes[0] !== 4) throw new PushSetupError('not-configured', 'Invalid public push configuration');
   return bytes;
 }
+/** Public-key format only; no permission prompt, worker access or backend readiness claim. */
+export function isPushConfigured(): boolean { try { keyBytes(); return true; } catch { return false; } }
 async function bounded<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  try { return await Promise.race([promise, new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new InventoryError('unavailable', 'The app worker is not ready; update the app and retry')), timeoutMs); })]); }
+  try { return await Promise.race([promise, new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new PushSetupError('worker-not-ready', 'The app worker is not ready; update the app and retry')), timeoutMs); })]); }
   finally { if (timer) clearTimeout(timer); }
 }
 async function readyWorker(requireCurrent = true): Promise<ServiceWorkerRegistration> {
   const registration = await bounded(navigator.serviceWorker.ready, requireCurrent ? 8000 : 2000);
-  if (requireCurrent && (registration.scope !== location.origin + '/' || registration.active?.scriptURL !== location.origin + '/service-worker.js')) throw new InventoryError('unavailable', 'Update TossIt before enabling notifications');
+  if (requireCurrent && (registration.scope !== location.origin + '/' || registration.active?.scriptURL !== location.origin + '/service-worker.js')) throw new PushSetupError('worker-outdated', 'Update TossIt before enabling notifications');
   return registration;
 }
 async function call<T>(name: string, input: unknown): Promise<T> { return (await httpsCallable<unknown, T>(functions, name, { timeout: 10000 })(input)).data; }
@@ -66,7 +72,7 @@ export async function disablePushNotifications(): Promise<void> {
     if (subscription && !await subscription.unsubscribe()) throw new InventoryError('unavailable', 'Browser subscription could not be disabled');
   })();
   const remote = (async () => {
-    if (navigator.onLine === false) throw new InventoryError('unavailable', 'Device cleanup is saved and will retry online');
+    if (navigator.onLine === false) throw new PushSetupError('offline', 'Device cleanup is saved and will retry online');
     await call('revokePushDevice', credentials(pending));
   })();
   const results = await Promise.allSettled([local, remote]);
@@ -81,6 +87,7 @@ export async function syncPushNotificationsSession(uid: string | null, businessI
 export async function enablePushNotifications(): Promise<'enabled' | 'denied' | 'unsupported'> {
   if (!isNotificationsSupported()) return 'unsupported';
   const expectedUid = currentUid(); const key = keyBytes();
+  if (navigator.onLine === false) throw new PushSetupError('offline', 'Reconnect before enabling notifications');
   // Call immediately on the button gesture, before asynchronous profile/network reads.
   const permission = Notification.permission === 'default' ? await requestNotificationPermission() : Notification.permission;
   currentUid(expectedUid); if (permission !== 'granted') return 'denied';

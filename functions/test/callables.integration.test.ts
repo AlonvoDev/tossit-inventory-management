@@ -29,16 +29,18 @@ beforeAll(async () => {
   // CLI worker uses Unix sockets, unavailable in some managed test environments.
   process.env.GCLOUD_PROJECT = projectId;
   process.env.FIREBASE_CONFIG = JSON.stringify({ projectId });
-  const handlers = await import('../src/index');
-  const app = express();
-  app.use(express.json());
-  app.post(`/${projectId}/us-central1/createEmployee`, handlers.createEmployee);
-  app.post(`/${projectId}/us-central1/updateEmployee`, handlers.updateEmployee);
-  app.post(`/${projectId}/us-central1/deactivateEmployee`, handlers.deactivateEmployee);
-  app.post(`/${projectId}/us-central1/upsertPushDevice`, handlers.upsertPushDevice);
-  app.post(`/${projectId}/us-central1/revokePushDevice`, handlers.revokePushDevice);
-  app.post(`/${projectId}/us-central1/getPushDeviceStatus`, handlers.getPushDeviceStatus);
-  await new Promise<void>(resolve => { server = app.listen(5001, '127.0.0.1', resolve); });
+  if (process.env.TOSSIT_NATIVE_FUNCTIONS_EMULATOR !== 'true') {
+    const handlers = await import('../src/index');
+    const app = express();
+    app.use(express.json());
+    app.post(`/${projectId}/us-central1/createEmployee`, handlers.createEmployee);
+    app.post(`/${projectId}/us-central1/updateEmployee`, handlers.updateEmployee);
+    app.post(`/${projectId}/us-central1/deactivateEmployee`, handlers.deactivateEmployee);
+    app.post(`/${projectId}/us-central1/upsertPushDevice`, handlers.upsertPushDevice);
+    app.post(`/${projectId}/us-central1/revokePushDevice`, handlers.revokePushDevice);
+    app.post(`/${projectId}/us-central1/getPushDeviceStatus`, handlers.getPushDeviceStatus);
+    await new Promise<void>(resolve => { server = app.listen(5001, '127.0.0.1', resolve); });
+  }
   const store = adminStore(admin);
   await adminAuth(admin).createUser({ uid: ownerUid, email: ownerEmail, password });
   uids.add(ownerUid);
@@ -62,7 +64,7 @@ afterAll(async () => {
       await adminAuth(admin).deleteUser(uid).catch(() => undefined);
     }
     await deleteAdmin(admin);
-    await deleteAdmin(getApp());
+    if (process.env.TOSSIT_NATIVE_FUNCTIONS_EMULATOR !== 'true') await deleteAdmin(getApp());
   }
   if (client) await deleteApp(client);
 });

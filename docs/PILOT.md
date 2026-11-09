@@ -1,0 +1,43 @@
+# TossIt pilot checks
+
+Manual checks that automated tests cannot prove. Record each as PASS / FAIL / NOT RUN with
+date, device, OS/browser version and build SHA. Desktop Chromium results do not prove iPhone behavior.
+
+## PWA install and updates (U4)
+
+Automated so far (Chromium, local `serve -s dist`, build of claude/tossit-ui U4a):
+exactly one registration (`/service-worker.js`, scope `/`); 12 precached build files; no
+notification permission request on load; offline reload of a deep link (`/admin/users`) loads the
+app shell; a new deploy waits (no automatic activation), the update dialog appears, accepting it
+activates the new worker and removes only the previous TossIt precache.
+
+### iPhone (Safari, installed to Home Screen) — NOT RUN
+1. Open the production URL in Safari → Share → "Add to Home Screen". Icon is the teal TossIt tile, name "TossIt".
+2. Launch from the Home Screen: opens standalone (no Safari bars) at `/dashboard` (or login), RTL layout, safe areas not clipped (notch/home bar).
+3. Sign in, navigate to an admin deep link, close the app fully, enable Airplane Mode, relaunch: app shell loads; screens that need the server show errors, not fake success.
+4. Deploy a new build, relaunch: update dialog "גרסה חדשה זמינה"; "מאוחר יותר" leaves a banner; "עדכן עכשיו" reloads to the new version; still signed in.
+5. Notifications: menu → "התראות במכשיר". No prompt on launch; the browser prompt appears only after tapping "הפעל התראות במכשיר הזה" inside the installed app (iOS 16.4+). In Safari (not installed) the dialog shows Home Screen instructions instead.
+
+### Android (Chrome) — NOT RUN
+1. Install via the browser menu / install prompt; icon uses the maskable variant (no white square edges).
+2. Repeat steps 2–4 above.
+
+### Desktop (Chrome/Edge) — partially automated
+- Install from the address-bar icon; repeat steps 3–4.
+
+## Offline inventory (C3 + U2/U4b) — NOT RUN on devices
+1. Signed in online on the phone, open the Dashboard once (caches profile/catalog). Enable Airplane Mode.
+2. Open a 0.5 kg item: confirmation says it is saved on the device and not yet on the server; header shows "1 ממתינות לשליחה"; the item shows "ממתין לשליחה".
+3. Close the app fully, relaunch offline: the pending item and badge are still there.
+4. Reconnect: the chip disappears after the server acknowledges; the item has the original opening time/expiry (not the reconnect time).
+5. On a second device, close the same item while the first is offline and closes it too: one device shows "הפעולה נכשלה" with "already closed" in the header list; no double close in the discard report.
+6. With pending work, tap "התנתק": warning lists the unsent count; sign in as a different account on the same phone: the first account's pending work is not shown or sent; sign back in as the first account: it is sent.
+
+## Push notifications (C4 + U4c) — NOT RUN (requires deployment prerequisites in docs/RELEASE.md)
+1. Admin: Settings → evening reminders and morning summary on; save.
+2. Staff phone (installed app): "התראות במכשיר" → enable → allow. Dialog shows "ההתראות מופעלות במכשיר הזה".
+3. Start a shift, leave an expired item open in the department, close the app fully. At 23:00/23:20/23:40 Israel time one notification each (no duplicates across devices of the same slot tag); tapping opens `/dashboard`.
+4. Manager phone: 08:00 summary for the department only.
+5. Deny permission on a second phone: dialog shows browser-settings guidance, no enable button.
+6. Disable with Airplane Mode on: dialog shows "כיבוי ... עדיין לא הושלם בשרת"; reconnect → completes; no further notifications.
+7. Log out on a phone with notifications enabled, log in as another user: the first user's notifications stop on that device.

@@ -1,8 +1,25 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: C4 — server scheduling and explicit device push controls
-Status: C4 implementation DONE; READY for Claude U4c. No deployment.
-Last previously confirmed remote SHA: 27722cb41bd08f39a60496315a979c189b41478e
+Task / bounded subtask: C5 — integrated release candidate and CI
+Status: C5 integrated checkpoint; final independent review and remote CI pending. No deployment.
+Last previously confirmed remote SHA: 818931e8f05b1fbbdbaf6a05ea0fa5971a96ada7
+
+## C5 integrated checkpoint — supersedes historical statuses below
+
+Merged exactly Claude U4c `1cd48edadc9c718c0890244d2ede7c66ee450117` with a normal two-parent merge. U1–U4 are present. Main and live services are unchanged. This checkpoint preserves the work; it is not yet a final release approval.
+
+Verified locally on actual Node 22.23.4: 296 client tests, 41 Functions tests, 42 Firestore rules tests, 3 real callable/Auth/Firestore integration tests, and 4 real Chromium browser tests pass. Production app and Functions TypeScript builds pass. Lint: zero errors, seven existing Fast Refresh warnings. Browser checks cover one root worker/no permission prompt, offline deep-link reload, decimal opening/reload/reconnect exactly once, staff admin denial, and retained queue isolation across logout/different-business login/original-account return. Only synthetic accounts and local emulators were used.
+
+New CI reproduces build/unit/rules/callable/browser checks on Node 22 and Java 21, plus native Functions worker startup. Remote Actions and native-worker results are pending until observed. The managed host cannot start the native Functions Unix socket; the local callable suite uses real onCall HTTP/auth wrappers over loopback. Local browser validation used Chromium 153; CI installs Playwright's locked browser. Real phones, real closed-app push, live project configuration/billing and production migration remain NOT RUN.
+
+Claude U5 requests now available in `src/utils/notificationUtils.ts`:
+- `isPushConfigured()` uses the same structural VAPID validation as enable; no permissions/network/subscription. It does not prove deployed backend readiness.
+- Error codes `not-configured`, `worker-not-ready`, `worker-outdated`, `offline` distinguish setup/connectivity failures. `useNotifications` additionally exposes `errorCode` while preserving `error` compatibility.
+- Please adopt the helper in your `src/pwa/pushEnv.ts` and map these codes in your UI error mapper during U5. Existing generic failure fallback remains safe; no rejected operation reports enabled.
+
+CI also removes shell interpolation of generated issue-summary text by passing it through the existing quoted environment variable. No issue comment was sent.
+
+Next: complete final review/CI, publish the final pinned candidate for U5 README/pilot/demo docs. Do not merge to main or deploy automatically. See `docs/RELEASE.md` for commands and release gates.
 
 ## READY FOR CLAUDE — C4 COMPLETE / U4c unblocked
 Merge the pinned full C4 commit published with this handoff from codex/tossit-core (not C4a27722cb alone). Claude e7cc27b is fetched and acknowledged: U1/U2/U3/U4a/U4b complete, C3 mounted,275reported client tests and zero lint errors there. C4 does not edit any Claude-owned UI/worker file.

@@ -4,20 +4,21 @@ Implementation checkpoints are not production deployments. Do not deploy the C1
 rules by themselves against an older client: the C2 inventory adapters and the
 reviewed Claude UI checkpoints must be integrated first.
 
-## Reproduce C1 checks
+## Reproduce integrated C5 checks
 
 Use the committed npm lockfiles. Install root dependencies with `npm ci` and
-server dependencies with `npm ci --prefix functions`. Functions target Node 22;
-the managed development host currently uses Node 24. Node 22 CI validation remains
-a release check until recorded in the integrated candidate.
+server dependencies with `npm ci --prefix functions`. Use Node 22 (`.node-version`) and Java 21 for CI emulators. The integrated candidate was locally verified on Node 22.23.4; remote CI and native Functions-worker startup must also be checked before release.
 
 ```bash
 npm run build
+npm run build:functions
 npm run test:run
 npm run test:functions
 npm run test:rules
 npm run test:callables
 npm run lint
+npx playwright install --with-deps chromium
+npm run test:browser
 ```
 
 `test:rules` uses only the `demo-tossit-auth` Firestore emulator. `test:callables`
@@ -30,7 +31,7 @@ The server TypeScript build is verified independently.
 
 No test may use production as a fallback. Emulator-only tests explicitly reject
 missing/non-loopback emulator hosts. UI/domain tests exclude emulator suites.
-When emulators are explicitly selected in the development app, Firebase services
+When emulators are explicitly selected on localhost (`VITE_USE_FIREBASE_EMULATORS=true`, including the built browser test), Firebase services
 connect synchronously to the local demo project; absent services fail locally.
 
 ## Prerequisites before approved deployment
@@ -64,7 +65,7 @@ connect synchronously to the local demo project; absent services fail locally.
 
 - Real-device PWA install/update, closed-app push delivery and scheduler setup.
 - Firestore indexes and performance for production-sized data.
-- End-to-end integration of both branches and owner review before updating main.
+- Remote CI/native Functions worker results and owner review before updating main. Both branches are integrated; four Chromium browser checks against local Auth/Firestore emulators pass.
 
 ## C1 provisioning coordination
 

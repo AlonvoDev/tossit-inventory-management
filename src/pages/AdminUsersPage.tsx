@@ -1,237 +1,154 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getAllUsers, createUserByAdmin, CreateUserData, updateUserByAdmin, deleteUserByAdmin, UpdateUserData } from '../api/authAPI';
+import { getAllUsers, createUserByAdmin, updateUserByAdmin, deleteUserByAdmin } from '../api/authAPI';
 import { UserProfile } from '../types/UserProfile';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
+import {
+  emptyUserForm,
+  formFromProfile,
+  roleNeedsDepartment,
+  toCreatePayload,
+  toUpdatePayload,
+  UserFormData,
+  UserFormErrors,
+  validateUserForm,
+} from '../features/users/userForm';
+import { errorMessage } from '../features/common/errorMessage';
+
+const errorText = (err: unknown, fallback: string): string => {
+  const code = (err as { code?: unknown } | null)?.code;
+  return code === 'auth/email-already-in-use' || code === 'functions/already-exists'
+    ? 'כתובת הדוא״ל כבר רשומה במערכת.'
+    : errorMessage(err, fallback);
+};
+
+/** Legacy profiles without isActive are active; only an explicit false is deactivated (C1 contract). */
+const isDeactivated = (user: UserProfile) => user.isActive === false;
+
+const formatCreatedAt = (createdAt: UserProfile['createdAt']): string => {
+  const millis = (createdAt as { toMillis?: () => number } | undefined)?.toMillis?.();
+  return typeof millis === 'number' ? new Date(millis).toLocaleDateString('he-IL') : '-';
+};
 
 const AdminUsersPage: React.FC = () => {
-  const { isAdmin, businessId, loading: authLoading } = useAuth();
+  const { isAdmin, businessId, uid: currentUid, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  
-  // State management
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
-  // Form state used by both add and edit modals
-  const [formData, setFormData] = useState<CreateUserData>({
-    fullName: '',
-    email: '',
-    phoneNumber: '',
-    role: 'staff',
-    department: 'bar',
-    password: ''
-  });
-  
-  // Form validation state
-  // Holds validation error messages for each form field
-  const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreateUserData, string>>>({});
 
-  // Modal and editing state
+  // Form state used by both add and edit modals
+  const [formData, setFormData] = useState<UserFormData>(emptyUserForm());
+  const [formErrors, setFormErrors] = useState<UserFormErrors>({});
+
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  
-  // Note: department visibility is now handled directly in the modal based on formData.role
+  // One idempotency ID per create intent: reused on retry of the same form, renewed when the form reopens.
+  const [createRequestId, setCreateRequestId] = useState<string>(() => crypto.randomUUID());
 
-  // Redirect if not admin
-  useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      navigate('/not-authorized');
-    }
-  }, [isAdmin, authLoading, navigate]);
-
-  // Load users from API
   const loadUsers = useCallback(async () => {
     if (!businessId) return;
-    
     setLoading(true);
     setError(null);
-    
     try {
-      const allUsers = await getAllUsers(businessId);
-      console.log('Loaded users:', allUsers);
-      
-      // Filter out users with missing essential data and fix them
-      const validUsers = allUsers.map(user => ({
-        ...user,
-        // Ensure fullName exists; fallback to email prefix if missing
-        fullName: user.fullName || (user.email ? user.email.split('@')[0] : 'Unknown User'),
-        email: user.email || 'no-email@unknown.com',
-        role: user.role || 'staff',
-        department: user.department || 'bar'
-      }));
-      
-      setUsers(validUsers);
+      setUsers(await getAllUsers(businessId));
     } catch (err: unknown) {
       console.error('Error loading users:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load users. Please try again.';
-      setError(errorMessage);
+      setError(errorText(err, 'טעינת רשימת המשתמשים נכשלה. נסה שוב.'));
     } finally {
       setLoading(false);
     }
   }, [businessId]);
 
-  // Load users on component mount
   useEffect(() => {
     if (isAdmin && businessId) {
       loadUsers();
     }
   }, [isAdmin, businessId, loadUsers]);
 
-
-
-  // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
-    // When role changes to admin/manager, department becomes irrelevant
-    if (name === 'role' && (value === 'admin' || value === 'manager')) {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: value, 
-        department: 'bar' // Set default, but won't be used in validation/creation
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-    
-    // Clear field error when user starts typing
-    if (formErrors[name as keyof CreateUserData]) {
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name as keyof UserFormData]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
-  // Validate form
-  const validateForm = (): boolean => {
-    const errors: Partial<CreateUserData> = {};
-    
-    if (!formData.fullName.trim()) {
-      errors.fullName = 'Full name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Email format is invalid';
-    }
-    
-    // Only validate password when creating a new user. Editing existing users does not allow changing password here.
-    if (!editMode) {
-      if (!formData.password) {
-        errors.password = 'Password is required';
-      } else if (formData.password.length < 6) {
-        errors.password = 'Password must be at least 6 characters';
-      }
-    }
-    
-    if (!formData.role || (formData.role !== 'admin' && formData.role !== 'manager' && formData.role !== 'staff')) {
-      errors.role = 'admin';
-    }
-    
-    // Only validate department for staff members
-    if (formData.role === 'staff' && (!formData.department || (formData.department !== 'bar' && formData.department !== 'kitchen'))) {
-      errors.department = 'bar';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // ignore repeated submits while saving
     setError(null);
     setSuccess(null);
-    
-    // Validate form input
-    if (!validateForm()) {
-      setError('Please fix the errors in the form');
+
+    const errors = validateUserForm(formData, editMode ? 'edit' : 'create');
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('יש לתקן את השדות המסומנים');
       return;
     }
-
-    // When creating a new user, businessId is required
     if (!editMode && !businessId) {
-      setError('Business ID not found');
+      setError('לא נמצא עסק עבור החשבון שלך');
       return;
     }
 
     setLoading(true);
-
     try {
       if (editMode && editingUser?.uid) {
-        // Prepare update data (do not include password)
-        const updateData: UpdateUserData = {
-          fullName: formData.fullName,
-          phoneNumber: formData.phoneNumber || '',
-          role: formData.role,
-          department: formData.role === 'staff' ? formData.department : 'bar'
-        };
-        await updateUserByAdmin(editingUser.uid, updateData);
-        setSuccess(`User "${formData.fullName}" updated successfully!`);
+        await updateUserByAdmin(editingUser.uid, toUpdatePayload(formData));
+        setSuccess(`פרטי המשתמש "${formData.fullName.trim()}" נשמרו`);
       } else {
-        // Create new user
-        await createUserByAdmin(formData, businessId as string);
-        setSuccess(`User "${formData.fullName}" created successfully!`);
+        await createUserByAdmin({ ...toCreatePayload(formData), requestId: createRequestId }, businessId as string);
+        setSuccess(`המשתמש "${formData.fullName.trim()}" נוצר`);
       }
-      // Close modal after success
       setShowModal(false);
-      // Reload users list
-      await loadUsers();
-      // Reset form state
-      setFormData({
-        fullName: '',
-        email: '',
-        phoneNumber: '',
-        role: 'staff',
-        department: 'bar',
-        password: ''
-      });
+      setFormData(emptyUserForm());
       setEditMode(false);
       setEditingUser(null);
+      await loadUsers();
     } catch (err: unknown) {
       console.error('Error saving user:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save user. Please try again.';
-      setError(errorMessage);
+      setError(errorText(err, 'שמירת המשתמש נכשלה. נסה שוב.'));
     } finally {
       setLoading(false);
     }
   };
 
-  // Open the modal for creating a new user
-  const openAddModal = () => {
-    setFormData({
-      fullName: '',
-      email: '',
-      phoneNumber: '',
-      role: 'staff',
-      department: 'bar',
-      password: ''
-    });
+  const openAddModal = useCallback(() => {
+    setCreateRequestId(crypto.randomUUID());
+    setFormData(emptyUserForm());
     setFormErrors({});
+    setError(null);
+    setSuccess(null);
     setEditMode(false);
     setEditingUser(null);
     setShowModal(true);
-  };
+  }, []);
 
-  // Open the modal for editing an existing user
+  // The navigation menu's "add user" entry links here with ?add=1 (single create form).
+  useEffect(() => {
+    if (searchParams.get('add') === '1' && isAdmin) {
+      openAddModal();
+      const next = new URLSearchParams(searchParams);
+      next.delete('add');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isAdmin, openAddModal]);
+
   const openEditModal = (user: UserProfile) => {
-    setFormData({
-      fullName: user.fullName || '',
-      email: user.email || '',
-      phoneNumber: user.phoneNumber || '',
-      role: user.role || 'staff',
-      department: user.role === 'staff' ? (user.department || 'bar') : 'bar',
-      password: ''
-    });
+    setFormData(formFromProfile(user));
     setFormErrors({});
+    setError(null);
+    setSuccess(null);
     setEditMode(true);
     setEditingUser(user);
     setShowModal(true);
   };
 
-  // Close modal and reset states
   const closeModal = () => {
     setShowModal(false);
     setEditMode(false);
@@ -239,22 +156,26 @@ const AdminUsersPage: React.FC = () => {
     setFormErrors({});
   };
 
-  // Delete a user with confirmation
-  const handleDelete = async (user: UserProfile) => {
-    const confirmDelete = window.confirm(`Are you sure you want to delete ${user.fullName || user.email}?`);
-    if (!confirmDelete) return;
+  // Server-side deactivation (C1): the account and profile are kept for audit, access is revoked.
+  const handleDeactivate = async (user: UserProfile) => {
+    if (user.uid === currentUid || isDeactivated(user)) return; // never lock yourself out
+    const name = user.fullName || user.email || 'המשתמש';
+    const confirmed = window.confirm(
+      `להשבית את "${name}"?\n\n` +
+        'המשתמש לא יוכל להתחבר לאפליקציה. הפרטים שלו נשמרים לתיעוד ואינם נמחקים. ' +
+        'הפעלה מחדש אינה זמינה כרגע מהאפליקציה.'
+    );
+    if (!confirmed) return;
     setError(null);
     setSuccess(null);
     setLoading(true);
     try {
       await deleteUserByAdmin(user.uid);
-      setSuccess(`User "${user.fullName || user.email}" deleted successfully!`);
-      // Remove deleted user from local state without reloading all users
-      setUsers(prev => prev.filter(u => u.uid !== user.uid));
+      setSuccess(`המשתמש "${name}" הושבת. הפרטים נשמרו לתיעוד.`);
+      await loadUsers();
     } catch (err: unknown) {
-      console.error('Error deleting user:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user. Please try again.';
-      setError(errorMessage);
+      console.error('Error deactivating user:', err);
+      setError(errorText(err, 'השבתת המשתמש נכשלה. נסה שוב.'));
     } finally {
       setLoading(false);
     }
@@ -269,12 +190,12 @@ const AdminUsersPage: React.FC = () => {
         alignItems: 'center', 
         minHeight: '50vh' 
       }}>
-        <div>Loading...</div>
+        <div>טוען...</div>
       </div>
     );
   }
 
-  // Don't render if not admin (will redirect anyway)
+  // Route guard already restricts this page to admins (src/app/access.ts).
   if (!isAdmin) {
     return null;
   }
@@ -284,7 +205,8 @@ const AdminUsersPage: React.FC = () => {
       maxWidth: '1200px', 
       margin: '0 auto', 
       padding: '20px',
-      fontFamily: 'Arial, sans-serif'
+      fontFamily: 'Arial, sans-serif',
+      direction: 'rtl'
     }}>
       {/* Navigation */}
       <div style={{ 
@@ -342,10 +264,11 @@ const AdminUsersPage: React.FC = () => {
         <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>הוראות שימוש:</h3>
         <ul style={{ margin: '0', paddingRight: '20px', color: '#333' }}>
           <li>לחץ על כפתור <strong>הוסף משתמש</strong> כדי ליצור עובד חדש.</li>
-          <li>עובד חדש יוצר חשבון Firebase באופן אוטומטי.</li>
-          <li><strong>צוות (Staff):</strong> יש לבחור מחלקה (בר או מטבח).</li>
-          <li><strong>מנהל (Manager) ומנהל מערכת (Admin):</strong> בעלי גישה לכל המחלקות.</li>
-          <li>ניתן לערוך או למחוק עובדים באמצעות כפתורי העריכה/מחיקה בטבלה למטה.</li>
+          <li>יצירת משתמש פותחת עבורו חשבון התחברות עם הסיסמה הראשונית שתזין.</li>
+          <li><strong>עובד:</strong> עובד במחלקה שנבחרה (בר או מטבח).</li>
+          <li><strong>מנהל מחלקה:</strong> מנהל את המחלקה שנבחרה בלבד.</li>
+          <li><strong>מנהל מערכת:</strong> מנהל את כל העסק.</li>
+          <li><strong>השבתה</strong> חוסמת את הכניסה לאפליקציה ושומרת את פרטי המשתמש לתיעוד. הפעלה מחדש אינה זמינה כרגע מהאפליקציה.</li>
         </ul>
       </div>
 
@@ -410,16 +333,16 @@ const AdminUsersPage: React.FC = () => {
           backgroundColor: '#f5f5f5',
           borderBottom: '1px solid #ddd'
         }}>
-          All Users ({users.length})
+          כל המשתמשים ({users.length})
         </h2>
         
         {loading && users.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center' }}>
-            <div>Loading users...</div>
+            <div>טוען משתמשים...</div>
           </div>
         ) : users.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-            No users found. Create the first user above.
+            לא נמצאו משתמשים.
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -430,26 +353,26 @@ const AdminUsersPage: React.FC = () => {
             }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Full Name
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    שם מלא
                   </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Email
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    דוא״ל
                   </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Role
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    תפקיד
                   </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Department
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    מחלקה
                   </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Phone
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    טלפון
                   </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Created
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    נוצר
                   </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #dee2e6' }}>
-                    Actions
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
+                    פעולות
                   </th>
                 </tr>
               </thead>
@@ -458,15 +381,21 @@ const AdminUsersPage: React.FC = () => {
                   <tr 
                     key={user.uid || index} 
                     style={{ 
-                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa'
+                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
+                      opacity: isDeactivated(user) ? 0.6 : 1
                     }}
                   >
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      <div style={{ fontWeight: 'bold' }}>{user.fullName || 'Unknown User'}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{user.uid || 'No UID'}</div>
+                      <div style={{ fontWeight: 'bold' }}>{user.fullName || '-'}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {user.uid === currentUid ? 'אתה' : ''}
+                        {isDeactivated(user) && (
+                          <span style={{ color: '#b71c1c', fontWeight: 'bold' }}>מושבת</span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {user.email || 'No email'}
+                      {user.email || '-'}
                     </td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
                       <span style={{ 
@@ -483,14 +412,11 @@ const AdminUsersPage: React.FC = () => {
                           (user.role === 'manager') ? '#f57c00' : 
                           '#7b1fa2'
                       }}>
-                        {user.role ? 
-                          (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 
-                          'Staff'
-                        }
+                        {toAppRole(user.role) ? ROLE_LABELS[toAppRole(user.role)!] : 'תפקיד לא תקין'}
                       </span>
                     </td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {user.role === 'staff' ? (
+                      {user.role !== 'admin' ? (
                         <span style={{ 
                           padding: '4px 8px',
                           borderRadius: '12px',
@@ -499,10 +425,7 @@ const AdminUsersPage: React.FC = () => {
                           backgroundColor: (user.department === 'bar') ? '#fff3e0' : '#e8f5e8',
                           color: (user.department === 'bar') ? '#f57c00' : '#388e3c'
                         }}>
-                          {user.department ? 
-                            (user.department.charAt(0).toUpperCase() + user.department.slice(1)) : 
-                            'Bar'
-                          }
+                          {departmentLabel(user.department) ?? 'לא הוגדרה'}
                         </span>
                       ) : (
                         <span style={{ 
@@ -521,45 +444,49 @@ const AdminUsersPage: React.FC = () => {
                       {user.phoneNumber || '-'}
                     </td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {user.createdAt ? 
-                        (user.createdAt.toMillis ? 
-                          new Date(user.createdAt.toMillis()).toLocaleDateString() :
-                          new Date((user.createdAt as any).toMillis()).toLocaleDateString()
-                        ) : 
-                        '-'
-                      }
+                      {formatCreatedAt(user.createdAt)}
                     </td>
                     {/* Actions */}
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      <button
-                        onClick={() => openEditModal(user)}
-                        style={{
-                          marginRight: '8px',
-                          backgroundColor: '#1976d2',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        עריכה
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user)}
-                        style={{
-                          backgroundColor: '#f44336',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        מחיקה
-                      </button>
+                      {isDeactivated(user) ? (
+                        <span style={{ fontSize: '12px', color: '#666' }}>אין פעולות זמינות</span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => openEditModal(user)}
+                            disabled={loading}
+                            style={{
+                              marginLeft: '8px',
+                              backgroundColor: '#1976d2',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            עריכה
+                          </button>
+                          <button
+                            onClick={() => handleDeactivate(user)}
+                            disabled={loading || user.uid === currentUid}
+                            title={user.uid === currentUid ? 'לא ניתן להשבית את עצמך' : undefined}
+                            style={{
+                              opacity: user.uid === currentUid ? 0.5 : 1,
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            השבתה
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -638,7 +565,7 @@ const AdminUsersPage: React.FC = () => {
                 {/* Full Name */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    Full Name <span style={{ color: 'red' }}>*</span>
+                    שם מלא <span style={{ color: 'red' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -652,7 +579,7 @@ const AdminUsersPage: React.FC = () => {
                       borderRadius: '4px',
                       fontSize: '16px'
                     }}
-                    placeholder="Enter full name"
+                    placeholder="שם פרטי ומשפחה"
                   />
                   {formErrors.fullName && (
                     <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
@@ -664,7 +591,7 @@ const AdminUsersPage: React.FC = () => {
                 {/* Email */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    Email <span style={{ color: 'red' }}>*</span>
+                    דוא״ל <span style={{ color: 'red' }}>*</span>
                   </label>
                   <input
                     type="email"
@@ -680,7 +607,8 @@ const AdminUsersPage: React.FC = () => {
                       fontSize: '16px',
                       backgroundColor: editMode ? '#f5f5f5' : '#fff'
                     }}
-                    placeholder="Enter email address"
+                    placeholder="name@example.com"
+                    dir="ltr"
                   />
                   {formErrors.email && (
                     <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
@@ -692,7 +620,7 @@ const AdminUsersPage: React.FC = () => {
                 {/* Phone Number */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    Phone Number
+                    טלפון
                   </label>
                   <input
                     type="tel"
@@ -706,18 +634,20 @@ const AdminUsersPage: React.FC = () => {
                       borderRadius: '4px',
                       fontSize: '16px'
                     }}
-                    placeholder="Enter phone number (optional)"
+                    placeholder="אופציונלי"
+                    dir="ltr"
                   />
                 </div>
 
                 {/* Role */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    Role <span style={{ color: 'red' }}>*</span>
+                    תפקיד <span style={{ color: 'red' }}>*</span>
                   </label>
                   <select
                     name="role"
-                    title="Select user role"
+                    title="בחר תפקיד"
+                    disabled={editMode && editingUser?.uid === currentUid}
                     value={formData.role}
                     onChange={handleInputChange}
                     style={{
@@ -728,9 +658,9 @@ const AdminUsersPage: React.FC = () => {
                       fontSize: '16px'
                     }}
                   >
-                    <option value="staff">Staff</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
+                    <option value="staff">{ROLE_LABELS.staff}</option>
+                    <option value="manager">{ROLE_LABELS.manager}</option>
+                    <option value="admin">{ROLE_LABELS.admin}</option>
                   </select>
                   {formErrors.role && (
                     <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
@@ -739,15 +669,15 @@ const AdminUsersPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Department - Only for Staff */}
-                {formData.role === 'staff' && (
+                {/* Department - staff and managers are scoped to one department */}
+                {roleNeedsDepartment(formData.role) && (
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                      Department <span style={{ color: 'red' }}>*</span>
+                      מחלקה <span style={{ color: 'red' }}>*</span>
                     </label>
                     <select
                       name="department"
-                      title="Select department"
+                      title="בחר מחלקה"
                       value={formData.department}
                       onChange={handleInputChange}
                       style={{
@@ -758,8 +688,8 @@ const AdminUsersPage: React.FC = () => {
                         fontSize: '16px'
                       }}
                     >
-                      <option value="bar">Bar</option>
-                      <option value="kitchen">Kitchen</option>
+                      <option value="bar">בר</option>
+                      <option value="kitchen">מטבח</option>
                     </select>
                     {formErrors.department && (
                       <div style={{ 
@@ -777,7 +707,7 @@ const AdminUsersPage: React.FC = () => {
                 {!editMode && (
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                      Password <span style={{ color: 'red' }}>*</span>
+                      סיסמה ראשונית <span style={{ color: 'red' }}>*</span>
                     </label>
                     <input
                       type="password"
@@ -791,7 +721,8 @@ const AdminUsersPage: React.FC = () => {
                         borderRadius: '4px',
                         fontSize: '16px'
                       }}
-                      placeholder="Enter password (min 6 characters)"
+                      placeholder="לפחות 6 תווים"
+                      dir="ltr"
                     />
                     {formErrors.password && (
                       <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
