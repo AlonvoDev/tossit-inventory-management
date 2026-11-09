@@ -35,6 +35,9 @@ beforeAll(async () => {
   app.post(`/${projectId}/us-central1/createEmployee`, handlers.createEmployee);
   app.post(`/${projectId}/us-central1/updateEmployee`, handlers.updateEmployee);
   app.post(`/${projectId}/us-central1/deactivateEmployee`, handlers.deactivateEmployee);
+  app.post(`/${projectId}/us-central1/upsertPushDevice`, handlers.upsertPushDevice);
+  app.post(`/${projectId}/us-central1/revokePushDevice`, handlers.revokePushDevice);
+  app.post(`/${projectId}/us-central1/getPushDeviceStatus`, handlers.getPushDeviceStatus);
   await new Promise<void>(resolve => { server = app.listen(5001, '127.0.0.1', resolve); });
   const store = adminStore(admin);
   await adminAuth(admin).createUser({ uid: ownerUid, email: ownerEmail, password });
@@ -49,6 +52,11 @@ beforeAll(async () => {
 afterAll(async () => {
   if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
   if (admin) {
+    for (const name of ['pushDevices', 'pushEndpointClaims', 'notificationDeliveries']) {
+      for (const doc of (await adminStore(admin).collection(name).get()).docs) await doc.ref.delete();
+    }
+    await adminStore(admin).doc('items/push-expired-fixture').delete();
+    await adminStore(admin).doc('businessSettings/integration-a').delete();
     for (const uid of uids) {
       await adminStore(admin).doc(`users/${uid}`).delete();
       await adminAuth(admin).deleteUser(uid).catch(() => undefined);
@@ -79,5 +87,49 @@ describe('real callable provisioning against local emulators', () => {
     expect((await adminStore(admin).doc(`users/${first}`).get()).data()).toMatchObject({ isActive: false, isOnShift: false });
     await expect(create(input)).rejects.toMatchObject({ code: 'functions/failed-precondition' });
     expect((await adminAuth(admin).getUser(first)).disabled).toBe(true);
+  });
+});
+
+describe('real push callables and scheduler persistence', () => {
+  it('binds devices with capabilities, blocks endpoint takeover and supports fenced signed-out cleanup', async () => {
+    const { createECDH } = await import('node:crypto'); const key = createECDH('prime256v1'); key.generateKeys();
+    await signInWithEmailAndPassword(getAuth(client), ownerEmail, password);
+    const input = { deviceId: `device-${randomUUID()}`, deviceToken: randomUUID() + randomUUID(), bindingId: `binding-${randomUUID()}`, expectedActorUid: ownerUid, expectedBusinessId: 'integration-a', subscription: { endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID()}`, expirationTime: null, keys: { p256dh: key.getPublicKey().toString('base64url'), auth: Buffer.alloc(16, 2).toString('base64url') } } };
+    const register = httpsCallable(functions, 'upsertPushDevice'); const revoke = httpsCallable(functions, 'revokePushDevice'); const status = httpsCallable(functions, 'getPushDeviceStatus');
+    await register(input); await register(input);
+    const store = adminStore(admin);
+    expect((await store.doc(`pushDevices/${input.deviceId}`).get()).data()).toMatchObject({ uid: ownerUid, businessId: 'integration-a', enabled: true });
+    await expect(register({ ...input, deviceToken: 'wrong'.repeat(16) })).rejects.toMatchObject({ code: 'functions/permission-denied' });
+    await expect(register({ ...input, deviceId: `device-${randomUUID()}` })).rejects.toMatchObject({ code: 'functions/already-exists' });
+    const next = { ...input, bindingId: `binding-${randomUUID()}` }; await register(next);
+    expect((await revoke(input)).data).toEqual({ revoked: false });
+    expect((await status(next)).data).toEqual({ enabled: true });
+    const { signOut } = await import('firebase/auth'); await signOut(getAuth(client));
+    expect((await revoke(next)).data).toEqual({ revoked: true });
+    expect((await store.doc(`pushDevices/${input.deviceId}`).get()).data()!.enabled).toBe(false);
+    await signInWithEmailAndPassword(getAuth(client), ownerEmail, password);
+  });
+  it('uses actual Firestore delivery claims to deduplicate and ends shifts only with opt-in and a safe cutoff', async () => {
+    const { firebaseNotificationService } = await import('../src/firebaseNotifications');
+    const { israelSlot } = await import('../src/notifications');
+    const { Timestamp } = await import('firebase-admin/firestore');
+    const { createECDH } = await import('node:crypto'); const key = createECDH('prime256v1'); key.generateKeys();
+    const store = adminStore(admin); const at = Date.parse('2026-11-10T06:00:00Z');
+    const sends: unknown[] = [];
+    const service = firebaseNotificationService({ store, now: () => at, send: async (_sub, payload) => { sends.push(payload); } });
+    const input = { deviceId: `device-${randomUUID()}`, deviceToken: randomUUID() + randomUUID(), bindingId: `binding-${randomUUID()}`, expectedActorUid: ownerUid, expectedBusinessId: 'integration-a', subscription: { endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID()}`, keys: { p256dh: key.getPublicKey().toString('base64url'), auth: Buffer.alloc(16, 3).toString('base64url') } } };
+    await service.register(ownerUid, input);
+    await store.doc('items/push-expired-fixture').set({ businessId: 'integration-a', area: 'bar', expiryTime: Timestamp.fromMillis(at - 86400000), finished: false, discarded: false, isThrown: false });
+    const slot = israelSlot(new Date(at))!;
+    await Promise.all([service.run(slot), service.run(slot)]); expect(sends).toHaveLength(1);
+    expect(sends[0]).toMatchObject({ version: 1, url: '/dashboard' });
+    const midnightAt = Date.parse('2026-11-09T22:00:00Z'); const midnight = israelSlot(new Date(midnightAt))!;
+    const midnightService = firebaseNotificationService({ store, now: () => midnightAt, send: async () => { throw new Error('No midnight push should be sent'); } });
+    await store.doc(`users/${ownerUid}`).update({ isOnShift: true, shiftStartedAt: Timestamp.fromMillis(midnightAt - 3600000) });
+    await midnightService.run(midnight); expect((await store.doc(`users/${ownerUid}`).get()).data()!.isOnShift).toBe(true);
+    await store.doc('businessSettings/integration-a').set({ timezone: 'Asia/Jerusalem', eveningRemindersEnabled: true, morningSummaryEnabled: true, autoEndShiftsAtMidnight: true });
+    await midnightService.run(midnight); expect((await store.doc(`users/${ownerUid}`).get()).data()!.isOnShift).toBe(false);
+    await store.doc(`users/${ownerUid}`).update({ isOnShift: true, shiftStartedAt: Timestamp.fromMillis(midnightAt + 1000) });
+    await midnightService.run(midnight); expect((await store.doc(`users/${ownerUid}`).get()).data()!.isOnShift).toBe(true);
   });
 });
