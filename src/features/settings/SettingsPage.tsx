@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Box, Typography, Switch, FormControlLabel, Divider } from '@mui/material';
 import { Card, Button, Input } from '../../components/ui';
 import { tokens } from '../../app/theme';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 
 export const SettingsPage: React.FC = () => {
   const { userProfile } = useAuth();

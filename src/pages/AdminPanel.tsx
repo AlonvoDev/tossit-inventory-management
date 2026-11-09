@@ -268,13 +268,16 @@ const AdminPanel: React.FC = () => {
                   icon={<CatalogIcon />} 
                   iconPosition="start"
                 />
-                <Tab 
-                  value="users" 
-                  label="ניהול משתמשים" 
-                  icon={<UsersIcon />} 
-                  iconPosition="start"
-                  onClick={handleUsersTab}
-                />
+                {/* User management is admin-only (see src/app/access.ts); managers never see a dead-end tab. */}
+                {isAdmin && (
+                  <Tab
+                    value="users"
+                    label="ניהול משתמשים"
+                    icon={<UsersIcon />}
+                    iconPosition="start"
+                    onClick={handleUsersTab}
+                  />
+                )}
                 <Tab 
                   value="products" 
                   label="ניהול מוצרים" 

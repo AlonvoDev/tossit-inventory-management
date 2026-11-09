@@ -8,7 +8,6 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Badge,
   Box,
   Divider,
   ListItemIcon,
@@ -35,9 +34,7 @@ import {
   Dashboard as DashboardIcon,
   AdminPanelSettings as AdminIcon,
   People as UsersIcon,
-  Settings as SettingsIcon,
   Logout as LogoutIcon,
-  Notifications as NotificationsIcon,
   Store as FridgeIcon,
   PersonAdd as PersonAddIcon,
   Close as CloseIcon,
@@ -53,26 +50,25 @@ import ClockDisplay from './ClockDisplay';
 import { createUserByAdmin } from '../api/authAPI';
 
 import { addCustomCategory } from '../api/categoriesAPI';
+import { canAccessRoute, canManageBusiness, departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
 
 interface NavigationItem {
   id: string;
   label: string;
   icon: React.ReactElement;
   onClick: () => void;
-  badge?: number;
   divider?: boolean;
-  adminOnly?: boolean;
-  managerOnly?: boolean;
+  /** Whether the current role may see this entry; derived from src/app/access.ts. */
+  visible: boolean;
 }
 
 const UnifiedNavigation: React.FC = () => {
-  const { user, profile, isAdmin, isManager, isOffline, logout } = useAuth();
-  const { showInfo, showError } = useNotifications();
+  const { user, profile, role, isOffline, logout } = useAuth();
+  const { showError } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
   
   // User Registration Modal State
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -106,17 +102,6 @@ const UnifiedNavigation: React.FC = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-  };
-
-  const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setNotificationAnchor(event.currentTarget);
-    
-    // Show demo notification
-    showInfo('דוגמת התראה', 'זוהי התראת דוגמה מהמערכת החדשה! 🎉');
-  };
-
-  const handleNotificationClose = () => {
-    setNotificationAnchor(null);
   };
 
   const handleSignOut = async () => {
@@ -271,118 +256,33 @@ const UnifiedNavigation: React.FC = () => {
     if (path === '/admin') return 'ניהול מערכת';
     if (path === '/admin/users') return 'ניהול משתמשים';
     if (path === '/admin/fridges') return 'ניהול מקררים';
+    if (path === '/reports') return 'דוחות';
+    if (path === '/settings') return 'הגדרות';
     return 'TossIt Pro';
   };
 
-  const navigationItems: NavigationItem[] = [
-    {
-      id: 'dashboard',
-      label: 'לוח הבקרה',
-      icon: <DashboardIcon />,
-      onClick: () => {
-        navigate('/dashboard');
-        handleMenuClose();
-      },
-    },
-    {
-      id: 'divider1',
-      label: '',
-      icon: <></>,
-      onClick: () => {},
-      divider: true,
-    },
-    {
-      id: 'admin',
-      label: 'ניהול מערכת',
-      icon: <AdminIcon />,
-      onClick: () => {
-        navigate('/admin');
-        handleMenuClose();
-      },
-      managerOnly: true,
-    },
-    {
-      id: 'users',
-      label: 'ניהול משתמשים',
-      icon: <UsersIcon />,
-      onClick: () => {
-        navigate('/admin/users');
-        handleMenuClose();
-      },
-      adminOnly: true,
-    },
-    {
-      id: 'add-user',
-      label: 'הוסף משתמש חדש',
-      icon: <PersonAddIcon />,
-      onClick: handleRegisterModalOpen,
-      adminOnly: true,
-    },
-    {
-      id: 'fridges',
-      label: 'ניהול מקררים',
-      icon: <FridgeIcon />,
-      onClick: () => {
-        navigate('/admin/fridges');
-        handleMenuClose();
-      },
-      adminOnly: true,
-    },
+  const go = (path: string) => () => {
+    navigate(path);
+    handleMenuClose();
+  };
+  const canSeeAdminPanel = canAccessRoute(role, 'admin');
+  const isBusinessAdmin = canManageBusiness(role);
 
-    {
-      id: 'add-category',
-      label: 'הוסף קטגוריה חדשה',
-      icon: <CategoryIcon />,
-      onClick: handleCategoryModalOpen,
-      adminOnly: true,
-    },
-    {
-      id: 'divider2',
-      label: '',
-      icon: <></>,
-      onClick: () => {},
-      divider: true,
-      managerOnly: true,
-    },
-    {
-      id: 'settings',
-      label: 'הגדרות',
-      icon: <SettingsIcon />,
-      onClick: () => {
-        // TODO: Navigate to settings page
-        handleMenuClose();
-      },
-    },
-    {
-      id: 'qa-tests',
-      label: 'בדיקת איכות',
-      icon: <BugReportIcon />,
-      onClick: () => {
-        navigate('/admin?tab=qa');
-        handleMenuClose();
-      },
-      managerOnly: true,
-    },
-    {
-      id: 'divider3',
-      label: '',
-      icon: <></>,
-      onClick: () => {},
-      divider: true,
-    },
-    {
-      id: 'logout',
-      label: 'התנתק',
-      icon: <LogoutIcon />,
-      onClick: handleSignOut,
-    },
+  const navigationItems: NavigationItem[] = [
+    { id: 'dashboard', label: 'לוח הבקרה', icon: <DashboardIcon />, onClick: go('/dashboard'), visible: canAccessRoute(role, 'dashboard') },
+    { id: 'divider1', label: '', icon: <></>, onClick: () => {}, divider: true, visible: canSeeAdminPanel },
+    { id: 'admin', label: 'ניהול מערכת', icon: <AdminIcon />, onClick: go('/admin'), visible: canSeeAdminPanel },
+    { id: 'users', label: 'ניהול משתמשים', icon: <UsersIcon />, onClick: go('/admin/users'), visible: canAccessRoute(role, 'adminUsers') },
+    { id: 'add-user', label: 'הוסף משתמש חדש', icon: <PersonAddIcon />, onClick: handleRegisterModalOpen, visible: isBusinessAdmin },
+    { id: 'fridges', label: 'ניהול מקררים', icon: <FridgeIcon />, onClick: go('/admin/fridges'), visible: canAccessRoute(role, 'adminFridges') },
+    { id: 'add-category', label: 'הוסף קטגוריה חדשה', icon: <CategoryIcon />, onClick: handleCategoryModalOpen, visible: isBusinessAdmin },
+    // Settings and the standalone reports page are not advertised until U3 connects them to real persistence/data.
+    { id: 'qa-tests', label: 'בדיקת איכות', icon: <BugReportIcon />, onClick: go('/admin?tab=qa'), visible: canSeeAdminPanel },
+    { id: 'divider3', label: '', icon: <></>, onClick: () => {}, divider: true, visible: true },
+    { id: 'logout', label: 'התנתק', icon: <LogoutIcon />, onClick: handleSignOut, visible: true },
   ];
 
-  const filteredNavigationItems = navigationItems.filter(item => {
-    if (item.adminOnly && !isAdmin) return false;
-    if (item.managerOnly && !isAdmin && !isManager) return false;
-    return true;
-  });
+  const filteredNavigationItems = navigationItems.filter(item => item.visible);
 
   if (!user || !profile) {
     return null;
@@ -480,23 +380,6 @@ const UnifiedNavigation: React.FC = () => {
             />
           )}
 
-          {/* Notifications */}
-          <IconButton 
-            color="inherit"
-            onClick={handleNotificationOpen}
-            sx={{
-              background: alpha(theme.palette.common.white, 0.1),
-              '&:hover': {
-                background: alpha(theme.palette.common.white, 0.2),
-              },
-              width: { xs: 40, sm: 48 },
-              height: { xs: 40, sm: 48 },
-            }}
-          >
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-            </Badge>
-          </IconButton>
 
           {/* User Profile */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
@@ -542,13 +425,11 @@ const UnifiedNavigation: React.FC = () => {
             {profile.fullName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {profile.role === 'admin' ? 'מנהל מערכת' : 
-             profile.role === 'manager' ? 'מנהל מחלקה' : 
-             'עובד'}
+            {ROLE_LABELS[toAppRole(profile.role) ?? 'staff']}
           </Typography>
-          {profile.department && (
+          {departmentLabel(profile.department) && (
             <Chip 
-              label={profile.department} 
+              label={departmentLabel(profile.department)}
               size="small" 
               sx={{ mt: 1, fontSize: '0.7rem' }}
             />
@@ -591,9 +472,6 @@ const UnifiedNavigation: React.FC = () => {
                   }
                 }}
               />
-              {item.badge && (
-                <Badge badgeContent={item.badge} color="primary" />
-              )}
             </MenuItem>
           );
         })}
@@ -845,35 +723,6 @@ const UnifiedNavigation: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Notifications Menu */}
-      <Menu
-        anchorEl={notificationAnchor}
-        open={Boolean(notificationAnchor)}
-        onClose={handleNotificationClose}
-        sx={{
-          '& .MuiPaper-root': {
-            borderRadius: 3,
-            minWidth: 300,
-            mt: 1,
-            background: alpha(theme.palette.background.paper, 0.95),
-            backdropFilter: 'blur(20px)',
-          },
-        }}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        <Box sx={{ px: 3, py: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            התראות
-          </Typography>
-        </Box>
-        <Divider />
-        <Box sx={{ px: 3, py: 2, textAlign: 'center', color: 'text.secondary' }}>
-          <Typography variant="body2">
-            אין התראות חדשות
-          </Typography>
-        </Box>
-      </Menu>
     </AppBar>
   );
 };

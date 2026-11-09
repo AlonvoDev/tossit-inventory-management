@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { markItemAsFinished, markItemAsDiscarded } from '../api/firestoreAPI';
-import { useAuth } from './useAuth';
+import { useAuth } from '../context/AuthContext';
 
 export interface ItemActionsResult {
   isModalOpen: boolean;

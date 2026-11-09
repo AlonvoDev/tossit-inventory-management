@@ -3,7 +3,7 @@ import { Box, Typography, Select, MenuItem, FormControl, InputLabel } from '@mui
 import { Card, Button } from '../../components/ui';
 import { tokens } from '../../app/theme';
 import DiscardReport from '../../components/DiscardReport';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 
 export const ReportsPage: React.FC = () => {
   const { userProfile } = useAuth();

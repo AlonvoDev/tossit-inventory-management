@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { signIn, signInWithGoogle } from '../api/authAPI';
 import { Container, Grid } from '@mui/material';
 import tossitLogo from '../assets/tossit-logo.png';
@@ -10,7 +10,6 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useEmulators, setUseEmulators] = useState(false);
-  const navigate = useNavigate();
   
   // Check if emulators are enabled
   useEffect(() => {
@@ -39,8 +38,8 @@ const LoginPage: React.FC = () => {
     setError(null);
     
     try {
+      // The auth observer redirects once the profile is resolved (see routes PublicOnly).
       await signIn(email, password);
-      navigate('/dashboard');
     } catch (error: unknown) {
       console.error('Login error:', error);
       
@@ -57,7 +56,7 @@ const LoginPage: React.FC = () => {
       } else if (firebaseError?.code === 'auth/invalid-credential' || firebaseError?.code === 'auth/wrong-password') {
         setError('שם משתמש או סיסמה שגויים');
       } else if (firebaseError?.code === 'auth/user-not-found') {
-        setError('חשבון לא נמצא. בדוק את כתובת האימייל או צור חשבון חדש');
+        setError('חשבון לא נמצא. בדוק את כתובת הדוא"ל או פנה למנהל העסק');
       } else if (firebaseError?.code === 'auth/too-many-requests') {
         setError('יותר מדי ניסיונות התחברות כושלים. נסה שוב מאוחר יותר');
       } else {
@@ -74,7 +73,6 @@ const LoginPage: React.FC = () => {
     
     try {
       await signInWithGoogle();
-      navigate('/dashboard');
     } catch (error: unknown) {
       console.error('Google login error:', error);
       
@@ -96,33 +94,6 @@ const LoginPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-  
-  // Development-only demo login
-  const handleDemoLogin = async () => {
-    if (window.location.hostname !== 'localhost') return;
-    
-    setEmail('demo@example.com');
-    setPassword('password123');
-    
-    setIsLoading(true);
-    setError(null);
-    
-    // Create a dummy user in memory
-    setTimeout(() => {
-      localStorage.setItem('demoUser', JSON.stringify({
-        uid: 'demo123',
-        fullName: 'Demo Manager',
-        email: 'demo@example.com',
-        displayName: 'Demo Manager',
-        businessId: 'business1',
-        role: 'manager',
-        department: 'bar'
-      }));
-      
-      navigate('/dashboard');
-      setIsLoading(false);
-    }, 1500);
   };
   
   const isLocalhost = window.location.hostname === 'localhost' || 
@@ -204,7 +175,7 @@ const LoginPage: React.FC = () => {
         </form>
         
         <div className="login-footer">
-          <p>אין לך חשבון? <Link to="/register">הירשם כאן</Link></p>
+          <p>אין לך חשבון? <Link to="/register">איך מקבלים גישה?</Link></p>
         </div>
         
         {isLocalhost && (
@@ -220,14 +191,6 @@ const LoginPage: React.FC = () => {
                 {useEmulators ? 'השתמש באמולטור (פעיל)' : 'השתמש באמולטור (כבוי)'}
               </label>
             </div>
-            
-            <button
-              onClick={handleDemoLogin}
-              className="demo-button"
-              type="button"
-            >
-              התחבר כמשתמש הדגמה
-            </button>
           </div>
         )}
       </div>
@@ -435,20 +398,6 @@ const LoginPage: React.FC = () => {
           color: #666;
         }
         
-        .demo-button {
-          width: 100%;
-          padding: 10px;
-          background-color: #FF9800;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          font-size: 14px;
-          cursor: pointer;
-        }
-        
-        .demo-button:hover {
-          background-color: #F57C00;
-        }
       `}</style>
     </Container>
   );
