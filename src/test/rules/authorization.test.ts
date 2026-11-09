@@ -147,6 +147,14 @@ describe('business authorization', () => {
     await assertFails(updateDoc(doc(db('staff'), 'items/bar-item'), { ...action, discardReason: 'unknown' }));
     await assertSucceeds(updateDoc(doc(db('staff'), 'items/bar-item'), action));
   });
+  it('rejects attaching a forged opposite-action audit to a terminal update', async () => {
+    await assertFails(updateDoc(doc(db('staff'), 'items/bar-item'), {
+      finished: true, finishedBy: 'staff', finishedAt: serverTimestamp(), discardedAt: serverTimestamp(), discardedBy: 'admin',
+    }));
+    await assertFails(updateDoc(doc(db('staff'), 'items/bar-item'), {
+      discarded: true, isThrown: true, discardedBy: 'staff', discardedAt: serverTimestamp(), discardedQuantity: 0.5, discardReason: 'expired', finishedAt: serverTimestamp(), finishedBy: 'admin',
+    }));
+  });
 });
 
 describe('business settings authorization', () => {

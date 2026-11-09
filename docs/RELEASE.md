@@ -87,3 +87,17 @@ morning notifications enabled, and automatic midnight shift ending disabled.
 These preferences do not start a scheduler; scheduling remains C4.
 Pure inventory validation/normalization and shared contracts are tested, but the
 legacy inventory APIs still need C2b wiring before strict rules can be deployed.
+
+## C2 online inventory checkpoint (supersedes the C2a wiring blocker)
+
+Inventory operations and legacy adapters now persist catalog product identity,
+unit and expiry, use verified actor scope, acknowledge actual writes and use
+transactional terminal states with server audit timestamps. Scoped server reads,
+realtime inventory, normalized legacy audit fields, reason-filtered bounded
+reports and productCategories grants are implemented and emulator tested.
+
+This removes the old inventory-adapter blocker, but does not authorize a live
+release. U2 must consume canonical department values and stable per-intent IDs;
+C3 offline queue, C4 server push/scheduling, combined branch checks and real-device
+pilot remain release gates. The old browser expiration timers are not a deployed
+scheduler. No production configuration or data was changed.

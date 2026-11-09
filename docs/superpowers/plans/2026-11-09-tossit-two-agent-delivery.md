@@ -237,23 +237,23 @@ Every task may be split into 30–90 minute bounded subtasks if it would otherwi
 **Files:** Modify AuthContext, ShiftContext, hooks/useAuth, api/authAPI, services/firebase, firestore.rules, firebase.json, package files; create `functions/src/users.ts`, `functions/src/index.ts`, `functions/package.json`, `functions/tsconfig.json`, `src/test/rules/authorization.test.ts`, `src/test/domain/auth.test.ts`, and Codex handoff.
 **Consumes:** Existing UserProfile and admin APIs.
 **Produces:** The identity aliases above; safe admin provisioning/deactivation; compatible existing authAPI exports.
-- [ ] Add failing tests for signed-out/cross-business access, self-promotion, manager scope, UID change and shift restoration.
-- [ ] Add callable tests for duplicate create requests, unauthorized caller and profile-write failure cleanup.
-- [ ] Run tests to demonstrate the current failures.
-- [ ] Implement authoritative identity, active-profile checks, restricted rules and backend admin operations. Remove default-admin/fake-profile fallbacks. Keep current API signatures while routing privileged operations safely.
-- [ ] Run rule tests via emulators, targeted auth/callable tests, build and existing tests; record missing deployment setup separately.
-- [ ] Publish C1 checkpoint and handoff. Claude may consume the stable identity contract.
+- [x] Add failing tests for signed-out/cross-business access, self-promotion, manager scope, UID change and shift restoration.
+- [x] Add callable tests for duplicate create requests, unauthorized caller and profile-write failure cleanup.
+- [x] Run tests to demonstrate the current failures.
+- [x] Implement authoritative identity, active-profile checks, restricted rules and backend admin operations. Remove default-admin/fake-profile fallbacks. Keep current API signatures while routing privileged operations safely.
+- [x] Run rule tests via emulators, targeted auth/callable tests, build and existing tests; record missing deployment setup separately.
+- [x] Publish C1 checkpoint and handoff. Claude may consume the stable identity contract.
 **Acceptance:** No browser-controlled role grants, no admin-session replacement, refresh preserves shift and identity; neither missing nor disabled profile authorizes access.
 
 ### C2 — Correct online inventory and stable UI contracts
 **Files:** Create contracts.ts, api/inventoryOperations.ts, api/settingsAPI.ts, domain/inventory.ts, domain/normalizeItem.ts; modify api/firestoreAPI/productsAPI/fridgesAPI/categoriesAPI, models, expiryUtils and rules as needed; add domain/inventory.test.ts and domain/settings.test.ts under src/test.
 **Consumes:** C1 identity; existing product/fridge catalog.
 **Produces:** Exact operation/settings signatures above, normalized legacy Item compatibility, truthful receipts and realtime reads.
-- [ ] Write failing cases: shelf lives 1 and 7 days; 0.5 kg accepted; fractional units rejected; NaN/Infinity rejected; foreign fridge/product rejected; permission denied throws; legacy Hebrew areas remain visible; competing closes cannot both win.
-- [ ] Run tests before implementation.
-- [ ] Implement catalog-derived expiry and unit, productId persistence, actor derivation, server-authoritative closing, scoped realtime reads and essential settings. Preserve adapters for existing UI calls.
-- [ ] At this gate online calls return synced after acknowledgement. Offline calls reject unavailable until C3; never invent pending success before durable queuing exists.
-- [ ] Run targeted tests, emulator invariants, build and all tests; publish C2 contract checkpoint.
+- [x] Write failing cases: shelf lives 1 and 7 days; 0.5 kg accepted; fractional units rejected; NaN/Infinity rejected; foreign fridge/product rejected; permission denied throws; legacy Hebrew areas remain visible; competing closes cannot both win.
+- [x] Run tests before implementation.
+- [x] Implement catalog-derived expiry and unit, productId persistence, actor derivation, server-authoritative closing, scoped realtime reads and essential settings. Preserve adapters for existing UI calls.
+- [x] At this gate online calls return synced after acknowledgement. Offline calls reject unavailable until C3; never invent pending success before durable queuing exists.
+- [x] Run targeted tests, emulator invariants, build and all tests; publish C2 contract checkpoint.
 **Acceptance:** Claude can integrate U2/U3 against real exported types. C2 handoff lists exact new fields and deployment-neutral migration notes.
 
 ### C3 — Durable offline operations and lifecycle
