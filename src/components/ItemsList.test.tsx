@@ -24,6 +24,10 @@ vi.mock('../utils/expiryUtils', () => ({
 }));
 vi.mock('./LoadingSkeleton', () => ({ default: () => <div>LOADING</div> }));
 const auth = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+const offline = vi.hoisted(() => ({ operations: [] as { operationId: string; itemId: string; state: string }[] }));
+vi.mock('../offline/OfflineProvider', () => ({
+  useOffline: () => ({ operations: offline.operations, pendingCount: 0, failedCount: 0, error: null, retry: vi.fn() }),
+}));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => auth.current }));
 
 import ItemsList from './ItemsList';
@@ -46,6 +50,7 @@ const push = (items: unknown[]) => act(() => api.listener!(items));
 
 describe('ItemsList', () => {
   beforeEach(() => {
+    offline.operations = [];
     api.subscribeBusinessItems.mockReset().mockReturnValue(() => undefined);
     api.getBusinessFridges.mockReset().mockResolvedValue([]);
     api.closeInventoryItem.mockReset();
@@ -126,6 +131,30 @@ describe('ItemsList', () => {
     expect(await within(dialog).findByText(/כבר סומן כנגמר או כנזרק על ידי פעולה אחרת/)).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'סמן כנגמר' })).not.toBeInTheDocument();
     expect(screen.queryByText(/"לימון" סומן/)).not.toBeInTheDocument();
+  });
+
+  it('badges items with pending or failed queued operations', async () => {
+    as('staff');
+    offline.operations = [
+      { operationId: 'o1', itemId: '1', state: 'pending' },
+      { operationId: 'o2', itemId: '2', state: 'failed' },
+      { operationId: 'o3', itemId: '3', state: 'synced' },
+    ];
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar'), mk('2', 'נענע', 'bar'), mk('3', 'ליים', 'bar')]);
+    expect(await screen.findByText('ממתין לשליחה')).toBeInTheDocument();
+    expect(screen.getByText('הפעולה נכשלה')).toBeInTheDocument();
+    expect(screen.getAllByText(/ממתין לשליחה|הפעולה נכשלה/)).toHaveLength(2);
+  });
+
+  it('closing offline is allowed and a pending receipt is reported as not yet saved', async () => {
+    as('staff');
+    api.closeInventoryItem.mockResolvedValue({ operationId: 'x', itemId: '1', state: 'pending' });
+    render(<ItemsList areaFilter="bar" isOffline />);
+    push([mk('1', 'לימון', 'bar')]);
+    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'סמן כנגמר' }));
+    expect(await screen.findByText('העדכון של "לימון" ממתין לשליחה לשרת ועדיין לא נשמר')).toBeInTheDocument();
   });
 
   it('off-shift staff cannot open the action dialog', async () => {

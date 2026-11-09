@@ -136,12 +136,16 @@ describe('OpenItemForm', () => {
     expect(submit()).toBeEnabled();
   });
 
-  it('offline: blocked with an explanation and no local queue', async () => {
+  it('offline: allowed, explained, and a pending receipt is not called saved', async () => {
     as('staff', true, true);
+    api.openInventoryItem.mockResolvedValue({ operationId: 'x', itemId: 'x', state: 'pending' });
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     render(<OpenItemForm department="kitchen" />);
-    expect(await screen.findByText(/פתיחת פריט נשמרת רק כשיש חיבור/)).toBeInTheDocument();
-    expect(submit()).toBeDisabled();
+    expect(await screen.findByText(/הפריט יישמר במכשיר וישלח לשרת/)).toBeInTheDocument();
+    await pick(/ביצים/);
+    await userEvent.click(submit());
+    expect(await screen.findByText(/נשמר במכשיר וממתין לשליחה לשרת. הוא עדיין לא נשמר בשרת/)).toBeInTheDocument();
+    expect(screen.queryByText(/נפתח. תוקף/)).not.toBeInTheDocument();
     expect(setItem).not.toHaveBeenCalledWith('pendingOperations', expect.anything());
     setItem.mockRestore();
   });

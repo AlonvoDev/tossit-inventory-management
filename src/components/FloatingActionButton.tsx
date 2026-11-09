@@ -35,8 +35,11 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   const [showModal, setShowModal] = useState(false);
   const { profile, user, isOffline } = useAuth();
 
+  // Offline opening is allowed: C3 saves the intent on the device before sending.
+  const isDisabled = disabled || !profile || !user;
+
   const handleOpenModal = () => {
-    if (!disabled && !isOffline) {
+    if (!isDisabled) {
       setShowModal(true);
     }
   };
@@ -51,7 +54,6 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     onItemAdded();
   };
 
-  const isDisabled = disabled || isOffline || !profile || !user;
 
   const theme = useTheme();
 
@@ -86,7 +88,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           transition: 'all 0.2s ease-in-out',
           zIndex: 1000,
         }}
-        title={isOffline ? 'אין חיבור' : 'פתיחת פריט'}
+        title={isOffline ? 'פתיחת פריט (יישמר במכשיר עד שהחיבור יחזור)' : 'פתיחת פריט'}
       >
         <AddIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
       </Fab>

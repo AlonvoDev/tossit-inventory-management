@@ -4,8 +4,8 @@ import { WifiOff as OfflineIcon, Wifi as OnlineIcon } from '@mui/icons-material'
 import { tokens } from '../app/theme';
 
 /**
- * Browser connectivity only (navigator.onLine). It does not describe queued work: pending
- * operation state comes from the C3 offline provider and is shown separately once available.
+ * Browser connectivity only (navigator.onLine). Queue state (pending/failed) is shown
+ * separately by SyncStatus from the C3 OfflineProvider; this banner never claims anything synced.
  */
 export const OfflineIndicator: React.FC = () => {
   const [, setIsOnline] = useState(navigator.onLine);
@@ -54,7 +54,7 @@ export const OfflineIndicator: React.FC = () => {
             }
           }}
         >
-          <strong>אין חיבור לאינטרנט</strong> • פעולות שדורשות שרת לא יישמרו עד שהחיבור יחזור
+          <strong>אין חיבור לאינטרנט</strong> • פתיחה וסגירה של פריטים נשמרות במכשיר ונשלחות כשהחיבור חוזר. שינויים אחרים דורשים חיבור.
         </Alert>
       </Snackbar>
 

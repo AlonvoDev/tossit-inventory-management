@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { departmentLabel } from '../app/access';
 import { shiftBlocksOpening } from '../features/inventory/openItem';
 import LoadingSkeleton from './LoadingSkeleton';
@@ -9,6 +9,7 @@ import { Fridge } from '../types/Fridge';
 import { formatExpiryTime, getExpiryStatus } from '../utils/expiryUtils';
 import { ItemActionModal, ItemActionConfirm } from './ui/ItemActionModal';
 import { useCloseItem } from '../hooks/useItemActions';
+import { useOffline } from '../offline/OfflineProvider';
 import { selectItems, ListMode } from '../features/inventory/itemSelection';
 import { errorMessage } from '../features/common/errorMessage';
 
@@ -50,6 +51,16 @@ const ItemsList: React.FC<ItemsListProps> = ({
   const [actionModalItem, setActionModalItem] = useState<Item | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const close = useCloseItem();
+  // Durable queue state per item (C3): pending and failed are shown, never treated as synced.
+  const { operations } = useOffline();
+  const syncByItem = useMemo(() => {
+    const map: Record<string, 'pending' | 'failed'> = {};
+    for (const op of operations) {
+      if (op.state === 'failed') map[op.itemId] = 'failed';
+      else if (op.state === 'pending' && map[op.itemId] !== 'failed') map[op.itemId] = 'pending';
+    }
+    return map;
+  }, [operations]);
   const isActionLoading = close.submitting;
 
   // Fridges for filtering and name lookup
@@ -289,7 +300,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
               מציג פריטים נזרקים {canSeeAllDepartments ? 'מכל המחלקות' : `ממחלקת ${'ה' + (departmentLabel(userDepartment) ?? '')}`}
             </p>
           )}
-          {isOffline && <p className="offline-note">במצב לא מקוון, ייתכן שהנתונים אינם מעודכנים</p>}
+          {isOffline && <p className="offline-note">אין חיבור. מוצג המצב האחרון שנשמר במכשיר.</p>}
         </div>
       ) : (
         <div className="grouped-inventory">
@@ -331,6 +342,12 @@ const ItemsList: React.FC<ItemsListProps> = ({
                             <div key={item.id} className={`item-card ${isDiscarded ? 'discarded' : ''} ${isFinished ? 'finished' : ''} status-${statusText.toLowerCase()}`}>
                               <div className="item-header">
                                 <h3>{item.productName}</h3>
+                                {item.id && syncByItem[item.id] === 'pending' && (
+                                  <span className="sync-badge pending" title="נשמר במכשיר, עדיין לא נשמר בשרת">ממתין לשליחה</span>
+                                )}
+                                {item.id && syncByItem[item.id] === 'failed' && (
+                                  <span className="sync-badge failed" title="השרת דחה את הפעולה; פרטים בכותרת">הפעולה נכשלה</span>
+                                )}
                                 <span 
                                   className="status-badge-enhanced" 
                                   style={{ backgroundColor: statusColor }}
@@ -388,8 +405,8 @@ const ItemsList: React.FC<ItemsListProps> = ({
                                   <button
                                     className={`quick-action-btn ${statusText.toLowerCase()}-action`}
                                     onClick={() => openActionModal(item)}
-                                    disabled={isOffline || offShift}
-                                    title={isOffline ? 'אין חיבור' : offShift ? 'יש להתחיל משמרת' : undefined}
+                                    disabled={offShift}
+                                    title={offShift ? 'יש להתחיל משמרת' : undefined}
                                   >
                                     <span className="action-icon">🗑️</span>
                                     עדכן סטטוס
@@ -466,6 +483,17 @@ const ItemsList: React.FC<ItemsListProps> = ({
           border-radius: 4px;
         }
         
+        .sync-badge {
+          display: inline-block;
+          border-radius: 10px;
+          padding: 2px 8px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-inline-start: 8px;
+        }
+        .sync-badge.pending { background: #e3f2fd; color: #0d47a1; }
+        .sync-badge.failed { background: #ffebee; color: #b71c1c; }
+
         .action-notice {
           background: #e8f5e9;
           color: #1b5e20;

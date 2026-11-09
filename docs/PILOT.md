@@ -24,3 +24,11 @@ activates the new worker and removes only the previous TossIt precache.
 
 ### Desktop (Chrome/Edge) — partially automated
 - Install from the address-bar icon; repeat steps 3–4.
+
+## Offline inventory (C3 + U2/U4b) — NOT RUN on devices
+1. Signed in online on the phone, open the Dashboard once (caches profile/catalog). Enable Airplane Mode.
+2. Open a 0.5 kg item: confirmation says it is saved on the device and not yet on the server; header shows "1 ממתינות לשליחה"; the item shows "ממתין לשליחה".
+3. Close the app fully, relaunch offline: the pending item and badge are still there.
+4. Reconnect: the chip disappears after the server acknowledges; the item has the original opening time/expiry (not the reconnect time).
+5. On a second device, close the same item while the first is offline and closes it too: one device shows "הפעולה נכשלה" with "already closed" in the header list; no double close in the discard report.
+6. With pending work, tap "התנתק": warning lists the unsent count; sign in as a different account on the same phone: the first account's pending work is not shown or sent; sign back in as the first account: it is sent.

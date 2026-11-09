@@ -43,6 +43,8 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useOffline } from '../offline/OfflineProvider';
+import { SyncStatus } from '../pwa/SyncStatus';
 import tossitFavicon from '../assets/tossit-favicon.png';
 import ClockDisplay from './ClockDisplay';
 
@@ -62,6 +64,7 @@ interface NavigationItem {
 const UnifiedNavigation: React.FC = () => {
   const { user, profile, role, isOffline, logout } = useAuth();
   const { showError } = useNotifications();
+  const { pendingCount, failedCount } = useOffline();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -85,6 +88,16 @@ const UnifiedNavigation: React.FC = () => {
   };
 
   const handleSignOut = async () => {
+    // Unsent inventory work stays on this device, bound to this account (Codex C3); say so.
+    const unsent = pendingCount + failedCount;
+    if (
+      unsent > 0 &&
+      !window.confirm(
+        `יש ${unsent} פעולות מלאי שעדיין לא נשמרו בשרת. הן יישארו במכשיר הזה ויישלחו רק כשתתחבר שוב לאותו חשבון. להתנתק?`,
+      )
+    ) {
+      return;
+    }
     try {
       await logout();
       navigate('/login');
@@ -270,6 +283,9 @@ const UnifiedNavigation: React.FC = () => {
 
         {/* Action Buttons */}
         <Stack direction="row" spacing={1} alignItems="center">
+          {/* Durable queue state (separate from connectivity) */}
+          <SyncStatus />
+
           {/* Offline Indicator */}
           {isOffline && (
             <Chip 

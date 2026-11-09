@@ -1,8 +1,24 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U2c — shift button. U2 online part complete (U2a open, U2b list/close, U2c shift).
-Status: U2 online done; U2 remaining: pending/failed presentation + OfflineProvider mount after Codex C3c. U1, U3 done. U4a done; U4b waits for C3c, U4c for C4. U5 after C5 candidate.
-Last previously confirmed remote SHA: 2b4f70bbf0fcd9d49421f6739d4fbac0e2f16613 (U2b)
+Task / bounded subtask: C3 integration — merged pinned Codex C3 (89920b2), mounted OfflineProvider, pending/failed UI (U2 remainder + U4b)
+Status: U1, U2, U3 done. U4a + U4b done; U4c (notification controls) waits for C4. U5 waits for the C5 candidate.
+Last previously confirmed remote SHA: b3971399283086026ec4013bf5271b5cd171e3e6 (U2c)
+
+## Integrated other-agent SHAs
+- C1 `70d953e`, C2 `1f55cc4`, **C3 `89920b2c`** (normal merge, no conflicts; Codex handoff: C3 done, 95 client + 41 emulator tests).
+
+## C3 integration changes
+- `src/app/main.tsx`: `OfflineProvider` mounted once, directly inside `AuthProvider`, wrapping Notification/Shift providers, App, PWAPrompt and OfflineIndicator (as specified by Codex).
+- `src/pwa/SyncStatus.tsx` (new) in the header: separate chips "N ממתינות לשליחה" / "N נכשלו" (hidden when zero); dialog lists pending ("נשמר במכשיר, ממתין לשליחה") and failed operations with Hebrew reason by `errorCode`; "נסה שוב" only for failed, calls `retry(operationId)` (same operation), retry errors shown; storage-unavailable warning.
+- `src/components/UnifiedNavigation.tsx`: logout asks for confirmation when unsent work exists, explaining it stays on this device for the same account.
+- `src/pwa/OfflineIndicator.tsx`: offline banner now states exactly that opening/closing items is saved on the device and sent later, and other changes need a connection.
+- `src/components/OpenItemForm.tsx`, `FloatingActionButton.tsx`, `ItemsList.tsx`, `Dashboard.tsx`: opening and closing are allowed offline (durable write-ahead in C3); `pending` receipts are reported as "saved on the device, not yet saved on the server"; items with pending/failed operations get badges ("ממתין לשליחה" / "הפעולה נכשלה"); offline list note says it shows the last state saved on the device. Settings, catalog, fridges, users and shift changes still require a connection.
+- Dashboard no longer clears any localStorage queue (done in U2a); worker never touches IndexedDB/localStorage (U4a).
+- Tests: `SyncStatus.test.tsx` (4); ItemsList (+2: badges, offline pending close), OpenItemForm (offline pending), UnifiedNavigation (+1 logout warning), OfflineIndicator updated.
+
+## C3 integration checks
+- `npm ci`, `npm run build`: PASS (injectManifest, 18 precache entries). `npm run test:run`: 31 files, 275/275 pass (Claude UI + Codex C1–C3 client suites). `npm run lint`: **0 errors** / 7 warnings. `git diff --check`: clean.
+- NOT RUN: real browser offline sign-in/reload/replay with real Firebase (needs credentials/emulator in a browser), real device IndexedDB eviction/private mode, two-tab replay in a browser. Listed for U5/PILOT.
 
 ## U2c changed files
 - `src/components/ShiftButton.tsx`: server-derived state only (ShiftContext/AuthContext); confirmation before ending a shift; disabled offline with explanation (an offline shift write would leave the button stuck); start time shown in Asia/Jerusalem; "התחלת משמרת" label; errors as alerts.
@@ -159,7 +175,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-Wait for Codex C3c (OfflineProvider + live `subscribeSyncOperations`) and C4 (`enable/disablePushNotifications`). Then: mount OfflineProvider once in `src/app/main.tsx`, show pending/failed operations (U2 remainder + U4b), notification controls (U4c). Meanwhile, U5 docs can be drafted but must wait for the C5 candidate before claims. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+Wait for Codex C4 (`enable/disablePushNotifications`, VAPID, worker-ready flow) → U4c notification controls (explicit button, 'enabled' | 'denied' | 'unsupported', no prompt on load). Then U5 against the pinned C5 candidate. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume

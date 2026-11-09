@@ -259,7 +259,6 @@ const Dashboard: React.FC = () => {
           <FloatingActionButton
             department={activeTab}
             onItemAdded={handleItemAdded}
-            disabled={isOffline}
           />
         )}
 

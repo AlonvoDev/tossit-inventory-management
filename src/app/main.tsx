@@ -6,6 +6,7 @@ import { theme } from './theme';
 import { AuthProvider } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { ShiftProvider } from '../context/ShiftContext';
+import { OfflineProvider } from '../offline/OfflineProvider';
 import App from './App';
 import { PWAPrompt } from '../pwa/PWAPrompt';
 import { OfflineIndicator } from '../pwa/OfflineIndicator';
@@ -20,13 +21,16 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <NotificationProvider>
-            <ShiftProvider>
-              <App />
-              <PWAPrompt />
-              <OfflineIndicator />
-            </ShiftProvider>
-          </NotificationProvider>
+          {/* Codex C3: durable inventory queue + replay lifecycle; mounted once, inside AuthProvider. */}
+          <OfflineProvider>
+            <NotificationProvider>
+              <ShiftProvider>
+                <App />
+                <PWAPrompt />
+                <OfflineIndicator />
+              </ShiftProvider>
+            </NotificationProvider>
+          </OfflineProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

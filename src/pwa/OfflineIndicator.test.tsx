@@ -3,13 +3,14 @@ import { act, render, screen } from '@testing-library/react';
 import { OfflineIndicator } from './OfflineIndicator';
 
 describe('OfflineIndicator', () => {
-  it('does not promise local saving or syncing', async () => {
+  it('describes exactly what is kept offline and never claims syncing', async () => {
     render(<OfflineIndicator />);
     act(() => {
       window.dispatchEvent(new Event('offline'));
     });
-    expect(await screen.findByText(/פעולות שדורשות שרת לא יישמרו/)).toBeInTheDocument();
-    expect(screen.queryByText(/יסונכרנו|נשמר מקומית|יישמרו מקומית/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/פתיחה וסגירה של פריטים נשמרות במכשיר/)).toBeInTheDocument();
+    expect(screen.getByText(/שינויים אחרים דורשים חיבור/)).toBeInTheDocument();
+    expect(screen.queryByText(/סונכרן|יסונכרנו/)).not.toBeInTheDocument();
     act(() => {
       window.dispatchEvent(new Event('online'));
     });

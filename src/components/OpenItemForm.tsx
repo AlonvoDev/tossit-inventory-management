@@ -80,11 +80,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
   const product = useMemo(() => products.find(p => p.id === productId), [products, productId]);
   const unit = product?.type === 'kg' ? 'kg' : 'units';
   const blockedByShift = shiftBlocksOpening(role, !!isOnShift);
-  const blockedReason = blockedByShift
-    ? 'יש להתחיל משמרת כדי לפתוח פריטים.'
-    : isOffline
-      ? 'אין חיבור. פתיחת פריט נשמרת רק כשיש חיבור לשרת.'
-      : null;
+  const blockedReason = blockedByShift ? 'יש להתחיל משמרת כדי לפתוח פריטים.' : null;
   const formDisabled = disabled || submitting || !!blockedReason;
 
   const selectProduct = (id: string) => {
@@ -135,7 +131,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
       setNotice(
         receipt.state === 'synced'
           ? { severity: 'success', text: `"${product.name}" נפתח. תוקף עד ${expiry}.` }
-          : { severity: 'info', text: `"${product.name}" ממתין לשליחה לשרת. הוא עדיין לא נשמר.` },
+          : { severity: 'info', text: `"${product.name}" נשמר במכשיר וממתין לשליחה לשרת. הוא עדיין לא נשמר בשרת.` },
       );
       setProductId('');
       setFridgeId('');
@@ -160,6 +156,11 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
         פתיחת פריט — {departmentLabel(department)}
       </Typography>
 
+      {isOffline && !blockedReason && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          אין חיבור. הפריט יישמר במכשיר וישלח לשרת כשהחיבור יחזור.
+        </Alert>
+      )}
       {blockedReason && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {blockedReason}

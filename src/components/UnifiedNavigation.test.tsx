@@ -12,6 +12,10 @@ vi.mock('../context/NotificationContext', () => ({
 vi.mock('../api/authAPI', () => ({ createUserByAdmin: vi.fn() }));
 vi.mock('../api/categoriesAPI', () => ({ addCustomCategory: vi.fn() }));
 vi.mock('./ClockDisplay', () => ({ default: () => null }));
+const offline = vi.hoisted(() => ({ pendingCount: 0, failedCount: 0 }));
+vi.mock('../offline/OfflineProvider', () => ({
+  useOffline: () => ({ operations: [], pendingCount: offline.pendingCount, failedCount: offline.failedCount, error: null, retry: vi.fn() }),
+}));
 
 import UnifiedNavigation from './UnifiedNavigation';
 
@@ -95,6 +99,19 @@ describe('UnifiedNavigation menu matches route access', () => {
     await userEvent.click(within(screen.getByRole('menu')).getByText('הוסף משתמש חדש'));
     expect(screen.getByTestId('where')).toHaveTextContent('/admin/users?add=1');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('warns before logout when inventory work is still unsent, and stays signed in on cancel', async () => {
+    offline.pendingCount = 2;
+    offline.failedCount = 1;
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const menu = await openMenu('staff');
+    await userEvent.click(menu.getByText('התנתק'));
+    expect(confirm.mock.calls[0][0]).toContain('יש 3 פעולות מלאי שעדיין לא נשמרו בשרת');
+    expect(authState.current.logout).not.toHaveBeenCalled();
+    confirm.mockRestore();
+    offline.pendingCount = 0;
+    offline.failedCount = 0;
   });
 
   it('renders nothing without a profile', () => {
