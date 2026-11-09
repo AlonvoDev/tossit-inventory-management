@@ -13,6 +13,8 @@ export const errorMessage = (err: unknown, fallback: string): string => {
     case 'unavailable':
     case 'auth/network-request-failed':
       return 'אין חיבור לשרת. בדוק את החיבור ונסה שוב.';
+    case 'aborted':
+      return 'פעולה אחרת על אותה רשומה עדיין מתבצעת. נסה שוב בעוד רגע.';
     case 'not-found':
       return 'הפריט לא נמצא. ייתכן שנמחק.';
     case 'already-exists':

@@ -1,8 +1,21 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U3c — catalog (products, fridges, categories) validation and manager department scope (U3 split: U3a reports ✓, U3b users ✓ pending C1c, U3c catalog, U3d settings after C2)
-Status: checkpoint — U3c passes checks. U1 remains a checkpoint until C1 is merged; U3b final wiring waits for C1c; U3d waits for C2.
-Last previously confirmed remote SHA: ad0421e1fe0dc4c08d6961047398fe1f11862c4b (U3b)
+Task / bounded subtask: C1 integration — merged pinned Codex C1 (70d953e), U1 done, U3b wired to C1 deactivation
+Status: U1 done. U3: U3a ✓, U3b ✓ (no reactivation: not exposed by C1), U3c ✓, U3d settings waits for C2 settingsAPI.
+Last previously confirmed remote SHA: a0e110e8f0de6dbf64a82338b40abce071480a58 (U3c)
+
+## Integrated other-agent SHA
+- Codex C1 code checkpoint `70d953e21a8b70c6b46d1fbddc6b01226e78f26e` merged with a normal merge commit (no conflicts). Codex handoff says C1 done; emulator/rules/callable tests passed on their side. Not deployed.
+
+## C1 integration changes
+- `src/pages/AdminUsersPage.tsx`: "השבתה" (deactivate) replaces "הסרת גישה" — server deactivation keeps the record for audit; deactivated users (`isActive === false`) are shown as "מושבת" with no edit/deactivate/reactivate controls; list reloads from the server after deactivation; cannot deactivate yourself. Create passes one `requestId` per form intent (renewed when the form reopens, reused on retry).
+- `src/features/common/errorMessage.ts`: `aborted` (lease conflict) → retryable message; `functions/` prefixes handled; `functions/already-exists` on create → "email already registered".
+- Tests: `AdminUsersPage.test.tsx` now 12 (deactivation copy/reload, deactivated row, self, permission, aborted, requestId reuse).
+- U1 re-check against the C1 AuthContext: routes/nav tests pass unchanged; disabled profiles resolve to `profileNotFound` → "no access" screen; profile read errors → "could not load permissions" screen.
+
+## Integration checks
+- `npm ci`, `npm run build`: PASS. `npm run test:run`: 10 files, 101/101 pass (Claude UI + Codex client suites). `npm run lint`: 3 errors / 7 warnings (remaining: `src/types/pwa.d.ts` — Claude U4; `src/utils/syncManager.ts` x2 — Codex C3). `git diff --check`: clean.
+- NOT RUN here: Codex rules/functions/callable suites (need emulators); real Firebase; device tests.
 
 ## U3c changed files
 - `src/app/access.ts`: `normalizeDepartment` (canonical + legacy Hebrew), `manageableDepartments` (admin both, manager own, staff none); `/admin/fridges` now admin+manager (C1b rules let managers manage own-department fridges); department labels accept legacy values.
@@ -74,7 +87,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-Gate 2 Claude work that does not depend on Codex is done. Remaining U3: wire U3b to C1c callables (deactivate/reactivate) and U3d settings to C2 `settingsAPI`, after merging those pinned checkpoints. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
+Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume
 ```bash

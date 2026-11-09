@@ -16,10 +16,15 @@ import {
 } from '../features/users/userForm';
 import { errorMessage } from '../features/common/errorMessage';
 
-const errorText = (err: unknown, fallback: string): string =>
-  (err as { code?: unknown } | null)?.code === 'auth/email-already-in-use'
+const errorText = (err: unknown, fallback: string): string => {
+  const code = (err as { code?: unknown } | null)?.code;
+  return code === 'auth/email-already-in-use' || code === 'functions/already-exists'
     ? 'כתובת הדוא״ל כבר רשומה במערכת.'
     : errorMessage(err, fallback);
+};
+
+/** Legacy profiles without isActive are active; only an explicit false is deactivated (C1 contract). */
+const isDeactivated = (user: UserProfile) => user.isActive === false;
 
 const formatCreatedAt = (createdAt: UserProfile['createdAt']): string => {
   const millis = (createdAt as { toMillis?: () => number } | undefined)?.toMillis?.();
@@ -43,6 +48,8 @@ const AdminUsersPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  // One idempotency ID per create intent: reused on retry of the same form, renewed when the form reopens.
+  const [createRequestId, setCreateRequestId] = useState<string>(() => crypto.randomUUID());
 
   const loadUsers = useCallback(async () => {
     if (!businessId) return;
@@ -95,7 +102,7 @@ const AdminUsersPage: React.FC = () => {
         await updateUserByAdmin(editingUser.uid, toUpdatePayload(formData));
         setSuccess(`פרטי המשתמש "${formData.fullName.trim()}" נשמרו`);
       } else {
-        await createUserByAdmin(toCreatePayload(formData), businessId as string);
+        await createUserByAdmin({ ...toCreatePayload(formData), requestId: createRequestId }, businessId as string);
         setSuccess(`המשתמש "${formData.fullName.trim()}" נוצר`);
       }
       setShowModal(false);
@@ -112,6 +119,7 @@ const AdminUsersPage: React.FC = () => {
   };
 
   const openAddModal = useCallback(() => {
+    setCreateRequestId(crypto.randomUUID());
     setFormData(emptyUserForm());
     setFormErrors({});
     setError(null);
@@ -148,14 +156,14 @@ const AdminUsersPage: React.FC = () => {
     setFormErrors({});
   };
 
-  // Removes the app profile only. The sign-in (Firebase Auth) account is NOT deleted.
-  const handleRemoveProfile = async (user: UserProfile) => {
-    if (user.uid === currentUid) return; // never lock yourself out
+  // Server-side deactivation (C1): the account and profile are kept for audit, access is revoked.
+  const handleDeactivate = async (user: UserProfile) => {
+    if (user.uid === currentUid || isDeactivated(user)) return; // never lock yourself out
     const name = user.fullName || user.email || 'המשתמש';
     const confirmed = window.confirm(
-      `להסיר את הגישה של "${name}" לאפליקציה?\n\n` +
-        'הפעולה מוחקת את פרופיל המשתמש בעסק ולכן הוא לא יוכל להשתמש באפליקציה. ' +
-        'חשבון ההתחברות עצמו אינו נמחק.'
+      `להשבית את "${name}"?\n\n` +
+        'המשתמש לא יוכל להתחבר לאפליקציה. הפרטים שלו נשמרים לתיעוד ואינם נמחקים. ' +
+        'הפעלה מחדש אינה זמינה כרגע מהאפליקציה.'
     );
     if (!confirmed) return;
     setError(null);
@@ -163,11 +171,11 @@ const AdminUsersPage: React.FC = () => {
     setLoading(true);
     try {
       await deleteUserByAdmin(user.uid);
-      setSuccess(`הגישה של "${name}" הוסרה. חשבון ההתחברות לא נמחק.`);
-      setUsers(prev => prev.filter(u => u.uid !== user.uid));
+      setSuccess(`המשתמש "${name}" הושבת. הפרטים נשמרו לתיעוד.`);
+      await loadUsers();
     } catch (err: unknown) {
-      console.error('Error removing user profile:', err);
-      setError(errorText(err, 'הסרת הגישה נכשלה. נסה שוב.'));
+      console.error('Error deactivating user:', err);
+      setError(errorText(err, 'השבתת המשתמש נכשלה. נסה שוב.'));
     } finally {
       setLoading(false);
     }
@@ -260,7 +268,7 @@ const AdminUsersPage: React.FC = () => {
           <li><strong>עובד:</strong> עובד במחלקה שנבחרה (בר או מטבח).</li>
           <li><strong>מנהל מחלקה:</strong> מנהל את המחלקה שנבחרה בלבד.</li>
           <li><strong>מנהל מערכת:</strong> מנהל את כל העסק.</li>
-          <li><strong>הסרת גישה</strong> מוחקת את פרופיל המשתמש בעסק. חשבון ההתחברות עצמו אינו נמחק.</li>
+          <li><strong>השבתה</strong> חוסמת את הכניסה לאפליקציה ושומרת את פרטי המשתמש לתיעוד. הפעלה מחדש אינה זמינה כרגע מהאפליקציה.</li>
         </ul>
       </div>
 
@@ -373,12 +381,18 @@ const AdminUsersPage: React.FC = () => {
                   <tr 
                     key={user.uid || index} 
                     style={{ 
-                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa'
+                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
+                      opacity: isDeactivated(user) ? 0.6 : 1
                     }}
                   >
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
                       <div style={{ fontWeight: 'bold' }}>{user.fullName || '-'}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{user.uid === currentUid ? 'אתה' : ''}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {user.uid === currentUid ? 'אתה' : ''}
+                        {isDeactivated(user) && (
+                          <span style={{ color: '#b71c1c', fontWeight: 'bold' }}>מושבת</span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
                       {user.email || '-'}
@@ -434,38 +448,45 @@ const AdminUsersPage: React.FC = () => {
                     </td>
                     {/* Actions */}
                     <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      <button
-                        onClick={() => openEditModal(user)}
-                        style={{
-                          marginLeft: '8px',
-                          backgroundColor: '#1976d2',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        עריכה
-                      </button>
-                      <button
-                        onClick={() => handleRemoveProfile(user)}
-                        disabled={loading || user.uid === currentUid}
-                        title={user.uid === currentUid ? 'לא ניתן להסיר את הגישה של עצמך' : undefined}
-                        style={{
-                          opacity: user.uid === currentUid ? 0.5 : 1,
-                          backgroundColor: '#f44336',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        הסרת גישה
-                      </button>
+                      {isDeactivated(user) ? (
+                        <span style={{ fontSize: '12px', color: '#666' }}>אין פעולות זמינות</span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => openEditModal(user)}
+                            disabled={loading}
+                            style={{
+                              marginLeft: '8px',
+                              backgroundColor: '#1976d2',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            עריכה
+                          </button>
+                          <button
+                            onClick={() => handleDeactivate(user)}
+                            disabled={loading || user.uid === currentUid}
+                            title={user.uid === currentUid ? 'לא ניתן להשבית את עצמך' : undefined}
+                            style={{
+                              opacity: user.uid === currentUid ? 0.5 : 1,
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            השבתה
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}

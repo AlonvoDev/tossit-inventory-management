@@ -22,6 +22,7 @@ const users: UserProfile[] = [
   { uid: 'admin-1', fullName: 'אדמין', email: 'a@x.co', role: 'admin', department: 'bar', businessId: 'b1' },
   { uid: 'mgr-1', fullName: 'מנהלת מטבח', email: 'm@x.co', role: 'manager', department: 'kitchen', businessId: 'b1' },
   { uid: 'staff-1', fullName: 'עובד בר', email: 's@x.co', role: 'staff', department: 'bar', businessId: 'b1' },
+  { uid: 'old-1', fullName: 'עובד לשעבר', email: 'o@x.co', role: 'staff', department: 'kitchen', businessId: 'b1', isActive: false },
 ];
 
 const renderPage = (path = '/admin/users') =>
@@ -85,32 +86,49 @@ describe('AdminUsersPage', () => {
     );
   });
 
-  it('removal confirms that the sign-in account is not deleted', async () => {
+  it('deactivation is labeled as such, keeps the record and reloads from the server', async () => {
     api.deleteUserByAdmin.mockResolvedValue(undefined);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage();
     await waitFor(() => rowOf('עובד בר'));
-    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'הסרת גישה' }));
-    expect(confirm.mock.calls[0][0]).toContain('חשבון ההתחברות עצמו אינו נמחק');
+    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'השבתה' }));
+    expect(confirm.mock.calls[0][0]).toContain('הפרטים שלו נשמרים לתיעוד ואינם נמחקים');
     expect(api.deleteUserByAdmin).toHaveBeenCalledWith('staff-1');
-    expect(await screen.findByText(/חשבון ההתחברות לא נמחק/)).toBeInTheDocument();
+    expect(await screen.findByText(/הושבת. הפרטים נשמרו לתיעוד/)).toBeInTheDocument();
+    expect(api.getAllUsers).toHaveBeenCalledTimes(2);
     confirm.mockRestore();
   });
 
-  it('cannot remove your own access', async () => {
+  it('shows deactivated users without edit, deactivate or reactivate controls', async () => {
+    renderPage();
+    const row = await waitFor(() => rowOf('עובד לשעבר'));
+    expect(within(row).getByText('מושבת')).toBeInTheDocument();
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('cannot deactivate yourself', async () => {
     renderPage();
     await waitFor(() => rowOf('אדמין'));
-    expect(within(rowOf('אדמין')).getByRole('button', { name: 'הסרת גישה' })).toBeDisabled();
+    expect(within(rowOf('אדמין')).getByRole('button', { name: 'השבתה' })).toBeDisabled();
   });
 
   it('shows a permission error instead of a success', async () => {
-    api.deleteUserByAdmin.mockRejectedValue(Object.assign(new Error('x'), { code: 'permission-denied' }));
+    api.deleteUserByAdmin.mockRejectedValue(Object.assign(new Error('x'), { code: 'functions/permission-denied' }));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage();
     await waitFor(() => rowOf('עובד בר'));
-    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'הסרת גישה' }));
+    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'השבתה' }));
     expect(await screen.findByText('אין לך הרשאה לבצע פעולה זו.')).toBeInTheDocument();
-    expect(screen.getByText('עובד בר')).toBeInTheDocument();
+    expect(screen.queryByText(/הושבת/)).not.toBeInTheDocument();
+  });
+
+  it('treats a lease conflict as retryable', async () => {
+    api.deleteUserByAdmin.mockRejectedValue(Object.assign(new Error('x'), { code: 'functions/aborted' }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+    await waitFor(() => rowOf('עובד בר'));
+    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'השבתה' }));
+    expect(await screen.findByText(/נסה שוב בעוד רגע/)).toBeInTheDocument();
   });
 
   it('opens the single create form from ?add=1 and requires a manager department', async () => {
@@ -125,9 +143,27 @@ describe('AdminUsersPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'צור משתמש' }));
     await waitFor(() =>
       expect(api.createUserByAdmin).toHaveBeenCalledWith(
-        expect.objectContaining({ role: 'manager', department: 'kitchen', fullName: 'רון' }),
+        expect.objectContaining({ role: 'manager', department: 'kitchen', fullName: 'רון', requestId: expect.any(String) }),
         'b1',
       ),
     );
+  });
+
+  it('reuses one requestId when retrying the same create form', async () => {
+    api.createUserByAdmin
+      .mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'functions/unavailable' }))
+      .mockResolvedValueOnce('new-uid');
+    renderPage('/admin/users?add=1');
+    await screen.findByText('הוספת משתמש חדש');
+    fireEvent.change(screen.getByPlaceholderText('שם פרטי ומשפחה'), { target: { value: 'רון' } });
+    fireEvent.change(screen.getByPlaceholderText('name@example.com'), { target: { value: 'r@x.co' } });
+    fireEvent.change(screen.getByPlaceholderText('לפחות 6 תווים'), { target: { value: '123456' } });
+    await userEvent.click(screen.getByRole('button', { name: 'צור משתמש' }));
+    expect(await screen.findByText('אין חיבור לשרת. בדוק את החיבור ונסה שוב.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'צור משתמש' }));
+    await waitFor(() => expect(api.createUserByAdmin).toHaveBeenCalledTimes(2));
+    const [first, second] = api.createUserByAdmin.mock.calls.map(c => c[0].requestId);
+    expect(first).toBeTruthy();
+    expect(second).toBe(first);
   });
 });

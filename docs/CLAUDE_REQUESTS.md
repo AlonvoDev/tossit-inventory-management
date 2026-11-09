@@ -2,6 +2,11 @@
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 
+## Status after C1 merge (2026-11-09)
+- U1 1–6 and U3b 1–4: resolved by C1 (70d953e), integrated in claude/tossit-ui.
+- Open: **reactivation** lifecycle operation (optional; UI shows deactivated users read-only until it exists).
+- Open for C2: U3a 1–3 (scoped report, reason filter), U3c 1, 5 (scoped catalog reads, shared normalizer). C3: U3c 3 (legacy local keys).
+
 ## From U3c (2026-11-09)
 
 1. **Scoped catalog reads** (C2): `getBusinessProducts`, `getBusinessFridges` (`productsAPI`/`fridgesAPI`) query the whole
