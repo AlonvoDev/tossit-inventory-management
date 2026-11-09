@@ -1,8 +1,25 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: C1 integration — merged pinned Codex C1 (70d953e), U1 done, U3b wired to C1 deactivation
-Status: U1 done. U3: U3a ✓, U3b ✓ (no reactivation: not exposed by C1), U3c ✓, U3d settings waits for C2 settingsAPI.
-Last previously confirmed remote SHA: a0e110e8f0de6dbf64a82338b40abce071480a58 (U3c)
+Task / bounded subtask: U4a — single injectManifest service worker, assets and controlled updates (U4 split: U4a worker ✓, U4b queue-aware status after C3, U4c notification controls after C4)
+Status: checkpoint — U4a passes unit tests, build and a real Chromium smoke test. U1 done; U3 waits for C2 (settings, scoped reads).
+Last previously confirmed remote SHA: fd2179579b02aa6c74c39a9a66dfab8aadcb3e56 (C1 integration)
+
+## U4a changed files
+- `src/pwa/service-worker.ts` (new entry), `src/pwa/swHandlers.ts`, `src/pwa/swLogic.ts`: one worker built by vite-plugin-pwa `injectManifest` and served at `/service-worker.js` (root scope; the same URL older clients and `notificationUtils` used, so they update in place instead of competing). Precaches only build assets (install fails if any is missing, old worker stays); navigations are network-first with the cached app shell offline; API/Firestore/other origins and non-GET are never intercepted or cached; activation deletes only obsolete TossIt/legacy caches; no automatic `skipWaiting` (page posts `SKIP_WAITING` after user consent); strict `PushPayload` v1 parsing with generic fallback; notification clicks open only same-origin paths. Redirected precache responses (hosts that redirect `/index.html`) are stored as clean copies — found by the browser smoke test.
+- `src/pwa/updateStore.ts` (new), `src/pwa/PWAPrompt.tsx`, `src/app/main.tsx`: single registration; a waiting update is stored (no lost event, no 1-hour suppression) and applied only when the user chooses; "later" keeps a banner; failures shown. Removed the unreachable install dialog that advertised offline work and push before they exist.
+- `src/pwa/OfflineIndicator.tsx`: no longer claims changes are saved locally/synced (true only after C3).
+- `vite.config.ts`: injectManifest, `injectRegister: false`, manifest with existing icons (any + maskable), `start_url: /dashboard`, `base: '/'` (relative base broke assets on deep-link reloads).
+- `index.html`: icons/apple-touch/theme metadata; removed a manifest `<link>` that was inside `#root`.
+- Assets: new `public/icons/*` (≈50 KB total, white glyph on teal; maskable/apple full-bleed); `src/assets/tossit-logo.png` 1.6 MB → 34 KB, `tossit-favicon.png` 1.4 MB → 11 KB (same artwork). Deleted unused/duplicate: `public/service-worker.js`, `public/manifest.json`, `public/index.html`, `public/offline.html`, three duplicate 1.4–2.2 MB PNGs in `public/`, `src/assets/tossit-app-icon.png`, old `src/service-worker.ts`.
+- `src/types/pwa.d.ts`: fixed baseline `no-explicit-any` lint error.
+- Tests: `swLogic.test.ts` (27), `swHandlers.test.ts` (15), `PWAPrompt.test.tsx` (4), `OfflineIndicator.test.tsx` (1).
+- Docs: `docs/PILOT.md` (PWA device checklist, iPhone/Android NOT RUN), `docs/CLAUDE_REQUESTS.md` (U4a 1–6).
+
+## U4a checks
+- `npm run build`: PASS — `mode injectManifest`, precache 18 entries (1353 KiB), one `dist/service-worker.js`, one manifest link.
+- `npm run test:run`: 14 files, 148/148 pass. `npm run lint`: 2 errors / 6 warnings (both errors in Codex `src/utils/syncManager.ts`). `git diff --check`: clean.
+- Chromium smoke (Playwright, `serve -s dist`): 1 registration `/service-worker.js` scope `/`; 12 precached URLs; 0 permission requests on load; offline reload of `/admin/users` renders the app; new deploy → waiting worker + dialog → accept → new worker active, previous precache deleted, 1 registration.
+- NOT RUN: real iPhone/Android install, real push delivery (needs C4 + deployment). See `docs/PILOT.md`.
 
 ## Integrated other-agent SHA
 - Codex C1 code checkpoint `70d953e21a8b70c6b46d1fbddc6b01226e78f26e` merged with a normal merge commit (no conflicts). Codex handoff says C1 done; emulator/rules/callable tests passed on their side. Not deployed.
@@ -87,6 +104,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
+Merge Codex C2 when it publishes a pinned complete checkpoint (C2a 6401bac is published but not marked complete/pinned for Claude); then U3d settings, switch `PushPayload`/department normalizer to Codex exports, and start U2 online flows. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume

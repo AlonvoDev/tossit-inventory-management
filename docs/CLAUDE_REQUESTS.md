@@ -2,6 +2,29 @@
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 
+## From U4a (2026-11-09)
+
+1. **`src/utils/notificationUtils.ts` must not register a worker.** It calls
+   `navigator.serviceWorker.register('/service-worker.js')`. The single app worker is now built from
+   `src/pwa/service-worker.ts` and served at that same URL/scope, so the call is currently harmless (it returns the
+   existing registration), but per the plan please use `navigator.serviceWorker.ready` only, and remove the
+   client-side `new Notification(...)`/timer paths in C4 (the worker shows pushes).
+2. **Icon paths:** `notificationUtils` uses `/icon-192.png`, which never existed. Use `/icons/icon-192.png`
+   (also used by the worker for push notifications).
+3. **Push contract as implemented by the worker** (`src/pwa/swLogic.ts`, tests in `swLogic.test.ts`/`swHandlers.test.ts`):
+   payload must be exactly `PushPayload` v1 JSON (`version: 1`, non-empty `title` ≤200, `body` ≤1000, `url` ≤2000,
+   `tag` ≤200). Invalid/malformed data shows a generic Hebrew notification (`tag: 'tossit-generic'`) opening
+   `/dashboard`. `url` may be a same-origin path; any other origin/scheme is replaced by `/dashboard`. Use `tag` for
+   per-slot de-duplication on the device (same tag replaces the earlier notification).
+4. **`enablePushNotifications`** needs the VAPID public key and should call
+   `registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })` on the `ready` registration.
+   U4c will call it only from an explicit button and show `'enabled' | 'denied' | 'unsupported'` truthfully.
+5. **Pending-operation state for the UI (C3):** U4 shows only browser connectivity. Please expose queue counts/states
+   (e.g. via `subscribeSyncOperations`) so the UI can show "N פעולות ממתינות" separately from online/offline.
+6. Worker updates delete only caches named `tossit-precache-*` (older), `tossit-cache-v1`, `workbox-precache*`,
+   `images-cache`, `google-fonts-cache`, `gstatic-fonts-cache`. IndexedDB/localStorage are never touched, so the C3
+   queue survives app updates.
+
 ## Status after C1 merge (2026-11-09)
 - U1 1–6 and U3b 1–4: resolved by C1 (70d953e), integrated in claude/tossit-ui.
 - Open: **reactivation** lifecycle operation (optional; UI shows deactivated users read-only until it exists).

@@ -3,6 +3,10 @@ import { Snackbar, Alert } from '@mui/material';
 import { WifiOff as OfflineIcon, Wifi as OnlineIcon } from '@mui/icons-material';
 import { tokens } from '../app/theme';
 
+/**
+ * Browser connectivity only (navigator.onLine). It does not describe queued work: pending
+ * operation state comes from the C3 offline provider and is shown separately once available.
+ */
 export const OfflineIndicator: React.FC = () => {
   const [, setIsOnline] = useState(navigator.onLine);
   const [showOfflineMessage, setShowOfflineMessage] = useState(false);
@@ -50,7 +54,7 @@ export const OfflineIndicator: React.FC = () => {
             }
           }}
         >
-          <strong>מצב לא מקוון</strong> • שינויים יישמרו מקומית ויסונכרנו כשהחיבור יחזור
+          <strong>אין חיבור לאינטרנט</strong> • פעולות שדורשות שרת לא יישמרו עד שהחיבור יחזור
         </Alert>
       </Snackbar>
 
@@ -75,7 +79,7 @@ export const OfflineIndicator: React.FC = () => {
             }
           }}
         >
-          <strong>חזרת למצב מקוון!</strong> מסנכרן נתונים...
+          <strong>החיבור חזר</strong>
         </Alert>
       </Snackbar>
     </>
