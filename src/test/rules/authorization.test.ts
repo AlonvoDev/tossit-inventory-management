@@ -147,4 +147,30 @@ describe('business authorization', () => {
     await assertFails(updateDoc(doc(db('staff'), 'items/bar-item'), { ...action, discardReason: 'unknown' }));
     await assertSucceeds(updateDoc(doc(db('staff'), 'items/bar-item'), action));
   });
+  it('rejects attaching a forged opposite-action audit to a terminal update', async () => {
+    await assertFails(updateDoc(doc(db('staff'), 'items/bar-item'), {
+      finished: true, finishedBy: 'staff', finishedAt: serverTimestamp(), discardedAt: serverTimestamp(), discardedBy: 'admin',
+    }));
+    await assertFails(updateDoc(doc(db('staff'), 'items/bar-item'), {
+      discarded: true, isThrown: true, discardedBy: 'staff', discardedAt: serverTimestamp(), discardedQuantity: 0.5, discardReason: 'expired', finishedAt: serverTimestamp(), finishedBy: 'admin',
+    }));
+  });
+});
+
+describe('business settings authorization', () => {
+  const settings = { timezone: 'Asia/Jerusalem', eveningRemindersEnabled: true, morningSummaryEnabled: true, autoEndShiftsAtMidnight: false };
+  it('allows an active business member to discover missing defaults, never another business', async () => {
+    await assertSucceeds(getDoc(doc(db('staff'), 'businessSettings/a')));
+    await assertFails(getDoc(doc(db('staff'), 'businessSettings/b')));
+    await assertFails(getDoc(doc(db('disabled'), 'businessSettings/a')));
+  });
+  it('allows only the business admin to save an exact validated settings document', async () => {
+    await assertSucceeds(setDoc(doc(db('admin'), 'businessSettings/a'), settings));
+    await assertFails(setDoc(doc(db('manager'), 'businessSettings/a'), settings));
+    await assertFails(setDoc(doc(db('foreign'), 'businessSettings/a'), settings));
+    await assertFails(setDoc(doc(db('admin'), 'businessSettings/a'), { ...settings, timezone: 'UTC' }));
+    await assertFails(setDoc(doc(db('admin'), 'businessSettings/a'), { ...settings, morningSummaryEnabled: 'true' }));
+    await assertFails(setDoc(doc(db('admin'), 'businessSettings/a'), { ...settings, role: 'admin' }));
+    await assertFails(deleteDoc(doc(db('admin'), 'businessSettings/a')));
+  });
 });

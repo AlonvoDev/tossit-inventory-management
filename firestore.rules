@@ -66,13 +66,29 @@ service cloud.firestore {
       allow delete: if manages(resource.data, resource.data.department);
     }
 
-    match /categories/{id} {
-      allow read: if sameBusiness(resource.data);
-      allow create: if admin() && sameBusiness(request.resource.data)
+    // Retain the old categories grant while supporting the actual UI collection.
+    match /{categoryCollection}/{id} {
+      function categoryPath() { return categoryCollection in ['categories', 'productCategories']; }
+      allow read: if categoryPath() && sameBusiness(resource.data);
+      allow create: if categoryPath() && admin() && sameBusiness(request.resource.data)
         && request.resource.data.name is string && request.resource.data.name.size() > 0;
-      allow update: if admin() && sameBusiness(resource.data) && sameBusiness(request.resource.data)
+      allow update: if categoryPath() && admin() && sameBusiness(resource.data) && sameBusiness(request.resource.data)
         && request.resource.data.name is string && request.resource.data.name.size() > 0;
-      allow delete: if admin() && sameBusiness(resource.data);
+      allow delete: if categoryPath() && admin() && sameBusiness(resource.data);
+    }
+
+    match /businessSettings/{businessId} {
+      function validSettings(data) {
+        return data.keys().hasAll(['timezone', 'eveningRemindersEnabled', 'morningSummaryEnabled', 'autoEndShiftsAtMidnight'])
+          && data.keys().hasOnly(['timezone', 'eveningRemindersEnabled', 'morningSummaryEnabled', 'autoEndShiftsAtMidnight'])
+          && data.timezone == 'Asia/Jerusalem'
+          && data.eveningRemindersEnabled is bool && data.morningSummaryEnabled is bool
+          && data.autoEndShiftsAtMidnight is bool;
+      }
+      // Use the path for reads so a missing document can return documented defaults.
+      allow read: if active() && actor().businessId == businessId;
+      allow create, update: if admin() && actor().businessId == businessId && validSettings(request.resource.data);
+      allow delete: if false;
     }
 
     match /items/{id} {
@@ -103,12 +119,16 @@ service cloud.firestore {
       function validClose(before, after) {
         return stillOpen(before)
           && after.diff(before).affectedKeys().hasOnly(['finished', 'finishedAt', 'finishedBy', 'finishedByName',
-            'discarded', 'discardedAt', 'discardedBy', 'discardedByName', 'discardedQuantity', 'discardReason', 'isThrown'])
+            'discarded', 'discardedAt', 'discardedBy', 'discardedByName', 'discardedQuantity', 'discardReason', 'isThrown', 'closedOperationId'])
+          && (!('closedOperationId' in after) || (after.closedOperationId is string && after.closedOperationId.matches('^[A-Za-z0-9_-]{8,80}$')))
           && ((after.finished == true && after.discarded == false && after.isThrown == false
+              && after.diff(before).affectedKeys().hasOnly(['finished', 'finishedAt', 'finishedBy', 'finishedByName', 'discarded', 'isThrown', 'closedOperationId'])
               && after.finishedBy == request.auth.uid && after.finishedAt == request.time)
             || (after.discarded == true && after.finished == false && after.isThrown == true
+              && after.diff(before).affectedKeys().hasOnly(['discarded', 'discardedAt', 'discardedBy', 'discardedByName', 'discardedQuantity', 'discardReason', 'finished', 'isThrown', 'closedOperationId'])
               && after.discardedBy == request.auth.uid && after.discardedAt == request.time
               && after.discardedQuantity is number && after.discardedQuantity > 0 && after.discardedQuantity <= before.amount
+              && (before.type == 'kg' || after.discardedQuantity is int)
               && after.discardReason in ['expired', 'damaged', 'other']));
       }
       allow read: if scoped(resource.data, resource.data.area);

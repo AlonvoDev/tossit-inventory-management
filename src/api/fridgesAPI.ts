@@ -1,116 +1,38 @@
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db } from '../services/firebase';
-import { Fridge } from '../types/Fridge';
-
-/**
- * Fetch all fridges for a given business. Admins only.
- *
- * @param businessId The business identifier (taken from the current
- *                   user’s profile). Required for multi‑tenant
- *                   isolation.
- * @returns An array of Fridge objects (id included).
- */
-export const getBusinessFridges = async (
-  businessId: string
-): Promise<Fridge[]> => {
-  try {
-    const fridgesQuery = query(
-      collection(db, 'fridges'),
-      where('businessId', '==', businessId)
-    );
-    const snapshot = await getDocs(fridgesQuery);
-    const fridges: Fridge[] = [];
-    snapshot.forEach((docSnap) => {
-      fridges.push({ id: docSnap.id, ...(docSnap.data() as Fridge) });
-    });
-    return fridges;
-  } catch (error) {
-    console.error('Error fetching fridges:', error);
-    throw error;
-  }
-};
-
-/**
- * Add a new fridge (location) to the business. Admin only.
- *
- * @param fridge Partial fridge without id/createdAt. Must include
- *               name, department and businessId.
- * @returns The Firestore document ID for the new fridge.
- */
-export const addFridge = async (
-  fridge: Omit<Fridge, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<string> => {
-  try {
-    // Validate required fields
-    if (!fridge.name || !fridge.name.trim()) {
-      throw new Error('Fridge name is required');
-    }
-    if (!fridge.department || (fridge.department !== 'bar' && fridge.department !== 'kitchen')) {
-      throw new Error('Department must be either "bar" or "kitchen"');
-    }
-    if (!fridge.businessId || !fridge.businessId.trim()) {
-      throw new Error('Business ID is required');
-    }
-    const docRef = await addDoc(collection(db, 'fridges'), {
-      ...fridge,
-      createdAt: serverTimestamp(),
-    });
-    return docRef.id;
-  } catch (error) {
-    console.error('Error adding fridge:', error);
-    throw error;
-  }
-};
-
-/**
- * Update an existing fridge. Only provided fields will be updated.
- *
- * @param id The Firestore document ID of the fridge to update.
- * @param data Partial fridge fields to update (name, department).
- */
-export const updateFridge = async (
-  id: string,
-  data: Partial<Omit<Fridge, 'id' | 'businessId' | 'createdAt'>>
-): Promise<void> => {
-  try {
-    if (data.name !== undefined && (!data.name.trim())) {
-      throw new Error('Fridge name cannot be empty');
-    }
-    if (data.department !== undefined && (data.department !== 'bar' && data.department !== 'kitchen')) {
-      throw new Error('Department must be either "bar" or "kitchen"');
-    }
-    const fridgeRef = doc(db, 'fridges', id);
-    await updateDoc(fridgeRef, {
-      ...data,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error('Error updating fridge:', error);
-    throw error;
-  }
-};
-
-/**
- * Delete a fridge by its ID.
- *
- * @param id The Firestore document ID of the fridge to delete.
- */
-export const deleteFridge = async (id: string): Promise<void> => {
-  try {
-    const fridgeRef = doc(db, 'fridges', id);
-    await deleteDoc(fridgeRef);
-  } catch (error) {
-    console.error('Error deleting fridge:', error);
-    throw error;
-  }
-};
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocFromServer, getDocsFromServer, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
+import type { Fridge } from '../types/Fridge';
+import type { UserProfile } from '../types/UserProfile';
+import { InventoryError, invalid } from '../domain/errors';
+import { normalizeDepartment } from '../domain/normalizeItem';
+import { assertCurrentActor, getCurrentActor, scopedBusinessQuery } from './access';
+function manages(actor: UserProfile, fridge: Fridge) {
+  if (!['admin', 'manager'].includes(actor.role) || fridge.businessId !== actor.businessId || !normalizeDepartment(fridge.department) || (actor.role !== 'admin' && normalizeDepartment(fridge.department) !== actor.department)) throw new InventoryError('permission-denied', 'Fridge is outside your management scope');
+  if (typeof fridge.name !== 'string' || !fridge.name.trim()) invalid('Fridge name is required');
+}
+export async function getBusinessFridges(businessId: string): Promise<Fridge[]> {
+  const uid = auth.currentUser?.uid;
+  const snapshot = await getDocsFromServer(await scopedBusinessQuery('fridges', 'department', businessId));
+  if (!uid || auth.currentUser?.uid !== uid) throw new InventoryError('unauthenticated', 'Account changed during fridge read');
+  return snapshot.docs.map(snapshot => ({ ...snapshot.data(), id: snapshot.id, department: normalizeDepartment(snapshot.data().department) } as Fridge));
+}
+export async function addFridge(fridge: Omit<Fridge, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const actor = await getCurrentActor(); manages(actor, fridge); assertCurrentActor(actor);
+  const ref = await addDoc(collection(db, 'fridges'), { ...fridge, department: normalizeDepartment(fridge.department), createdAt: serverTimestamp() });
+  assertCurrentActor(actor); return ref.id;
+}
+export async function updateFridge(id: string, data: Partial<Omit<Fridge, 'id' | 'businessId' | 'createdAt'>>): Promise<void> {
+  const actor = await getCurrentActor(); const ref = doc(db, 'fridges', id);
+  const snapshot = await getDocFromServer(ref);
+  if (!snapshot.exists()) throw new InventoryError('not-found', 'Fridge not found');
+  const before = snapshot.data() as Fridge;
+  manages(actor, before); manages(actor, { ...before, ...data }); assertCurrentActor(actor);
+  await updateDoc(ref, { ...data, ...(data.department !== undefined ? { department: normalizeDepartment(data.department) } : {}), updatedAt: serverTimestamp() });
+  assertCurrentActor(actor);
+}
+export async function deleteFridge(id: string): Promise<void> {
+  const actor = await getCurrentActor(); const ref = doc(db, 'fridges', id);
+  const snapshot = await getDocFromServer(ref);
+  if (!snapshot.exists()) throw new InventoryError('not-found', 'Fridge not found');
+  manages(actor, snapshot.data() as Fridge); assertCurrentActor(actor);
+  await deleteDoc(ref); assertCurrentActor(actor);
+}
