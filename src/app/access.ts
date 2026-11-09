@@ -1,3 +1,10 @@
+// Department normalizer: single shared definition (Codex C2), canonical 'bar' | 'kitchen'
+// plus legacy Hebrew values. Re-exported so UI code has one import site.
+import { normalizeDepartment } from '../domain/normalizeItem';
+import type { Department } from '../domain/contracts';
+export { normalizeDepartment };
+export type { Department };
+
 /**
  * UI permission matrix (U1).
  *
@@ -60,17 +67,6 @@ export const DEPARTMENT_LABELS: Record<'bar' | 'kitchen', string> = {
   kitchen: 'מטבח',
 };
 
-export type Department = 'bar' | 'kitchen';
-
-/**
- * Read-compatible department value: canonical 'bar' | 'kitchen' plus legacy Hebrew values
- * still present in older documents. Unknown values return null (never guessed).
- */
-export const normalizeDepartment = (department: unknown): Department | null => {
-  if (department === 'bar' || department === 'בר') return 'bar';
-  if (department === 'kitchen' || department === 'מטבח') return 'kitchen';
-  return null;
-};
 
 export const departmentLabel = (department: unknown): string | null => {
   const normalized = normalizeDepartment(department);

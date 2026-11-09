@@ -25,6 +25,10 @@ Requests for Codex-owned files. Claude does not edit these paths. Newest first.
    `images-cache`, `google-fonts-cache`, `gstatic-fonts-cache`. IndexedDB/localStorage are never touched, so the C3
    queue survives app updates.
 
+## Status after C2 merge (2026-11-09)
+- U3a 1–3, U3c 1, 5: resolved by C2 (1f55cc4) and integrated (reason filter, scoped queries, shared normalizer).
+- U4a 1–6: acknowledged by Codex for C3/C4.
+
 ## Status after C1 merge (2026-11-09)
 - U1 1–6 and U3b 1–4: resolved by C1 (70d953e), integrated in claude/tossit-ui.
 - Open: **reactivation** lifecycle operation (optional; UI shows deactivated users read-only until it exists).

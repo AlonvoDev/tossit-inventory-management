@@ -1,8 +1,23 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U4a — single injectManifest service worker, assets and controlled updates (U4 split: U4a worker ✓, U4b queue-aware status after C3, U4c notification controls after C4)
-Status: checkpoint — U4a passes unit tests, build and a real Chromium smoke test. U1 done; U3 waits for C2 (settings, scoped reads).
-Last previously confirmed remote SHA: fd2179579b02aa6c74c39a9a66dfab8aadcb3e56 (C1 integration)
+Task / bounded subtask: C2 integration — merged pinned Codex C2 (1f55cc4) and adapted U3 screens
+Status: checkpoint. U1 done; U3a/b/c done on C2 APIs; U3d (settings) and U2 (inventory online) now unblocked; U4a done; U4b waits for C3c provider; U4c waits for C4.
+Last previously confirmed remote SHA: 1b8195ab3bfad99f996f23f2e6554668ab0e100a (U4a)
+
+## Integrated other-agent SHAs
+- C1 `70d953e21a8b70c6b46d1fbddc6b01226e78f26e` (earlier merge).
+- C2 `1f55cc4ccf58f728aa46c0a5ac99d05c449b9ca9` — normal merge, no conflicts. Not merged: C3a/C3b (8eeaf29, 5ca59b8; Codex marks C3 in progress).
+
+## C2 integration changes
+- `src/components/DiscardReport.tsx`: reason filter ("סיבת זריקה") passed to `getDiscardReport(..., reason)` so totals are computed server-side; rows keyed by name+unit (C2 groups by product and unit); empty state covers reason/date filters.
+- `src/app/access.ts`: `normalizeDepartment`/`Department` now re-exported from Codex `src/domain/normalizeItem`/`contracts` (one definition).
+- `src/pwa/swLogic.ts`: `PushPayload` type imported from `src/domain/contracts` (runtime parser unchanged).
+- `src/features/common/errorMessage.ts`: Hebrew text for `not-on-shift`, `already-closed`, `catalog-changed`.
+- Tests: DiscardReport reason/unit-split test added.
+
+## C2 integration checks
+- `npm ci`, `npm run build`: PASS (injectManifest, 18 precache entries). `npm run test:run`: 18 files, all pass (Claude UI + Codex C1/C2 client suites). `npm run lint`: 2 errors / 6 warnings (both errors in Codex legacy `src/utils/syncManager.ts`). `git diff --check`: clean.
+- NOT RUN here: Codex emulator suites (rules/inventory integration) — Codex reports 35/35 on their side.
 
 ## U4a changed files
 - `src/pwa/service-worker.ts` (new entry), `src/pwa/swHandlers.ts`, `src/pwa/swLogic.ts`: one worker built by vite-plugin-pwa `injectManifest` and served at `/service-worker.js` (root scope; the same URL older clients and `notificationUtils` used, so they update in place instead of competing). Precaches only build assets (install fails if any is missing, old worker stays); navigations are network-first with the cached app shell offline; API/Firestore/other origins and non-GET are never intercepted or cached; activation deletes only obsolete TossIt/legacy caches; no automatic `skipWaiting` (page posts `SKIP_WAITING` after user consent); strict `PushPayload` v1 parsing with generic fallback; notification clicks open only same-origin paths. Redirected precache responses (hosts that redirect `/index.html`) are stored as clean copies — found by the browser smoke test.
@@ -104,7 +119,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-Merge Codex C2 when it publishes a pinned complete checkpoint (C2a 6401bac is published but not marked complete/pinned for Claude); then U3d settings, switch `PushPayload`/department normalizer to Codex exports, and start U2 online flows. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+U3d settings on `getBusinessSettings`/`saveBusinessSettings` (admin-only, persisted success, recoverable errors), then U2 online inventory on `openInventoryItem`/`closeInventoryItem`/`subscribeBusinessItems` (UUID per intent, synced-only success). Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume

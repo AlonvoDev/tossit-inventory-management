@@ -7,9 +7,9 @@ import { render, screen, waitFor, within, fireEvent } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import type { DiscardReportItem } from '../api/firestoreAPI';
 
-const getDiscardReport = vi.fn<(b: string, s?: Date, e?: Date) => Promise<DiscardReportItem[]>>();
+const getDiscardReport = vi.fn<(...args: unknown[]) => Promise<DiscardReportItem[]>>();
 vi.mock('../api/firestoreAPI', () => ({
-  getDiscardReport: (b: string, s?: Date, e?: Date) => getDiscardReport(b, s, e),
+  getDiscardReport: (...args: unknown[]) => getDiscardReport(...args),
 }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ businessId: 'b1' }) }));
 
@@ -90,7 +90,19 @@ describe('DiscardReport', () => {
     const dialog = await screen.findByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: /היום/ }));
     await userEvent.click(within(dialog).getByRole('button', { name: 'החל' }));
-    expect(await screen.findByText('לא נמצאו זריקות בטווח התאריכים שנבחר')).toBeInTheDocument();
+    expect(await screen.findByText('לא נמצאו זריקות התואמות לסינון שנבחר')).toBeInTheDocument();
+  });
+
+  it('filters totals by reason on the server and keeps same-name kg/unit rows apart', async () => {
+    getDiscardReport.mockResolvedValue([
+      { ...rows[0], productName: 'לימון', type: 'kg' },
+      { ...rows[1], productName: 'לימון', type: 'units' },
+    ]);
+    render(<DiscardReport businessId="b1" />);
+    expect(await screen.findAllByText('לימון')).toHaveLength(2);
+    await userEvent.click(screen.getByRole('combobox', { name: 'סיבת זריקה' }));
+    await userEvent.click(await screen.findByRole('option', { name: 'נפגם' }));
+    await waitFor(() => expect(getDiscardReport).toHaveBeenLastCalledWith('b1', undefined, undefined, 'damaged'));
   });
 
   it('shows a recoverable error and retries', async () => {

@@ -6,18 +6,9 @@
  * data is ever stored by this worker.
  */
 
-/**
- * Mirrors `PushPayload` from `src/domain/contracts.ts` (Codex C2a). Switch to an import once
- * that checkpoint is merged into this branch; the runtime parser below stays either way because
- * push data is untrusted.
- */
-export interface PushPayload {
-  version: 1;
-  title: string;
-  body: string;
-  url: string;
-  tag: string;
-}
+// Shared contract type; the runtime parser below stays because push data is untrusted.
+import type { PushPayload } from '../domain/contracts';
+export type { PushPayload };
 
 export interface PrecacheEntry {
   url: string;

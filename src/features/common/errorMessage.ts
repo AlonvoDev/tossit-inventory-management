@@ -15,6 +15,12 @@ export const errorMessage = (err: unknown, fallback: string): string => {
       return 'אין חיבור לשרת. בדוק את החיבור ונסה שוב.';
     case 'aborted':
       return 'פעולה אחרת על אותה רשומה עדיין מתבצעת. נסה שוב בעוד רגע.';
+    case 'not-on-shift':
+      return 'יש להתחיל משמרת לפני פעולה זו.';
+    case 'already-closed':
+      return 'הפריט כבר סומן כנגמר או כנזרק על ידי פעולה אחרת.';
+    case 'catalog-changed':
+      return 'הגדרות המוצר השתנו. בדוק את הפרטים ונסה שוב.';
     case 'not-found':
       return 'הפריט לא נמצא. ייתכן שנמחק.';
     case 'already-exists':
