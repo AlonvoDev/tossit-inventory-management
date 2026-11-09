@@ -1,11 +1,26 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: C4 integration + U4c — merged pinned Codex C4 (818931e), per-device notification controls
-Status: U1, U2, U3, U4 done. **Pinned Claude checkpoint for C5 = the commit containing this handoff (read SHA from git log).** U5 waits for the C5 candidate.
-Last previously confirmed remote SHA: e7cc27bcdd8ec3fe1d8db7dea723383317d5852b (C3 integration / U4b)
+Task / bounded subtask: U5 — C5 candidate integration, push helper/error codes, README and demo/pilot docs
+Status: **All Claude tasks U1–U5 done in code/docs.** Remaining items are owner/manual: deployment per docs/RELEASE.md, real-device checks and the pilot (docs/PILOT.md, all NOT RUN).
+Last previously confirmed remote SHA: 1cd48edadc9c718c0890244d2ede7c66ee450117 (U4c)
 
 ## Integrated other-agent SHAs
-- C1 `70d953e`, C2 `1f55cc4`, C3 `89920b2`, **C4 `818931e`** (normal merges, no conflicts).
+- C1 `70d953e`, C2 `1f55cc4`, C3 `89920b2`, C4 `818931e`, **C5 `1294636`** (docs-only successor of tested `3be1d67`; after the merge the tree equalled `1294636` exactly).
+
+## U5 changes
+- U5a (`f294cfc`): `src/pwa/pushEnv.ts` uses Codex `isPushConfigured()`; `errorMessage` maps `not-configured`, `worker-not-ready`, `worker-outdated`, `offline`; NotificationControls: invalid key at enable → not-configured state; offline disable → "saved, completes when online". Tests +2.
+- U5b: `README.md` rewritten to verified behaviour only (status banner: release candidate, not deployed; roles/permissions; inventory; offline scope; PWA/notifications with deployment requirement; architecture; local emulator demo incl. first-admin bootstrap; test matrix; deployment pointer; explicit "not verified yet" list; warning that plain `npm run dev` targets the live project). `docs/PILOT.md`: 10-minute emulator demo script with exact UI labels, "already automated" section (no double-claiming), device checklists (iPhone/Android/desktop, offline, push), Hebrew/mobile/accessibility checks, real pilot — all NOT RUN.
+
+## U5 checks
+- `npm ci`, `npm ci --prefix functions`, `npm run build`: PASS. `npm run test:run`: 34 files, 298/298 pass. `npm run lint`: 0 errors / 7 warnings. `git diff --check`: clean.
+- **Real browser suite run locally on claude/tossit-ui** (emulators auth+firestore, Playwright with /opt/pw-browsers/chromium): 4/4 PASS — single worker/no prompt/offline deep link; offline opening survives reload and replays once with original catalog values; staff denied admin users incl. deep link; offline intent private across logout until the original account returns.
+- NOT RUN here: `test:rules`, `test:callables` (Codex/CI report pass; native Functions worker cannot start on this host); real devices; deployment; pilot.
+
+## Remaining (owner / manual)
+1. Review the integrated candidate; merge to `main` only after review (not done by agents).
+2. Deployment prerequisites and deploy per docs/RELEASE.md (billing for scheduler, VAPID keys, rules + functions, first-admin bootstrap, profile review).
+3. Device checks and pilot per docs/PILOT.md; record PASS/FAIL with SHA.
+4. Optional later: employee reactivation lifecycle (not offered by C1); a product unit cannot be changed after creation.
 
 ## U4c changed files
 - `src/pwa/NotificationControls.tsx` (new): reads `getPushNotificationState()` on open (no prompt, no subscription); "הפעל התראות במכשיר הזה" calls `enablePushNotifications()` directly from the click (browser prompt only there); "enabled" shown only for the server-confirmed result; rejection (e.g. disconnect mid-registration, account change) → Hebrew error, state re-read, never "enabled"; `denied` → browser-settings guidance + "בדוק שוב" (no enable button); `unsupported` → no fake enable, iPhone-not-installed gets Home Screen instructions; `pending-disable` shown separately with retry; read errors retryable; role-specific description of what is sent; missing `VITE_VAPID_PUBLIC_KEY` → "not available yet", no button, no state read.
@@ -187,7 +202,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-Codex C5: merge this pinned Claude checkpoint, run combined CI and publish the release-candidate SHA. Then Claude U5: pilot/demo docs and README against that candidate (no claims beyond verified behavior). Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+No further Claude implementation is scheduled. Fix owner-scoped issues found in review, device checks or the pilot, one commit per issue, each with tests and a pushed checkpoint. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume
