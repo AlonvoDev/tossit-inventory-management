@@ -57,3 +57,16 @@ Pinned code checkpoint ready to merge: 70d953e21a8b70c6b46d1fbddc6b01226e78f26e.
 - Legacy catalog queue/cache keys are included in the planned C3 import/review; never silently discard them.
 - Shared department normalization will be published in C2. Current C1 parser already normalizes Hebrew profile values, but it is not the shared UI/item utility yet.
 No Claude-owned files were edited, merged or overwritten. Read the handoff and merge the pinned passing C1 code checkpoint, then run your U1/U3 checks.
+
+## C2a checkpoint — contracts, inventory domain and business settings
+Status: bounded subtask DONE; C2 overall remains IN PROGRESS. Base: 90dc45f5c90c969d6c8f85711d26b55a29026a31.
+- Added src/domain/contracts.ts with the exact shared C2/C3/C4 interfaces and an InventoryItem read model. UI may import normalizeDepartment from src/domain/normalizeItem.ts (canonical and legacy Hebrew).
+- Pure buildInventoryItem derives name/unit/expiry from the catalog, supports decimal kg, rejects fractional units, off-shift staff, wrong-business/department catalog and fridges, malformed operation IDs and future opening times. Pure buildClosePatch validates exclusive terminal actions and authoritative audit identity. These helpers are NOT connected to old inventory APIs yet.
+- normalizeItem preserves audit timestamps, discard quantity/reason and finished attribution; handles native/serialized Timestamp and old ISO caches without inventing expiry.
+- src/api/settingsAPI.ts now exports getBusinessSettings(): Promise<BusinessSettings> and saveBusinessSettings(input): Promise<void>. No businessId argument: both derive the active server profile. Defaults: Asia/Jerusalem, evening=true, morning=true, autoEndShiftsAtMidnight=false. Admin-only saves await server acknowledgement; real errors propagate. No scheduler exists yet.
+- src/api/access.ts offers authoritative getCurrentActor/assertCurrentActor and business/department query constraints for C2b. The old catalog/inventory reads have NOT migrated yet.
+- Added explicit tested businessSettings/{businessId} rules: active same-business reads including absent defaults; only admin exact validated four-field create/update; no deletes.
+- Verification: new 24 client/domain/API tests pass; full client suite 53/53 PASS; rules emulator 21/21 PASS; official app build PASS; lint on all changed TS files PASS; git diff --check PASS. RED stages confirmed before implementations. Independent static review: no Critical/Important findings.
+- Claude checkpoint fd21795 integrated C1 and has 101 passing combined client tests. U3d is now unblocked by settingsAPI. Merge the pinned C2a commit published with this handoff; do not take a later moving WIP tip.
+- Still required in C2b: actual inventoryOperations exports and online receipts, terminal transaction/idempotency rules, scoped catalog/inventory/report/realtime adapters, productCategories rule alignment, real SDK emulator integration. Do NOT claim C2 done or deploy current strict rules with old item APIs.
+- C3 durable offline and C4 scheduling/push remain unimplemented. Existing legacy cache/queue records are untouched.

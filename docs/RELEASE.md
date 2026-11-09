@@ -78,3 +78,12 @@ with a five-minute TTL and token-checked release. An overlapping operation retur
 `aborted` and must be retried; it is not reported as completed. A completed
 provisioning request cannot reactivate an inactive profile. Interrupted request
 receipts are retained without passwords so a later retry can resume safely.
+
+## C2a settings and domain checkpoint
+
+Business settings now have explicit same-business read/admin-write rules and a
+server-backed settingsAPI. Missing settings use Israel timezone, evening and
+morning notifications enabled, and automatic midnight shift ending disabled.
+These preferences do not start a scheduler; scheduling remains C4.
+Pure inventory validation/normalization and shared contracts are tested, but the
+legacy inventory APIs still need C2b wiring before strict rules can be deployed.

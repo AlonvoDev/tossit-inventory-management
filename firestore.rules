@@ -75,6 +75,20 @@ service cloud.firestore {
       allow delete: if admin() && sameBusiness(resource.data);
     }
 
+    match /businessSettings/{businessId} {
+      function validSettings(data) {
+        return data.keys().hasAll(['timezone', 'eveningRemindersEnabled', 'morningSummaryEnabled', 'autoEndShiftsAtMidnight'])
+          && data.keys().hasOnly(['timezone', 'eveningRemindersEnabled', 'morningSummaryEnabled', 'autoEndShiftsAtMidnight'])
+          && data.timezone == 'Asia/Jerusalem'
+          && data.eveningRemindersEnabled is bool && data.morningSummaryEnabled is bool
+          && data.autoEndShiftsAtMidnight is bool;
+      }
+      // Use the path for reads so a missing document can return documented defaults.
+      allow read: if active() && actor().businessId == businessId;
+      allow create, update: if admin() && actor().businessId == businessId && validSettings(request.resource.data);
+      allow delete: if false;
+    }
+
     match /items/{id} {
       function product(data) { return get(/databases/$(database)/documents/products/$(data.productId)).data; }
       function validFridge(data) {
