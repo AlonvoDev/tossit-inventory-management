@@ -109,6 +109,30 @@ describe('NotificationControls', () => {
     expect(await screen.findByRole('button', { name: 'הפעל התראות במכשיר הזה' })).toBeInTheDocument();
   });
 
+  it('maps the C5 setup codes: outdated worker asks for an update; offline disable is saved', async () => {
+    push.getPushNotificationState.mockResolvedValueOnce('disabled').mockResolvedValueOnce('disabled');
+    push.enablePushNotifications.mockRejectedValue(Object.assign(new Error('x'), { code: 'worker-outdated' }));
+    const { unmount } = render(<NotificationControls />);
+    await userEvent.click(await screen.findByRole('button', { name: 'הפעל התראות במכשיר הזה' }));
+    expect(await screen.findByText('יש לעדכן את TossIt לגרסה האחרונה לפני הפעלת התראות.')).toBeInTheDocument();
+    unmount();
+
+    push.getPushNotificationState.mockResolvedValueOnce('enabled');
+    push.disablePushNotifications.mockRejectedValue(Object.assign(new Error('x'), { code: 'offline' }));
+    render(<NotificationControls />);
+    await userEvent.click(await screen.findByRole('button', { name: 'כבה התראות במכשיר הזה' }));
+    expect(await screen.findByText('אין חיבור. הכיבוי נשמר במכשיר ויושלם כשהחיבור יחזור.')).toBeInTheDocument();
+  });
+
+  it('an invalid key detected at enable switches to the not-configured state', async () => {
+    push.getPushNotificationState.mockResolvedValue('disabled');
+    push.enablePushNotifications.mockRejectedValue(Object.assign(new Error('x'), { code: 'not-configured' }));
+    render(<NotificationControls />);
+    await userEvent.click(await screen.findByRole('button', { name: 'הפעל התראות במכשיר הזה' }));
+    expect(await screen.findByText(/התראות עדיין אינן זמינות/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'הפעל התראות במכשיר הזה' })).not.toBeInTheDocument();
+  });
+
   it('a failed state read is retryable', async () => {
     push.getPushNotificationState
       .mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'functions/internal' }))
@@ -122,10 +146,7 @@ describe('NotificationControls', () => {
 
 describe('push environment helpers', async () => {
   const real = await vi.importActual<typeof import('./pushEnv')>('./pushEnv');
-  it('detects missing configuration and iPhone browsers that are not installed', () => {
-    expect(real.pushConfigured('')).toBe(false);
-    expect(real.pushConfigured(undefined)).toBe(false);
-    expect(real.pushConfigured('BAbc')).toBe(true);
+  it('detects iPhone browsers that are not installed', () => {
     expect(real.needsHomeScreenInstall('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', false)).toBe(true);
     expect(real.needsHomeScreenInstall('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', true)).toBe(false);
     expect(real.needsHomeScreenInstall('Mozilla/5.0 (Linux; Android 14)', false)).toBe(false);

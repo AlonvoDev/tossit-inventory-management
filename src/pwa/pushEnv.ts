@@ -1,9 +1,7 @@
-/**
- * Presence check only: the full validation lives in Codex's notificationUtils.
- * TODO(C5): replace with an exported isPushConfigured() helper (requested in CLAUDE_REQUESTS).
- */
-export const pushConfigured = (key: unknown = import.meta.env.VITE_VAPID_PUBLIC_KEY) =>
-  typeof key === 'string' && key.trim().length > 0;
+import { isPushConfigured } from '../utils/notificationUtils';
+
+/** Same structural VAPID validation as enable (Codex C5); no permission, network or subscription. */
+export const pushConfigured = (): boolean => isPushConfigured();
 
 /** iPhone/iPad Safari supports Web Push only for apps added to the Home Screen (iOS 16.4+). */
 export const needsHomeScreenInstall = (
