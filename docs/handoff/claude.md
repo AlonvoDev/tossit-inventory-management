@@ -1,8 +1,20 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U3d — business settings on C2 settingsAPI; removal of the live-data QA tool. U3 complete.
-Status: U3 done (no reactivation control: not offered by C1). U1 done. U4a done; U4b waits for C3c, U4c for C4. Next: U2 online inventory.
-Last previously confirmed remote SHA: 753ba3a2cdb06cfd378c988ed3cb92e4aac8eb56 (C2 integration)
+Task / bounded subtask: U2a — Dashboard scope/cleanup and opening items on C2 `openInventoryItem` (U2 split: U2a open ✓, U2b list + finished/discarded on `closeInventoryItem` + realtime, U2c shift button; pending/provider parts after C3c)
+Status: checkpoint. U1, U3 done; U4a done; U4b waits for C3c, U4c for C4.
+Last previously confirmed remote SHA: 8f461c216945c4e216512fbd23ba785c83a2c5e2 (U3d)
+
+## U2a changed files
+- `src/components/OpenItemForm.tsx` (rewritten): `openInventoryItem({ operationId, productId, amount, fridgeId?, openedAtMs })` only — no actor/business/name/unit/expiry from the UI. One UUID + opening instant per intent (`src/features/inventory/openItem.ts`), reused on retry of the same payload and renewed when it changes. Decimal kg (comma or dot, ≤3 decimals) vs whole units; department catalog and fridges only (fridge optional, product default preselected); off-shift staff blocked; offline blocked with explanation; success only for a receipt (`synced` → "נפתח. תוקף עד …" in Asia/Jerusalem; `pending` → explicitly not saved yet); `unavailable` keeps the intent; permission/shift/catalog errors shown. Removed the `pendingOperations` localStorage queue, fake "saved locally" success, local product cache, made-up departments (מחסן/אחר) and `parseInt` truncation (0.5 kg was impossible).
+- `src/components/FloatingActionButton.tsx`: canonical `department` prop; dialog stays open after a receipt so the confirmation is visible.
+- `src/pages/Dashboard.tsx`: **removed the mount-time deletion of `pendingOperations` and `cachedItems_*`** (legacy data stays for C3 review); tabs only for operable departments (admin both, manager/staff own); Hebrew role/department chips; removed localhost dev card (self-promotion + sample products) and debug logging. Browser `startDiscardScheduler` still started here — C4 replaces it (request U4a).
+- `src/components/ItemsList.tsx`, `src/components/DashboardKPIs.tsx`: **C2 regression fix** — area filters compared items with Hebrew labels, but C2 returns canonical `bar`/`kitchen`, so active tabs and staff KPIs would be empty; now compared via shared `normalizeDepartment`. (ItemsList is rewritten/tested in U2b.)
+- `src/app/access.ts`: `operableDepartments`.
+- Tests: `openItem.test.ts` (14), `OpenItemForm.test.tsx` (9), `Dashboard.test.tsx` (4).
+
+## U2a checks
+- `npm run build`: PASS. `npm run test:run`: 23 files, 212/212 pass. `npm run lint`: 2 errors / 6 warnings (Codex `syncManager.ts`). `git diff --check`: clean.
+- NOT RUN: emulator/real Firestore opening; ItemsList area fix has no dedicated test yet (covered in U2b).
 
 ## U3d changed files
 - `src/features/settings/SettingsPage.tsx`: loads `getBusinessSettings()` (defaults when no document), three real settings (evening reminders 23:00/23:20/23:40, 08:00 manager summary, midnight auto-end), timezone shown read-only; save enabled only when changed and online; success only after `saveBusinessSettings` resolves; errors keep the draft; retryable load error (never silently shows defaults on failure); cancel restores. Removed placeholder "company name", "notifications" and "auto sync" fields and the console.log save. Info note: reminders are sent only once the server notification service and device opt-in exist (C4/U4c).
@@ -129,7 +141,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-U2 online inventory on `openInventoryItem`/`closeInventoryItem`/`subscribeBusinessItems` (UUID per intent, synced-only success). Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+U2b: ItemsList + `useItemActions`/`ItemActionModal` on `closeInventoryItem` (UUID per close intent, finished vs discarded with reason/amount ≤ batch, `already-closed` shown, no optimistic success) and realtime `subscribeBusinessItems`; then U2c ShiftButton. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume

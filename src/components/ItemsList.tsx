@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { normalizeDepartment } from '../app/access';
 import LoadingSkeleton from './LoadingSkeleton';
 import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -84,19 +85,15 @@ const ItemsList: React.FC<ItemsListProps> = ({
         console.log('Loaded business items:', fetchedItems.length);
         
         // Filter by area first - handle both English and Hebrew values
+        // C2 returns canonical areas; legacy Hebrew values are normalized on both sides.
         let filteredByArea = areaFilter 
-          ? fetchedItems.filter(item => {
-              const normalizedArea = areaFilter === 'bar' ? 'בר' : 
-                                   areaFilter === 'kitchen' ? 'מטבח' : 
-                                   areaFilter;
-              return item.area === normalizedArea;
-            })
+          ? fetchedItems.filter(item => normalizeDepartment(item.area) === normalizeDepartment(areaFilter))
           : fetchedItems;
         console.log('After area filter:', filteredByArea.length);
 
         // Then filter by user's department if no area filter is provided AND user is not manager/admin
         if (!areaFilter && userDepartment && !canSeeAllDepartments) {
-          filteredByArea = filteredByArea.filter(item => item.area === userDepartment);
+          filteredByArea = filteredByArea.filter(item => normalizeDepartment(item.area) === normalizeDepartment(userDepartment));
           console.log('After department filter:', filteredByArea.length);
         }
         

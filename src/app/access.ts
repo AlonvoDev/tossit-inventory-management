@@ -74,6 +74,17 @@ export const departmentLabel = (department: unknown): string | null => {
 };
 
 /**
+ * Departments whose inventory the role may see and operate: admin both, manager/staff their own.
+ * Mirrors the C1b `scoped`/`operates` rules (shift requirement for staff is checked separately).
+ */
+export const operableDepartments = (role: unknown, ownDepartment: unknown): Department[] => {
+  const appRole = toAppRole(role);
+  if (appRole === 'admin') return ['bar', 'kitchen'];
+  const own = normalizeDepartment(ownDepartment);
+  return appRole && own ? [own] : [];
+};
+
+/**
  * Departments whose catalog (products, fridges) the role may manage in the UI.
  * Mirrors the C1b rules: admin business-wide; manager only their own department; staff none.
  */

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { updateUserRoleToAdmin } from '../api/authAPI';
 import {
   Container,
   Box,
@@ -12,8 +11,6 @@ import {
   useTheme,
   alpha,
 
-  Card,
-  CardContent,
   Chip,
   Stack,
 } from '@mui/material';
@@ -28,37 +25,22 @@ import ShiftButton from '../components/ShiftButton';
 import ItemsList from '../components/ItemsList';
 import FloatingActionButton from '../components/FloatingActionButton';
 import DashboardKPIs from '../components/DashboardKPIs';
-import { addSampleProducts } from '../api/productsAPI';
+import type { Department } from '../domain/contracts';
+import { departmentLabel, operableDepartments, ROLE_LABELS, toAppRole } from '../app/access';
 import { startDiscardScheduler, stopDiscardScheduler } from '../services/discardScheduler';
 const Dashboard: React.FC = () => {
-  const { user, profile, isAdmin, isOffline } = useAuth();
+  const { profile, role, isOffline } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<'bar' | 'kitchen' | 'discarded'>('bar');
+  // Only departments this account may read: admin both, manager/staff their own (C1b rules).
+  const departments = useMemo(() => operableDepartments(role, profile?.department), [role, profile?.department]);
+  const [activeTab, setActiveTab] = useState<Department | 'discarded'>(departments[0] ?? 'discarded');
+  useEffect(() => {
+    if (activeTab !== 'discarded' && !departments.includes(activeTab)) setActiveTab(departments[0] ?? 'discarded');
+  }, [departments, activeTab]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Debug effect to log user status
-  useEffect(() => {
-    console.log('User profile:', profile);
-    console.log('Is admin:', isAdmin);
-    console.log('Role:', profile?.role);
-    console.log('Offline mode:', isOffline);
-  }, [profile, isAdmin, isOffline]);
   
-  // Clear old pending operations on app start (one time)
-  useEffect(() => {
-    // Clear all localStorage to avoid undefined value issues
-    try {
-      console.log('Clearing localStorage to prevent undefined value errors...');
-      localStorage.removeItem('pendingOperations');
-      localStorage.removeItem('cachedItems_bar');
-      localStorage.removeItem('cachedItems_kitchen');
-      localStorage.removeItem('cachedItems_all');
-      console.log('localStorage cleared successfully');
-    } catch (error) {
-      console.error('Error clearing localStorage:', error);
-    }
-  }, []);
   
   // Start discard scheduler when component mounts
   useEffect(() => {
@@ -134,16 +116,14 @@ const Dashboard: React.FC = () => {
               </Typography>
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
                 <Chip 
-                  label={profile.role === 'admin' ? 'מנהל מערכת' : 
-                        profile.role === 'manager' ? 'מנהל מחלקה' : 
-                        'עובד'} 
+                  label={toAppRole(profile.role) ? ROLE_LABELS[toAppRole(profile.role)!] : 'עובד'}
                   color="primary"
                   variant="filled"
                   sx={{ fontWeight: 600 }}
                 />
-                {profile.department && (
+                {profile.role !== 'admin' && departmentLabel(profile.department) && (
                   <Chip 
-                    label={profile.department}
+                    label={departmentLabel(profile.department)}
                     variant="outlined"
                     size="small"
                   />
@@ -205,20 +185,18 @@ const Dashboard: React.FC = () => {
                 },
               }}
             >
-              <Tab 
-                value="bar" 
-                label="בר" 
-                icon={<BarIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />} 
-                iconPosition="start"
-                sx={{ minWidth: { xs: 100, sm: 120 } }}
-              />
-              <Tab 
-                value="kitchen" 
-                label="מטבח" 
-                icon={<KitchenIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />} 
-                iconPosition="start"
-                sx={{ minWidth: { xs: 100, sm: 120 } }}
-              />
+              {departments.map(d => (
+                <Tab
+                  key={d}
+                  value={d}
+                  label={departmentLabel(d)}
+                  icon={d === 'bar'
+                    ? <BarIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    : <KitchenIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />}
+                  iconPosition="start"
+                  sx={{ minWidth: { xs: 100, sm: 120 } }}
+                />
+              ))}
               <Tab 
                 value="discarded" 
                 label="פריטים נזרקים" 
@@ -258,7 +236,7 @@ const Dashboard: React.FC = () => {
                 {/* Enhanced inventory display with grouping */}
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
                   <Typography variant="h5" sx={{ fontWeight: 600, mb: 1, fontSize: { xs: '1.3rem', sm: '1.5rem' } }}>
-                    מלאי {activeTab === 'bar' ? 'בר' : activeTab === 'kitchen' ? 'מטבח' : activeTab}
+                    מלאי {departmentLabel(activeTab)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                     פריטים פעילים מקובצים לפי מקרר ומסומנים לפי סטטוס תוקף
@@ -266,7 +244,7 @@ const Dashboard: React.FC = () => {
                 </Box>
                 
                 <ItemsList 
-                  areaFilter={activeTab === 'bar' ? 'בר' : activeTab === 'kitchen' ? 'מטבח' : activeTab} 
+                  areaFilter={activeTab}
                   refreshTrigger={refreshTrigger}
                   isOffline={isOffline}
                   onItemUpdated={handleItemUpdated}
@@ -279,75 +257,12 @@ const Dashboard: React.FC = () => {
         {/* Floating Action Button for non-discarded tabs */}
         {activeTab !== 'discarded' && (
           <FloatingActionButton
-            area={activeTab === 'bar' ? 'בר' : activeTab === 'kitchen' ? 'מטבח' : activeTab}
+            department={activeTab}
             onItemAdded={handleItemAdded}
             disabled={isOffline}
           />
         )}
 
-        {/* Development utilities - only visible on localhost */}
-        {window.location.hostname === 'localhost' && (
-          <Card sx={{ mt: 4, border: '2px dashed orange', bgcolor: alpha('#ff9800', 0.05) }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ color: '#f57c00', mb: 2, fontWeight: 600 }}>
-                🛠️ כלי פיתוח
-              </Typography>
-              <Stack spacing={2} alignItems="center">
-                <button 
-                  onClick={async () => {
-                    try {
-                      await updateUserRoleToAdmin(user?.uid || '');
-                      alert('הרשאות מנהל הוגדרו בהצלחה!');
-                      window.location.reload();
-                    } catch (error) {
-                      console.error('Error updating role:', error);
-                      alert('אירעה שגיאה בעדכון ההרשאות');
-                    }
-                  }}
-                  className="dev-button"
-                >
-                  קבע הרשאות מנהל
-                </button>
-                
-                <button 
-                  onClick={async () => {
-                    try {
-                      if (profile?.businessId) {
-                        await addSampleProducts(profile.businessId);
-                        alert('מוצרי דוגמה נוספו בהצלחה!');
-                        window.location.reload();
-                      } else {
-                        alert('מזהה עסק לא נמצא');
-                      }
-                    } catch (error) {
-                      console.error('Error adding sample products:', error);
-                      alert('אירעה שגיאה בהוספת מוצרי דוגמה');
-                    }
-                  }}
-                  className="dev-button"
-                >
-                  הוסף מוצרי דוגמה
-                </button>
-                
-                <style>{`
-                  .dev-button {
-                    padding: 12px 24px;
-                    background-color: #ff9800;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: background-color 0.2s;
-                  }
-                  .dev-button:hover {
-                    background-color: #f57c00;
-                  }
-                `}</style>
-              </Stack>
-            </CardContent>
-          </Card>
-        )}
       </Container>
     </Box>
   );
