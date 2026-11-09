@@ -3,7 +3,7 @@ import type { UserProfile } from '../types/UserProfile';
 
 /** Normalize legacy display fields without manufacturing authority or a business. */
 export function parseUserProfile(uid: string, data: Record<string, unknown>): UserProfile | null {
-  if (data.isActive === false || (data.uid !== undefined && data.uid !== uid)) return null;
+  if ((data.isActive !== undefined && data.isActive !== true) || (data.uid !== undefined && data.uid !== uid)) return null;
   const role = data.role === 'user' ? 'staff' : data.role;
   const rawDepartment = data.department ?? data.area;
   const department = rawDepartment === 'בר' ? 'bar' : rawDepartment === 'מטבח' ? 'kitchen' : rawDepartment;

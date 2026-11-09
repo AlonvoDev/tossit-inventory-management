@@ -1,9 +1,10 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Timestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { AuthProvider, useAuth } from '../../context/AuthContext';
 import { useAuth as useLegacyAuth } from '../../hooks/useAuth';
+import { ShiftProvider, useShift } from '../../context/ShiftContext';
 
 const transport = vi.hoisted(() => ({
   authListener: undefined as undefined | ((user: User | null) => void),
@@ -12,12 +13,15 @@ const transport = vi.hoisted(() => ({
   profileError: undefined as undefined | ((error: Error) => void),
   currentData: null as Record<string, unknown> | null,
   currentUser: null as User | null,
+  finishShift: undefined as undefined | (() => void),
 }));
 
 vi.mock('../../services/firebase', () => ({
   db: {}, auth: { get currentUser() { return transport.currentUser; } },
 }));
 vi.mock('../../api/authAPI', () => ({
+  startShift: () => new Promise<void>(resolve => { transport.finishShift = resolve; }),
+  endShift: async () => undefined,
   observeAuthState: (listener: (user: User | null) => void) => {
     transport.authListener = listener;
     return () => { transport.authListener = undefined; };
@@ -121,6 +125,7 @@ describe('authoritative user session', () => {
   it.each([
     ['missing', null],
     ['disabled', profile({ isActive: false })],
+    ['malformed active flag', profile({ isActive: 'false' })],
     ['missing business', profile({ businessId: '' })],
     ['unknown role', profile({ role: 'superuser' })],
     ['wrong document identity', profile({ uid: 'someone-else' })],
@@ -167,5 +172,18 @@ describe('authoritative user session', () => {
     render(<AuthProvider><Probe /></AuthProvider>);
     await signIn('admin-1', profile({ role: 'user', department: 'בר' }));
     expect(read()).toMatchObject({ authenticated: true, role: 'staff', isAdmin: false });
+  });
+
+  it('does not let a previous identity pending shift grant the next identity a shift', async () => {
+    function ShiftProbe() {
+      const shift = useShift();
+      return <><button onClick={() => void shift.startUserShift()}>Start shift</button><output data-testid="shift">{String(shift.isOnShift)}</output></>;
+    }
+    render(<AuthProvider><ShiftProvider><Probe /><ShiftProbe /></ShiftProvider></AuthProvider>);
+    await signIn('admin-1', profile());
+    fireEvent.click(screen.getByRole('button', { name: 'Start shift' }));
+    await signIn('staff-2', profile({ uid: 'staff-2', role: 'staff' }));
+    await act(async () => { transport.finishShift?.(); });
+    expect(screen.getByTestId('shift')).toHaveTextContent('false');
   });
 });

@@ -17,7 +17,10 @@
     "start": "serve -s dist -l tcp://0.0.0.0:$PORT",
     "emulators": "firebase emulators:start",
     "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\"",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-tossit-auth \"vitest run --config vitest.rules.config.ts\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tossit-auth \"vitest run --config vitest.rules.config.ts\"",
+    "test:functions": "vitest run --config vitest.functions.config.ts",
+    "build:functions": "npm --prefix functions run build",
+    "test:callables": "npm run build:functions && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
