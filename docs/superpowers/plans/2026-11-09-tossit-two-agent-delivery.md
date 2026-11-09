@@ -260,11 +260,11 @@ Every task may be split into 30–90 minute bounded subtasks if it would otherwi
 **Files:** Create offline/queueStore.ts, offline/replay.ts, offline/OfflineProvider.tsx; modify inventoryOperations, syncManager and services/firebase only as needed; add src/test/domain/offline.test.ts.
 **Consumes:** C2 operation contract.
 **Produces:** Durable pending receipts, operation subscriptions, account-scoped cache/queue, replay lifecycle.
-- [ ] Write failing tests for reload offline, replay retry, two tabs, two accounts on one device, corrupt legacy payload, stale catalog and a competing terminal action.
-- [ ] Verify failures, implement one queue and deterministic IDs, transactionally resolve writes, retain/reveal conflicts and keep original openedAt/expiry.
-- [ ] Document recovery/import behavior for existing pendingOperations; never silently discard legacy queued data.
-- [ ] Test network restoration and restarting replay during an incomplete operation. Verify one persisted item and one terminal action.
-- [ ] Build/test and publish C3; request Claude's provider mount and deletion of Dashboard's queue clearing.
+- [x] Write failing tests for reload offline, replay retry, two tabs, two accounts on one device, corrupt legacy payload, stale catalog and a competing terminal action.
+- [x] Verify failures, implement one queue and deterministic IDs, transactionally resolve writes, retain/reveal conflicts and keep original openedAt/expiry.
+- [x] Document recovery/import behavior for existing pendingOperations; never silently discard legacy queued data.
+- [x] Test network restoration and restarting replay during an incomplete operation. Verify one persisted item and one terminal action.
+- [x] Build/test and publish C3; request Claude's provider mount and deletion of Dashboard's queue clearing.
 **Acceptance:** No lost operations, no cross-account replay, no duplicate inventory documents from retry. Logout isolates data without silently destroying pending work.
 
 ### C4 — Server scheduling and device subscriptions

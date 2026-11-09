@@ -102,6 +102,36 @@ describe('durable account-scoped offline store', () => {
     expect(await store().getCache(scope, 'items')).toEqual([{ openingTime: { seconds: 1700000000, nanoseconds: 0 } }]);
     await expect(queue.putCache(scope, 'bad', { amount: NaN })).rejects.toMatchObject({ code: 'invalid-input' });
   });
+  it('persists verified profile snapshots by UID and can revoke them without deleting pending work', async () => {
+    const queue = store(); await queue.enqueue(scope, intent());
+    await queue.putProfile(scope.uid, { ...scope, role: 'staff' });
+    expect(await store().getProfile(scope.uid)).toMatchObject(scope);
+    expect(await queue.getProfile(other.uid)).toBeUndefined();
+    await queue.removeProfile(scope.uid);
+    expect(await queue.getProfile(scope.uid)).toBeUndefined();
+    expect(await queue.list(scope)).toHaveLength(1);
+  });
+  it('upgrades the previous database schema without losing operations or their sequence', async () => {
+    const old = store(); const record = await old.enqueue(scope, intent()); await old.close();
+    await new Promise<void>(resolve => { const drop = indexedDB.deleteDatabase(name); drop.onsuccess = () => resolve(); });
+    await new Promise<void>((resolve, reject) => {
+      const opening = indexedDB.open(name, 1);
+      opening.onupgradeneeded = () => {
+        opening.result.createObjectStore('operations', { keyPath: 'key' }).createIndex('scope', 'scope');
+        for (const table of ['cache', 'legacy']) opening.result.createObjectStore(table, { keyPath: 'key' });
+        opening.result.createObjectStore('meta');
+      };
+      opening.onerror = () => reject(opening.error);
+      opening.onsuccess = () => {
+        const db = opening.result; const tx = db.transaction(['operations', 'meta'], 'readwrite');
+        tx.objectStore('operations').put(record); tx.objectStore('meta').put(1, 'sequence');
+        tx.oncomplete = () => { db.close(); resolve(); }; tx.onabort = () => reject(tx.error);
+      };
+    });
+    const upgraded = store(); expect(await upgraded.list(scope)).toEqual([record]);
+    expect(await upgraded.getProfile(scope.uid)).toBeUndefined();
+    expect(await upgraded.enqueue(scope, { kind: 'close', input: { operationId: 'new-close-1', itemId: 'existing', action: 'finished' } })).toMatchObject({ sequence: 2 });
+  });
   it('quarantines malformed and unattributed legacy operations without changing the source', async () => {
     const queue = store();
     const values = [{ sourceKey: 'pendingOperations', raw: '{broken' }, { sourceKey: 'cachedItems_all', raw: '[{"id":"old-item"}]' }];

@@ -3,8 +3,8 @@ import { InventoryError, invalid } from '../domain/errors';
 
 export interface OfflineScope { uid: string; businessId: string }
 export type OfflineIntent =
-  | { kind: 'open'; input: OpenInventoryItemInput; catalogFingerprint: string }
-  | { kind: 'close'; input: CloseInventoryItemInput };
+  | { kind: 'open'; input: OpenInventoryItemInput; catalogFingerprint: string; preview?: Record<string, unknown> }
+  | { kind: 'close'; input: CloseInventoryItemInput; preview?: Record<string, unknown> };
 export interface StoredOperation extends SyncOperation {
   key: string;
   scope: string;
@@ -28,6 +28,9 @@ export interface QueueStore {
   retry(scope: OfflineScope, id: string): Promise<void>;
   putCache(scope: OfflineScope, name: string, value: unknown): Promise<void>;
   getCache<T = unknown>(scope: OfflineScope, name: string): Promise<T | undefined>;
+  putProfile(uid: string, value: Record<string, unknown>): Promise<void>;
+  getProfile(uid: string): Promise<Record<string, unknown> | undefined>;
+  removeProfile(uid: string): Promise<void>;
   quarantineLegacy(values: { sourceKey: string; raw: string }[]): Promise<void>;
   listLegacyReviews(): Promise<LegacyReview[]>;
   close(): Promise<void>;
@@ -76,13 +79,14 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
   function database(): Promise<IDBDatabase> {
     if (!connection) connection = new Promise((resolve, reject) => {
       if (typeof indexedDB === 'undefined') { reject(new InventoryError('unavailable', 'Durable offline storage is unavailable')); return; }
-      const opening = indexedDB.open(databaseName, 1);
+      const opening = indexedDB.open(databaseName, 2);
       opening.onupgradeneeded = () => {
         const db = opening.result;
-        db.createObjectStore(operations, { keyPath: 'key' }).createIndex('scope', 'scope');
-        db.createObjectStore('cache', { keyPath: 'key' });
-        db.createObjectStore('legacy', { keyPath: 'key' });
-        db.createObjectStore('meta');
+        if (!db.objectStoreNames.contains(operations)) db.createObjectStore(operations, { keyPath: 'key' }).createIndex('scope', 'scope');
+        if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('legacy')) db.createObjectStore('legacy', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+        if (!db.objectStoreNames.contains('profiles')) db.createObjectStore('profiles');
       };
       opening.onsuccess = () => { const db = opening.result; db.onversionchange = () => { db.close(); connection = undefined; }; resolve(db); };
       opening.onerror = () => { connection = undefined; reject(opening.error); };
@@ -193,6 +197,12 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
         }
       });
     },
+    async putProfile(uid, value) {
+      const copy = serialized(value);
+      await transaction('profiles', 'readwrite', async tx => { await request(tx.objectStore('profiles').put(copy, uid)); });
+    },
+    async getProfile(uid) { return transaction('profiles', 'readonly', tx => request(tx.objectStore('profiles').get(uid))); },
+    async removeProfile(uid) { await transaction('profiles', 'readwrite', async tx => { await request(tx.objectStore('profiles').delete(uid)); }); },
     async listLegacyReviews() { return transaction('legacy', 'readonly', tx => request(tx.objectStore('legacy').getAll())); },
     async close() { const existing = connection; connection = undefined; if (existing) (await existing).close(); },
   };

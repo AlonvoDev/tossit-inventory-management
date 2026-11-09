@@ -1,8 +1,20 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: C3b — durable replay foundation; C3 remains in progress
-Status: C3 IN PROGRESS (C1/C2 done; no deployment)
-Last previously confirmed remote SHA: 8eeaf29424eb8c8aa60b38016a323c573b59fb32
+Task / bounded subtask: C3c — connected offline inventory, cache and provider
+Status: C3 implementation DONE; READY for Claude integration/mount. No deployment.
+Last previously confirmed remote SHA: 0dc0b5040c7abaf02c7cdbd5a0378dc73453e071
+
+## READY FOR CLAUDE — C3c supersedes earlier foundation-only status
+The C3 implementation is connected and tested in the published commit containing this handoff. Merge its pinned SHA from codex/tossit-core, then mount OfflineProvider and complete U2/U4b; C4 notification controls still wait for C4.
+
+- In src/app/main.tsx, import OfflineProvider from ../offline/OfflineProvider and mount it directly INSIDE AuthProvider, wrapping NotificationProvider/ShiftProvider/App/PWAPrompt/OfflineIndicator. This is a Claude-owned mount change; Codex has not edited the entry file.
+- useOffline() is exported from src/offline/OfflineProvider.tsx and returns { operations, pendingCount, failedCount, error, retry(operationId) }. Alternatively subscribeSyncOperations(listener) retains the exact shared contract and returns an unsubscribe function. It now emits real current-account/current-business states. Connectivity and queue status are separate signals. Show pending and failed separately; a failed operation remains retained until explicit review/retry.
+- openInventoryItem/closeInventoryItem retain the shared signatures and now write ahead to IndexedDB. Online acknowledgement returns synced; offline/timeout/transient transport returns pending only after durable storage. Errors such as permission-denied/invalid-input/already-closed/catalog-changed are never described as success. Generate ONE UUID per user intent and reuse the unchanged payload on retries. retrySyncOperation is additionally exported by inventoryOperations; use it for a retained failed operation after review.
+- getBusinessItems/subscribeBusinessItems project durable pending and acknowledged-but-not-yet-cached changes; cache lag cannot make a synced opening disappear or resurrect a closed batch. Cached data is filtered by current verified role/department. Realtime subscriptions revoke/rebind on profile changes. Cached catalog/fridges/items require an earlier successful online load; a missing verified offline snapshot returns unavailable rather than fabricated data.
+- Legacy addItem/markItem* adapters also use the durable operations, but their historical string/void results do NOT expose sync status. U2 must consume WriteReceipt/subscriptions for truthful UI feedback. Legacy adapters still generate a fresh operation intent per call; U2 should use the new APIs to preserve retry IDs.
+- Remove ALL Dashboard/localStorage queue-clearing behavior and old standalone replayers. utils/syncManager is now a non-destructive compatibility facade; clearPendingOperations only quarantines source values, never clears them. The new worker must continue leaving IndexedDB/localStorage intact.
+- Client cache is a last-known verified profile/data snapshot, allowing an already signed-in account to reload offline. It is not server authority: replay rechecks real profile/rules and expected UID/business. Missing/disabled/malformed known profiles fail closed; logout isolates retained pending work. Firebase Auth must still restore the same signed-in UID.
+- No permission request, push subscription or worker registration was introduced by C3. C4 must use the existing app worker and agreed PushPayload.
 
 ## READY FOR CLAUDE — coordination update after U4a 1b8195a
 **C2 is COMPLETE and READY TO MERGE.** The exact pinned code checkpoint is
@@ -141,3 +153,12 @@ Base C3a published/remotely verified: 8eeaf29424eb8c8aa60b38016a323c573b59fb32.
 4. Publish OfflineProvider/lifecycle contract for Claude to mount (Claude owns app entry/UI). Subscribe to session/connectivity, safe cross-tab triggers, no background old-account replay after logout. Feed canonical cached/pending inventory to subscribers. Replace unused legacy syncManager with adapters that preserve/quarantine old keys; do not activate the old destructive replayer.
 5. Test browser/API-facing offline reload/replay, logout/re-login/account changes, stale catalogs, interrupted writes and provider cleanup with actual adapters; then mark C3 complete and ask Claude to remove Dashboard queue clearing and wire pending/failed UI. C3a/C3b alone do NOT enable offline inventory in the app.
 C4 scheduled push and C5 integrated candidate remain untouched.
+
+## C3c final verification and release boundary
+- Full client suite: 95/95 PASS (11 files). Store schema1→2 upgrade preserves pending operations and ordering. Tests cover cached profile/shift restore, pending counts/logout, account changes, immutable retry intent, expired hanging worker recovery, lost acknowledgements, catalog changes, validation and retained conflicts.
+- Actual Firestore SDK/rules emulator suite: 41/41 PASS (22 authorization, 19 inventory/catalog/report/realtime/offline cases). Includes offline open→storage reopen→one actual server batch, offline discard with server audit fields, legacy adapter replay, changed-catalog rejection, freshly narrowed cached projection and live subscription revoke/rebind.
+- App build and TypeScript: PASS. Changed-file lint: zero errors, two Fast Refresh warnings (AuthContext existing pattern and new OfflineProvider hook export). Whole Codex branch lint is now2errors/8warnings: the two remaining errors are Claude-owned AdminUsersPage and pwa.d.ts, already fixed on Claude's branch. No lint suppression added.
+- Independent review identified two Important issues: acknowledged overlays disappearing during cache lag and stale profile privileges on cached realtime publication. Both were reproduced RED→GREEN and fixed, including live emulator subscription coverage. Additional regressions fixed RED→GREEN: shift Timestamp JSON restoration, expired hanging in-flight worker, same-UID late cached-profile overwrite. Scope and lifetime guards suppress late callbacks after disposal/account change.
+- Codex fetched Claude checkpoint8f461c2: C2 integration and U3d completed there. No Claude-owned files were edited or merged here. C3 is now the next pinned merge/mount gate for U2/U4b.
+- NOT RUN: real browser/device IndexedDB eviction/quota/private-mode behavior, offline sign-in/reload/replay UI, tab lifecycle/update across both merged branches, real iPhone/Android. Pure storage uses fake-indexeddb; Firebase integration uses real SDK/emulator plus the IndexedDB test implementation. The current Codex build still uses its old PWA config until C5 integrates Claude U4a; don't confuse it with the reviewed single-worker candidate on Claude's branch.
+- Remaining release work: Claude mount/U2/U4b integration and device pilot; C4 server scheduling/WebPush; C5 pinned-branch integration, full validation and deployment review. No live site, main, Firebase rules/functions or billing changes.

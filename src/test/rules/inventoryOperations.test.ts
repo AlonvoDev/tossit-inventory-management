@@ -1,8 +1,12 @@
+import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, setLogLevel, type Firestore } from 'firebase/firestore';
 import { openInventoryItem, closeInventoryItem } from '../../api/inventoryOperations';
+import { offlineStore } from '../../offline/storage';
+import { setOfflineActor } from '../../offline/runtime';
+import { inventoryController } from '../../offline/runtime';
 const state = vi.hoisted(() => ({ db: undefined as unknown as Firestore, uid: 'staff' as string | null }));
 vi.mock('../../services/firebase', () => ({ get db() { return state.db; }, auth: { get currentUser() { return state.uid ? { uid: state.uid } : null; } } }));
 let env: RulesTestEnvironment;
@@ -12,8 +16,12 @@ beforeAll(async () => {
   setLogLevel('silent');
   env = await initializeTestEnvironment({ projectId: 'demo-tossit-auth', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
 });
-afterAll(async () => { await env?.cleanup(); });
+afterAll(async () => { setOfflineActor(null); await offlineStore.close(); await env?.cleanup(); });
+afterEach(() => vi.unstubAllGlobals());
 beforeEach(async () => {
+  await offlineStore.close();
+  await new Promise<void>(resolve => { const request = indexedDB.deleteDatabase('tossit-offline-v1'); request.onsuccess = () => resolve(); });
+  setOfflineActor(null);
   await env.clearFirestore(); state.uid = 'staff';
   state.db = env.authenticatedContext('staff').firestore() as unknown as Firestore;
   await env.withSecurityRulesDisabled(async context => {
@@ -169,5 +177,85 @@ describe('catalog mutations and actual category collection', () => {
     await manager();
     await expect(deleteCustomCategory(id)).rejects.toMatchObject({ code: 'permission-denied' });
     expect(await getBusinessCategories('a')).toHaveLength(1);
+  });
+});
+
+describe('connected durable offline API', () => {
+  it('preserves offline compatibility for legacy open and discard callers without fabricating receipts', async () => {
+    const { getBusinessProducts } = await import('../../api/productsAPI');
+    const { addItem, markItemAsDiscarded, getBusinessItems } = await import('../../api/firestoreAPI');
+    await getBusinessProducts('a'); await getBusinessItems('a');
+    vi.stubGlobal('navigator', { onLine: false });
+    const itemId = await addItem('milk', 'Untrusted name', 0.5, 'בר', 'a', 'staff');
+    await markItemAsDiscarded(itemId, 'staff', 'Untrusted actor', 0.25, 'damaged');
+    expect(await offlineStore.list({ uid: 'staff', businessId: 'a' })).toMatchObject([{ state: 'pending' }, { state: 'pending' }]);
+    vi.stubGlobal('navigator', { onLine: true }); await inventoryController.replay();
+    expect((await getDoc(doc(state.db, 'items', itemId))).data()).toMatchObject({ productName: 'Milk', discarded: true, discardedQuantity: 0.25, discardedByName: 'Staff' });
+  });
+  it('opens offline, survives reopening storage, projects pending inventory and syncs one actual server batch', async () => {
+    const { getBusinessProducts } = await import('../../api/productsAPI');
+    const { getBusinessItems } = await import('../../api/firestoreAPI');
+    await getBusinessProducts('a'); await getBusinessItems('a');
+    vi.stubGlobal('navigator', { onLine: false });
+    expect(await openInventoryItem(input())).toMatchObject({ state: 'pending' });
+    await offlineStore.close(); setOfflineActor(null);
+    const restored = await getBusinessItems('a');
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toMatchObject({ productId: 'milk', type: 'kg', amount: 0.5 });
+    expect(restored[0].expiryTime.toMillis()).toBe(1700086400000);
+    vi.stubGlobal('navigator', { onLine: true });
+    await inventoryController.replay();
+    expect(await openInventoryItem(input())).toMatchObject({ state: 'synced' });
+    vi.stubGlobal('navigator', { onLine: false }); // Disconnect before a server collection snapshot updates the cache.
+    expect(await getBusinessItems('a')).toHaveLength(1);
+    vi.stubGlobal('navigator', { onLine: true });
+    expect((await getDoc(doc(state.db, 'items', input().operationId))).data()!.openingTime.toMillis()).toBe(input().openedAtMs);
+  });
+  it('queues a discard offline and records server audit time on replay', async () => {
+    const { getBusinessItems } = await import('../../api/firestoreAPI');
+    const { itemId } = await openInventoryItem(input()); await getBusinessItems('a');
+    vi.stubGlobal('navigator', { onLine: false });
+    expect(await closeInventoryItem({ operationId: 'offline-discard-1', itemId, action: 'discarded', discardedAmount: 0.25, reason: 'damaged' })).toMatchObject({ state: 'pending' });
+    vi.stubGlobal('navigator', { onLine: true }); await inventoryController.replay();
+    expect((await getDoc(doc(state.db, 'items', itemId))).data()).toMatchObject({ discarded: true, finished: false, discardedQuantity: 0.25, discardedBy: 'staff' });
+  });
+  it('retains an actual changed-catalog conflict without writing or extending expiry', async () => {
+    const { getBusinessProducts } = await import('../../api/productsAPI'); await getBusinessProducts('a');
+    vi.stubGlobal('navigator', { onLine: false }); await openInventoryItem(input());
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'products/milk'), { name: 'Milk', businessId: 'a', area: 'bar', type: 'kg', shelfLifeDays: 7 });
+    });
+    vi.stubGlobal('navigator', { onLine: true }); await inventoryController.replay();
+    expect(await offlineStore.list({ uid: 'staff', businessId: 'a' })).toMatchObject([{ state: 'failed', errorCode: 'catalog-changed', intent: { input: input() } }]);
+  });
+  it('filters a previously cached admin inventory using a freshly verified narrower profile', async () => {
+    const { projectInventory } = await import('../../offline/runtime');
+    const admin = { uid: 'staff', businessId: 'a', role: 'admin' as const, department: 'bar' as const, email: 'staff@example.test', fullName: 'Admin' };
+    setOfflineActor(admin);
+    const { normalizeItem } = await import('../../domain/normalizeItem');
+    const { Timestamp } = await import('firebase/firestore');
+    const kitchen = normalizeItem('cached-kitchen', { productName: 'Sauce', type: 'kg', amount: 1, businessId: 'a', userId: 'staff', area: 'kitchen', openingTime: Timestamp.fromMillis(1700000000000), expiryTime: Timestamp.fromMillis(1700086400000) });
+    expect(await projectInventory([kitchen], { ...admin, role: 'staff', isOnShift: true })).toEqual([]);
+  });
+  it('revokes and rebinds an existing realtime subscription after an admin becomes department staff', async () => {
+    const { getBusinessItems, subscribeBusinessItems } = await import('../../api/firestoreAPI');
+    await openInventoryItem(input());
+    const bar = (await getDoc(doc(state.db, 'items', input().operationId))).data()!;
+    const profile = { uid: 'staff', businessId: 'a', role: 'admin' as const, department: 'bar' as const, email: 'staff@example.test', fullName: 'Admin', isOnShift: true };
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'users/staff'), profile);
+      await setDoc(doc(context.firestore(), 'items/cached-kitchen'), { ...bar, area: 'kitchen' });
+    });
+    setOfflineActor(profile); await getBusinessItems('a');
+    const snapshots: string[][] = [];
+    const stop = subscribeBusinessItems('a', items => snapshots.push(items.map(item => item.area)), () => undefined);
+    try {
+      await vi.waitFor(() => expect(snapshots[snapshots.length - 1]).toContain('kitchen'));
+      await env.withSecurityRulesDisabled(async context => { await setDoc(doc(context.firestore(), 'users/staff'), { ...profile, role: 'staff' }); });
+      const before = snapshots.length;
+      setOfflineActor({ ...profile, role: 'staff' });
+      await vi.waitFor(() => expect(snapshots[snapshots.length - 1]).toEqual(['bar']));
+      expect(snapshots.slice(before).every(items => !items.includes('kitchen'))).toBe(true);
+    } finally { stop(); }
   });
 });

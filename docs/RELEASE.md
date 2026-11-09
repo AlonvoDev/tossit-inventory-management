@@ -101,3 +101,19 @@ release. U2 must consume canonical department values and stable per-intent IDs;
 C3 offline queue, C4 server push/scheduling, combined branch checks and real-device
 pilot remain release gates. The old browser expiration timers are not a deployed
 scheduler. No production configuration or data was changed.
+
+## C3 connected offline inventory checkpoint
+
+The shared operations now commit durable intents before attempting server writes.
+They return pending for durable unsynced work and synced only after real server
+acknowledgement. Expected actor/business guards, cross-tab leases, immutable input,
+original opening/configuration, retained conflicts, cached profile/catalog/items
+and scoped queue subscriptions are connected. Acknowledged previews survive a
+collection-cache delay. Old localStorage queues remain untouched/quarantined.
+
+Before release, Claude must mount OfflineProvider directly inside AuthProvider,
+connect pending/failed UI and remove Dashboard queue clearing. Validate the merged
+single-worker app on actual devices, including offline reload, reconnect, two tabs,
+logout/account changes, low/quota storage and updates. Current evidence is95client
+and41realFirebaseSDK/rules-emulator tests; no real mobile/device persistence or live
+server notification delivery is claimed. C4/C5 gates still apply.

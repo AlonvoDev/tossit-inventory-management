@@ -1,10 +1,10 @@
-import { addDoc, collection, deleteDoc, doc, getDocFromServer, getDocsFromServer, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { addDoc, collection, deleteDoc, doc, getDocFromServer, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import type { Product } from '../types/Product';
 import type { UserProfile } from '../types/UserProfile';
 import { normalizeDepartment } from '../domain/normalizeItem';
 import { InventoryError, invalid } from '../domain/errors';
-import { assertCurrentActor, getCurrentActor, scopedBusinessQuery } from './access';
+import { assertCurrentActor, getCurrentActor, readScopedCollection } from './access';
 
 function manages(actor: UserProfile, data: Pick<Product, 'businessId' | 'area'>) {
   if (!['admin', 'manager'].includes(actor.role) || actor.businessId !== data.businessId || !normalizeDepartment(data.area) || (actor.role !== 'admin' && actor.department !== normalizeDepartment(data.area))) throw new InventoryError('permission-denied', 'Product is outside your management scope');
@@ -19,10 +19,8 @@ async function validFridge(product: Omit<Product, 'id' | 'createdAt'>) {
   if (!snapshot.exists() || snapshot.data().businessId !== product.businessId || normalizeDepartment(snapshot.data().department) !== normalizeDepartment(product.area)) invalid('Fridge must belong to the product business and department');
 }
 export async function getBusinessProducts(businessId: string): Promise<Product[]> {
-  const uid = auth.currentUser?.uid;
-  const snapshot = await getDocsFromServer(await scopedBusinessQuery('products', 'area', businessId));
-  if (!uid || auth.currentUser?.uid !== uid) throw new InventoryError('unauthenticated', 'Account changed during catalog read');
-  return snapshot.docs.map(snapshot => ({ ...snapshot.data(), id: snapshot.id, area: normalizeDepartment(snapshot.data().area) } as Product));
+  const { records } = await readScopedCollection('products', 'area', businessId);
+  return records.map(record => ({ ...record, area: normalizeDepartment(record.area) } as unknown as Product));
 }
 export async function addProduct(product: Omit<Product, 'id' | 'createdAt'>): Promise<string> {
   const actor = await getCurrentActor();
