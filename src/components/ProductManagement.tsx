@@ -1,1199 +1,570 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import {
-  getBusinessProducts,
-  addProduct,
-  updateProduct,
-  deleteProduct
-} from '../api/productsAPI';
+import { getBusinessProducts, addProduct, updateProduct, deleteProduct } from '../api/productsAPI';
 import { getBusinessFridges } from '../api/fridgesAPI';
 import { getBusinessCategories, addCustomCategory } from '../api/categoriesAPI';
 import { Product, PRODUCT_CATEGORIES } from '../types/Product';
 import { Fridge } from '../types/Fridge';
-import { auth, db } from '../services/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-// import { useNavigate } from 'react-router-dom';
-import { 
-    // FormControl,
-  // InputLabel,
-  // Select,
-  // MenuItem,
-  Alert,
-  // Box
-} from '@mui/material';
+import { Alert } from '@mui/material';
 import { WifiOff as WifiOffIcon } from '@mui/icons-material';
+import {
+  canManageBusiness,
+  Department,
+  departmentLabel,
+  manageableDepartments,
+  normalizeDepartment,
+} from '../app/access';
+import {
+  nextProductCode,
+  parseShelfLifeDays,
+  ProductFormErrors,
+  ProductFormValues,
+  validateProductForm,
+} from '../features/catalog/productForm';
+import { errorMessage } from '../features/common/errorMessage';
 
 interface ProductManagementProps {
   isOffline?: boolean;
 }
 
+const fieldStyle = (hasError: boolean): React.CSSProperties => ({
+  width: '100%',
+  padding: '8px',
+  marginTop: '5px',
+  border: hasError ? '2px solid #f44336' : '2px solid #333333',
+  color: '#000000',
+  fontSize: '16px',
+  fontWeight: 'bold',
+  backgroundColor: '#ffffff',
+});
+
+const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' };
+
+const FieldError: React.FC<{ text?: string }> = ({ text }) =>
+  text ? (
+    <div role="alert" style={{ color: '#f44336', fontSize: '14px', marginTop: '5px', fontWeight: 'normal' }}>
+      {text}
+    </div>
+  ) : null;
+
+/**
+ * Catalog management for admins (all departments) and managers (own department only).
+ * Changes require a connection: there is no local queue or offline success for catalog edits.
+ */
 const ProductManagement: React.FC<ProductManagementProps> = () => {
-  const { businessId, profile, isAdmin, isManager, isOffline, loading: authLoading } = useAuth();
-  // Use the passed prop or fall back to auth context - remove unused variable warning
-  // const effectiveIsOffline = propIsOffline ?? isOffline;
+  const { businessId, profile, role, isOffline, loading: authLoading } = useAuth();
+  const allowedDepartments = useMemo(
+    () => manageableDepartments(role, profile?.department),
+    [role, profile?.department],
+  );
+  const isBusinessAdmin = canManageBusiness(role);
+
+  const emptyForm = useCallback(
+    (): ProductFormValues => ({
+      name: '',
+      shelfLifeDays: '1',
+      type: 'units',
+      area: allowedDepartments.length === 1 ? allowedDepartments[0] : '',
+      category: '',
+      fridgeId: '',
+    }),
+    [allowedDepartments],
+  );
+
   const [products, setProducts] = useState<Product[]>([]);
-  // const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [fridges, setFridges] = useState<Fridge[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([...PRODUCT_CATEGORIES]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  
-  // Validation states
-  const [departmentError, setDepartmentError] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [shelfLifeError, setShelfLifeError] = useState<string | null>(null);
-  
-  // New states for refrigerators and categories
-  const [fridges, setFridges] = useState<Fridge[]>([]);
-  const [allCategories, setAllCategories] = useState<string[]>([]);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [form, setForm] = useState<ProductFormValues>(emptyForm);
+  const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
+
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  // Get user's department for filtering and default values
-  const userDepartment = profile?.department;
-  const canManageAllDepartments = isAdmin || isManager;
+  const inScope = useCallback(
+    (department: unknown) => {
+      const normalized = normalizeDepartment(department);
+      return normalized !== null && allowedDepartments.includes(normalized);
+    },
+    [allowedDepartments],
+  );
 
-  // Clear validation errors when user starts typing
-  const clearNameError = () => setNameError(null);
-  const clearShelfLifeError = () => setShelfLifeError(null);
-  const clearDepartmentError = () => setDepartmentError(null);
-  
-  // Load fridges and categories
-  useEffect(() => {
-    const loadFridgesAndCategories = async () => {
-      if (!businessId) return;
-      
-      try {
-        // Load fridges
-        const fridgesData = await getBusinessFridges(businessId);
-        setFridges(fridgesData);
-        
-        // Load custom categories
-        const customCategoriesData = await getBusinessCategories(businessId);
-        
-        // Combine predefined and custom categories
-        const combinedCategories = [
-          ...PRODUCT_CATEGORIES,
-          ...customCategoriesData.map(cat => cat.name)
-        ];
-        setAllCategories(combinedCategories);
-      } catch (error) {
-        console.error('Error loading fridges and categories:', error);
-      }
-    };
-    
-    loadFridgesAndCategories();
-  }, [businessId]);
-  
-  // Add new custom category
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim() || !businessId) return;
-    
+  const loadProducts = useCallback(async () => {
+    if (!businessId) return;
+    setLoading(true);
     try {
-      await addCustomCategory({
-        name: newCategoryName.trim(),
-        businessId,
-        createdBy: profile?.email
-      });
-      
-      // Refresh categories
-      const customCategoriesData = await getBusinessCategories(businessId);
-      
-      const combinedCategories = [
-        ...PRODUCT_CATEGORIES,
-        ...customCategoriesData.map(cat => cat.name)
-      ];
-      setAllCategories(combinedCategories);
-      
-      setNewCategoryName('');
-      setShowAddCategoryForm(false);
-      setSuccess(`קטגוריה "${newCategoryName.trim()}" נוספה בהצלחה!`);
-    } catch (error) {
-      console.error('Error adding category:', error);
-      setError('שגיאה בהוספת הקטגוריה');
+      const fetched = await getBusinessProducts(businessId);
+      // Legacy Hebrew department values stay visible to the matching department.
+      setProducts(fetched.filter(p => inScope(p.area)));
+    } catch (err) {
+      console.error('Error loading products:', err);
+      setError(errorMessage(err, 'טעינת המוצרים נכשלה. נסה שוב.'));
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [businessId, inScope]);
 
-  const [newProduct, setNewProduct] = useState<Omit<Product, 'id' | 'createdAt'>>({
-    productId: '',
-    name: '',
-    shelfLifeDays: 1,
-    type: 'units',
-    area: userDepartment || 'bar', // Use user's department as default
-    businessId: businessId || '',
-    category: '',
-    fridgeId: '',
-  });
-  // const [newBusinessId, setNewBusinessId] = useState<string>('');
-  // const [isSettingBusinessId, setIsSettingBusinessId] = useState<boolean>(false);
-  const [tempBusinessId, setTempBusinessId] = useState<string>('business1');
-  const [useCachedProducts, setUseCachedProducts] = useState(false);
-
-  // Use uncontrolled inputs for better editing
-  // const nameInputRef = useRef<HTMLInputElement>(null);
-  // const expiryInputRef = useRef<HTMLInputElement>(null);
-  const editNameInputRef = useRef<HTMLInputElement>(null);
-  const editExpiryInputRef = useRef<HTMLInputElement>(null);
-
-  // Generate next product ID based on existing products
-  const generateNextProductId = useCallback(() => {
-    if (products.length === 0) return 'P001';
-
-    // Extract numeric part of product IDs and find the highest
-    const numericIds = products
-      .map(p => {
-        const match = p.productId.match(/P(\d+)/);
-        return match ? parseInt(match[1], 10) : 0;
-      })
-      .filter(id => !isNaN(id));
-
-    if (numericIds.length === 0) return 'P001';
-    
-    const highestId = Math.max(...numericIds);
-    const nextId = highestId + 1;
-    return `P${nextId.toString().padStart(3, '0')}`;
-  }, [products]);
-
-  // Load products from API or cache
   useEffect(() => {
-    const loadProducts = async () => {
-      if (!businessId) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      // Check offline mode and cached data
-      const cacheKey = canManageAllDepartments ? 'cachedProducts_admin' : (userDepartment ? `cachedProducts_${userDepartment}` : 'cachedProducts_admin');
-      const cachedProductsJson = localStorage.getItem(cacheKey);
-      
-      // If we're offline and have cached products, use them
-      if (isOffline && cachedProductsJson) {
-        try {
-          const cachedProducts = JSON.parse(cachedProductsJson);
-          setProducts(cachedProducts);
-          setUseCachedProducts(true);
-          console.log(`Using cached products for ${userDepartment || 'all departments'} in offline mode`);
-          setLoading(false);
-          
-          // Set the next product ID based on cached products
-          if (cachedProducts.length > 0) {
-            const maxProductId = Math.max(...cachedProducts.map((p: Product) => 
-              parseInt(p.productId.replace(/\D/g, '')) || 0
-            ));
-            setNewProduct(prev => ({ ...prev, productId: `product${maxProductId + 1}` }));
-          } else {
-            setNewProduct(prev => ({ ...prev, productId: 'product1' }));
-          }
-          return;
-        } catch (e) {
-          console.error('Error parsing cached products:', e);
-          // Continue to try fetching from API
-        }
-      }
-      
-      try {
-        const fetchedProducts = await getBusinessProducts(businessId);
-        // Store all products for admin use
-        setProducts(fetchedProducts); // Store all products
-        
-        // Filter products based on user's department (unless user is admin or manager)
-        let filteredProducts = fetchedProducts;
-        if (userDepartment && !canManageAllDepartments) {
-          filteredProducts = fetchedProducts.filter(product => product.area === userDepartment);
-        }
-        
-        setProducts(filteredProducts);
-        setUseCachedProducts(false);
-        
-        // Set the next product ID based on all products (not just filtered)
-        if (fetchedProducts.length > 0) {
-          const maxProductId = Math.max(...fetchedProducts.map(p => 
-            parseInt(p.productId.replace(/\D/g, '')) || 0
-          ));
-          setNewProduct(prev => ({ ...prev, productId: `product${maxProductId + 1}` }));
-        } else {
-          setNewProduct(prev => ({ ...prev, productId: 'product1' }));
-        }
-        
-        // Cache filtered products for offline use
-        localStorage.setItem(cacheKey, JSON.stringify(filteredProducts));
-      } catch (error) {
-        console.error('Error loading products:', error);
-        setError('טעינת המוצרים נכשלה. בדוק הרשאות או נסה שוב מאוחר יותר.');
-        
-        // Try to use cached products as fallback
-        if (cachedProductsJson) {
-          try {
-            const cachedProducts = JSON.parse(cachedProductsJson);
-            setProducts(cachedProducts);
-            setUseCachedProducts(true);
-            setError('טעינת המוצרים מהשרת נכשלה. מוצג מידע מהמטמון המקומי.');
-            
-            // Set the next product ID based on cached products
-            if (cachedProducts.length > 0) {
-              const maxProductId = Math.max(...cachedProducts.map((p: Product) => 
-                parseInt(p.productId.replace(/\D/g, '')) || 0
-              ));
-              setNewProduct(prev => ({ ...prev, productId: `product${maxProductId + 1}` }));
-            }
-          } catch (e) {
-            console.error('Error parsing cached products:', e);
-          }
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // Only load products if auth is loaded and we have user info
     if (!authLoading && profile) {
       loadProducts();
     }
-  }, [businessId, isOffline, userDepartment, isAdmin, authLoading, profile, canManageAllDepartments]);
+  }, [authLoading, profile, loadProducts]);
 
-  // Update newProduct area when user department changes
   useEffect(() => {
-    if (userDepartment) {
-      setNewProduct(prev => ({ ...prev, area: userDepartment }));
-    }
-  }, [userDepartment]);
+    if (!businessId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [fridgesData, customCategories] = await Promise.all([
+          getBusinessFridges(businessId),
+          getBusinessCategories(businessId),
+        ]);
+        if (cancelled) return;
+        setFridges(fridgesData.filter(f => inScope(f.department)));
+        setAllCategories([...PRODUCT_CATEGORIES, ...customCategories.map(c => c.name)]);
+      } catch (err) {
+        console.error('Error loading fridges and categories:', err);
+        if (!cancelled) setError(errorMessage(err, 'טעינת המקררים והקטגוריות נכשלה.'));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId, inScope]);
 
-  // Set auto-generated product ID when adding a new product
-  useEffect(() => {
-    if (!editMode) {
-      setNewProduct(prev => ({
-        ...prev,
-        productId: generateNextProductId()
-      }));
-    }
-  }, [products, editMode, generateNextProductId]);
+  const nextCode = useMemo(() => nextProductCode(products), [products]);
 
-  // Clear/reset any issues
-  const resetForm = () => {
-    const form = document.getElementById('productForm') as HTMLFormElement;
-    if (form) {
-      form.reset();
-    }
+  const setField = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      // A fridge must belong to the product's department.
+      if (key === 'area' && prev.fridgeId) {
+        const fridge = fridges.find(f => f.id === prev.fridgeId);
+        if (fridge && normalizeDepartment(fridge.department) !== value) next.fridgeId = '';
+      }
+      return next;
+    });
+    setFormErrors(prev => ({ ...prev, [key]: undefined }));
   };
 
-  // Modified form submit handler with offline support
+  const openAdd = () => {
+    setEditing(null);
+    setForm(emptyForm());
+    setFormErrors({});
+    setError(null);
+    setSuccess(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (product: Product) => {
+    setEditing(product);
+    setForm({
+      name: product.name,
+      shelfLifeDays: String(product.shelfLifeDays ?? ''),
+      type: product.type === 'kg' ? 'kg' : 'units',
+      area: normalizeDepartment(product.area) ?? '',
+      category: product.category || '',
+      fridgeId: product.fridgeId || '',
+    });
+    setFormErrors({});
+    setError(null);
+    setSuccess(null);
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditing(null);
+    setFormErrors({});
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     setError(null);
     setSuccess(null);
-    
-    // Clear previous validation errors
-    setDepartmentError(null);
-    setNameError(null);
-    setShelfLifeError(null);
-    
-    // Check if we're in edit mode, call update instead
-    if (editMode && selectedProduct) {
-      await handleUpdateProduct(event);
+    if (isOffline) {
+      setError('אין חיבור. שינויים בקטלוג נשמרים רק כשיש חיבור לשרת.');
       return;
     }
-    
-    // Extract form data from the actual form
-    const form = event.target as HTMLFormElement;
-    const nameInput = form.querySelector('input[name="name"]') as HTMLInputElement;
-    const shelfLifeDaysInput = form.querySelector('input[name="shelfLifeDays"]') as HTMLInputElement;
-    const typeSelect = form.querySelector('select[name="type"]') as HTMLSelectElement;
-    const departmentSelect = form.querySelector('select[name="department"]') as HTMLSelectElement;
-    
-    if (!nameInput || !shelfLifeDaysInput || !typeSelect || !departmentSelect) {
-      console.error("Form inputs not found");
-      setError('שגיאה בטופס, נסה שוב');
+    const errors = validateProductForm(form, allowedDepartments);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0 || !businessId) {
+      setError(businessId ? 'יש לתקן את השגיאות בטופס' : 'לא נמצא עסק עבור החשבון שלך');
       return;
     }
-    
-    const name = nameInput.value.trim();
-    const shelfLifeDays = parseInt(shelfLifeDaysInput.value);
-    const type = typeSelect.value as 'kg' | 'units';
-    const department = departmentSelect.value as 'bar' | 'kitchen' | '';
-    
-    // Get new fields
-    const categorySelect = form.querySelector('select[name="category"]') as HTMLSelectElement;
-    const fridgeSelect = form.querySelector('select[name="fridgeId"]') as HTMLSelectElement;
-    const category = categorySelect?.value || '';
-    const fridgeId = fridgeSelect?.value || '';
-    
-    // Validation
-    let hasErrors = false;
-    
-    if (!name) {
-      setNameError('יש להזין שם מוצר');
-      hasErrors = true;
-    }
-    
-    if (isNaN(shelfLifeDays) || shelfLifeDays < 1) {
-      setShelfLifeError('יש להזין מספר ימי תוקף תקין');
-      hasErrors = true;
-    }
-    
-    // Department validation - REQUIRED
-    if (!department || (department !== 'bar' && department !== 'kitchen')) {
-      setDepartmentError('יש לבחור מחלקה');
-      hasErrors = true;
-    }
-    
-    // Stop submission if there are validation errors
-    if (hasErrors) {
-      setError('יש לתקן את השגיאות בטופס');
-      return;
-    }
-    
-    if (!businessId) {
-      setError('לא נמצא מזהה עסק');
-      return;
-    }
-    
-    const productToAdd = {
-      productId: newProduct.productId,
-      name,
-      shelfLifeDays,
-      type,
-      area: department, // Use validated department
-      businessId,
-      category: category || undefined,
-      fridgeId: fridgeId || undefined,
-    };
-    
+    const shelfLifeDays = parseShelfLifeDays(form.shelfLifeDays)!;
+    const area = form.area as Department;
+    const name = form.name.trim();
+
+    setSaving(true);
     try {
-      setLoading(true);
-      
-      if (isOffline) {
-        // Handle offline mode: store in cache
-        const cachedProductsKey = 'cachedProducts_admin';
-        const cachedProductsJson = localStorage.getItem(cachedProductsKey) || '[]';
-        const cachedProducts = JSON.parse(cachedProductsJson);
-        
-        // Create a fake ID
-        const newId = 'offline-product-' + Date.now();
-        const offlineProduct = {
-          ...productToAdd,
-          id: newId,
-          createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 }
-        };
-        
-        cachedProducts.push(offlineProduct);
-        localStorage.setItem(cachedProductsKey, JSON.stringify(cachedProducts));
-        
-        // Update local state
-        setProducts([...products, offlineProduct as Product]);
-        setSuccess(`המוצר "${name}" נוסף במצב לא מקוון (יסונכרן כשהחיבור יחזור)`);
-        
-        // Add to pending operations queue
-        const pendingOps = JSON.parse(localStorage.getItem('pendingOperations') || '[]');
-        pendingOps.push({
-          type: 'addProduct',
-          data: productToAdd,
-          timestamp: Date.now(),
-          id: newId
+      if (editing?.id) {
+        await updateProduct(editing.id, {
+          name,
+          shelfLifeDays,
+          area,
+          type: form.type as 'kg' | 'units',
+          category: form.category || undefined,
+          fridgeId: form.fridgeId || undefined,
         });
-        localStorage.setItem('pendingOperations', JSON.stringify(pendingOps));
+        setSuccess(`המוצר "${name}" עודכן`);
       } else {
-        // Online mode: add to Firestore
-        const id = await addProduct(productToAdd);
-        setProducts([...products, { ...productToAdd, id }]);
-        setSuccess(`המוצר "${name}" נוסף בהצלחה!`);
+        await addProduct({
+          productId: nextCode,
+          name,
+          shelfLifeDays,
+          type: form.type as 'kg' | 'units',
+          area,
+          businessId,
+          category: form.category || undefined,
+          fridgeId: form.fridgeId || undefined,
+        });
+        setSuccess(`המוצר "${name}" נוסף`);
       }
-      
-      // Reset form
-      form.reset();
-      
-      // Set next product ID and hide the form
-      const currentIdNum = parseInt(newProduct.productId.replace(/\D/g, '')) || 0;
-      setNewProduct(prev => ({
-        ...prev,
-        productId: `P${(currentIdNum + 1).toString().padStart(3, '0')}`,
-        name: '',
-        shelfLifeDays: 1,
-        type: 'units',
-        area: 'bar'
-      }));
-      
-      // Hide the form after successful submission
-      setShowAddForm(false);
-    } catch (error) {
-      console.error('Error adding product:', error);
-      setError('הוספת המוצר נכשלה. בדוק הרשאות או נסה שוב מאוחר יותר.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle updating a product
-  const handleUpdateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedProduct || !selectedProduct.id) {
-      setError('לא נבחר מוצר');
-      return;
-    }
-
-    // Get values directly from refs
-    const nameValue = editNameInputRef.current?.value || '';
-    const shelfLifeDaysValue = editExpiryInputRef.current?.value || '1';
-    const areaValue = selectedProduct.area;
-    const typeValue = selectedProduct.type;
-
-    if (!nameValue) {
-      setError('נא להזין שם מוצר');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      await updateProduct(selectedProduct.id, {
-        name: nameValue,
-        shelfLifeDays: parseInt(shelfLifeDaysValue),
-        area: areaValue,
-        type: typeValue,
-      });
-      
-      setSuccess(`המוצר "${nameValue}" עודכן בהצלחה!`);
-      
-      // Reload products and reset form
-      const updatedProducts = await getBusinessProducts(businessId!);
-      setProducts(updatedProducts);
-      setSelectedProduct(null);
-      setEditMode(false);
-    } catch (error) {
-      console.error('Error updating product:', error);
-      setError('עדכון המוצר נכשל. נסה שוב.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle deleting a product
-  const handleDeleteProduct = async (id: string) => {
-    if (!window.confirm('האם אתה בטוח שברצונך למחוק מוצר זה?')) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      await deleteProduct(id);
-      
-      setSuccess('המוצר נמחק בהצלחה!');
-      
-      // Reload products
-      const updatedProducts = await getBusinessProducts(businessId!);
-      setProducts(updatedProducts);
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      setError('מחיקת המוצר נכשלה. נסה שוב.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Direct DOM approach to set business ID
-  const handleSetBusinessIdDirectly = async () => {
-    if (!auth.currentUser) {
-      alert('נא להתחבר למערכת');
-      return;
-    }
-    
-    console.log('Setting business ID:', tempBusinessId);
-    
-    try {
-      // Update the user document with the new business ID
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await setDoc(userRef, {
-        businessId: tempBusinessId
-      }, { merge: true });
-      
-      alert('מזהה עסק הוגדר בהצלחה! מרענן את הדף...');
-      
-      // Reload the page to refresh auth context
-      window.location.reload();
+      closeForm();
+      await loadProducts();
     } catch (err) {
-      console.error('Error setting business ID:', err);
-      alert('שגיאה בהגדרת מזהה העסק: ' + (err as Error).message);
+      console.error('Error saving product:', err);
+      setError(errorMessage(err, 'שמירת המוצר נכשלה. נסה שוב.'));
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Get current user from auth
-  // const currentUser = auth.currentUser;
+  const handleDeleteProduct = async (product: Product) => {
+    if (!product.id || isOffline) return;
+    if (!window.confirm(`למחוק את המוצר "${product.name}" מהקטלוג?\nפריטים שכבר נפתחו נשארים ברשימת המלאי.`)) {
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteProduct(product.id);
+      setSuccess(`המוצר "${product.name}" נמחק מהקטלוג`);
+      await loadProducts();
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      setError(errorMessage(err, 'מחיקת המוצר נכשלה. נסה שוב.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name || !businessId || !isBusinessAdmin) return;
+    if (allCategories.some(c => c === name)) {
+      setError(`הקטגוריה "${name}" כבר קיימת`);
+      return;
+    }
+    try {
+      await addCustomCategory({ name, businessId, createdBy: profile?.email });
+      const customCategories = await getBusinessCategories(businessId);
+      setAllCategories([...PRODUCT_CATEGORIES, ...customCategories.map(c => c.name)]);
+      setField('category', name);
+      setNewCategoryName('');
+      setShowAddCategoryForm(false);
+      setSuccess(`הקטגוריה "${name}" נוספה`);
+    } catch (err) {
+      console.error('Error adding category:', err);
+      setError(errorMessage(err, 'הוספת הקטגוריה נכשלה.'));
+    }
+  };
+
+  const fridgeOptions = fridges.filter(f => !form.area || normalizeDepartment(f.department) === form.area);
+  const disabled = saving || !!isOffline;
+  const canEdit = allowedDepartments.length > 0;
 
   return (
     <div className="product-management" dir="rtl">
       <h2>ניהול מוצרים</h2>
-      
-      {error && <div className="alert error">{error}</div>}
-      {success && <div className="alert success">{success}</div>}
-      
+
+      {error && <div className="alert error" role="alert">{error}</div>}
+      {success && <div className="alert success" role="status">{success}</div>}
+
       {isOffline && (
-        <Alert 
-          severity="warning" 
-          icon={<WifiOffIcon />}
-          sx={{ mb: 2 }}
-        >
-          מצב לא מקוון - מוצרים יישמרו באופן מקומי ויסונכרנו כשהחיבור יתחדש
+        <Alert severity="warning" icon={<WifiOffIcon />} sx={{ mb: 2 }}>
+          אין חיבור. ניתן לצפות בקטלוג, אך הוספה, עריכה ומחיקה זמינות רק כשיש חיבור.
         </Alert>
       )}
-      
-      {useCachedProducts && (
-        <Alert 
-          severity="info" 
-          sx={{ mb: 2 }}
-        >
-          מציג מוצרים מהמטמון המקומי. ייתכן שהנתונים אינם מעודכנים.
+
+      {!canEdit && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          אין לך הרשאה לנהל את קטלוג המוצרים.
         </Alert>
       )}
-      
-      {/* Debug info */}
-      <div style={{ 
-        background: '#f0f0f0', 
-        padding: '10px', 
-        border: '1px solid #ccc',
-        marginBottom: '15px',
-        borderRadius: '4px',
-        fontFamily: 'monospace',
-        fontWeight: 'bold',
-        color: '#333'
-      }}>
-        <p>מזהה עסק: {businessId || 'חסר!'}</p>
-        <p>מספר מוצרים: {products.length}</p>
-        <p>מזהה מוצר הבא: {newProduct.productId}</p>
-        <p>סטטוס טעינה: {loading ? 'טוען...' : 'מוכן'}</p>
-        <p>משתמש מחובר: {auth.currentUser?.email || 'לא מחובר'}</p>
-        <p>מצב מקוון: {isOffline ? 'לא מקוון' : 'מקוון'}</p>
-      </div>
-      
-      {/* Simple Business ID setup */}
-      {!businessId && (
-        <div style={{
-          background: '#fffbe6',
-          border: '2px solid #ffc107',
-          padding: '20px',
-          borderRadius: '4px',
-          marginBottom: '20px'
-        }}>
-          <h3 style={{ color: '#d97706', marginTop: 0 }}>הגדרת מזהה עסק</h3>
-          <p>לא נמצא מזהה עסק למשתמש שלך. יש להגדיר מזהה עסק כדי להשתמש במערכת.</p>
-          
-          <div style={{ display: 'flex', marginBottom: '10px' }}>
-            <input
-              type="text"
-              value={tempBusinessId}
-              onChange={(e) => setTempBusinessId(e.target.value)}
-              placeholder="הזן מזהה עסק"
-              style={{
-                padding: '10px',
-                fontSize: '16px',
-                border: '2px solid #333',
-                borderRadius: '4px',
-                flex: '1',
-                marginRight: '10px',
-                direction: 'rtl'
-              }}
-            />
-            <button
-              onClick={handleSetBusinessIdDirectly}
-              style={{
-                padding: '10px 20px',
-                background: '#228B22',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              הגדר
-            </button>
-          </div>
-          
-          <div style={{ fontSize: '14px', color: '#666' }}>
-            * מזהה העסק משמש לארגון המוצרים והפריטים במערכת.
-          </div>
+
+      {allowedDepartments.length === 1 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          מוצגים ומנוהלים מוצרי מחלקת {departmentLabel(allowedDepartments[0])} בלבד.
+        </Alert>
+      )}
+
+      {canEdit && !formOpen && (
+        <div className="product-actions">
+          <button
+            className="action-button"
+            onClick={openAdd}
+            disabled={disabled}
+            style={{
+              background: disabled ? '#9E9E9E' : '#2196F3',
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '4px',
+              border: 'none',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              marginBottom: '20px',
+            }}
+          >
+            הוסף מוצר חדש
+          </button>
         </div>
       )}
-      
-      {/* Only show product management when business ID exists */}
-      {businessId && (
-        <>
-          {/* Single Add Product button */}
-          {!editMode && !showAddForm && (
-            <div className="product-actions">
-              <button
-                className="action-button"
-                onClick={() => {
-                  setSelectedProduct(null);
-                  setEditMode(false);
-                  setShowAddForm(true);
-                  setSuccess(null);
-                  setError(null);
-                  
-                  // Reset form
-                  resetForm();
-                  
-                  // Set focus to name field
-                  setTimeout(() => {
-                    const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
-                    if (nameInput) {
-                      nameInput.focus();
-                    }
-                  }, 100);
-                }}
-                style={{
-                  background: '#2196F3',
-                  color: 'white',
-                  padding: '12px 20px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  marginBottom: '20px'
-                }}
-              >
-                הוסף מוצר חדש
-              </button>
-            </div>
-          )}
-          
-          {/* Add/Edit Form - shown conditionally */}
-          {showAddForm && !editMode && (
-            <div className="add-product-form">
-              <h3>הוספת מוצר חדש</h3>
-              
-              {/* Simple native form with minimal styling */}
-              <form id="productForm" onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    מזהה מוצר:
-                    <input 
-                      type="text" 
-                      value={newProduct.productId} 
-                      readOnly 
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '5px',
-                        background: '#f0f0f0',
-                        color: '#000000',
-                        fontWeight: 'bold',
-                        border: '1px solid #888888'
-                      }} 
-                    />
-                  </label>
-                </div>
-                
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    שם מוצר: <span style={{ color: 'red' }}>*</span>
-                    <input 
-                      type="text" 
-                      name="name"
-                      placeholder="הזן שם מוצר" 
-                      required
-                      onInput={clearNameError}
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '5px',
-                        border: nameError ? '2px solid #f44336' : '2px solid #333333',
-                        color: '#000000',
-                        fontWeight: 'bold'
-                      }} 
-                    />
-                    {nameError && (
-                      <div style={{ 
-                        color: '#f44336', 
-                        fontSize: '14px', 
-                        marginTop: '5px',
-                        fontWeight: 'normal'
-                      }}>
-                        {nameError}
-                      </div>
-                    )}
-                  </label>
-                </div>
-                
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    תוקף בימים: <span style={{ color: 'red' }}>*</span>
-                    <input 
-                      type="number" 
-                      name="shelfLifeDays"
-                      min="1"
-                      defaultValue="1"
-                      required
-                      onInput={clearShelfLifeError}
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '5px',
-                        border: shelfLifeError ? '2px solid #f44336' : '2px solid #333333',
-                        color: '#000000',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: '#ffffff'
-                      }} 
-                    />
-                    {shelfLifeError && (
-                      <div style={{ 
-                        color: '#f44336', 
-                        fontSize: '14px', 
-                        marginTop: '5px',
-                        fontWeight: 'normal'
-                      }}>
-                        {shelfLifeError}
-                      </div>
-                    )}
-                  </label>
-                </div>
-                
-                <div style={{ marginBottom: '25px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    מחלקה: <span style={{ color: 'red' }}>*</span>
-                    <select
-                      name="department"
-                      required
-                      onChange={clearDepartmentError}
-                      style={{ 
-                        width: '100%', 
-                        padding: '12px', 
-                        marginTop: '5px',
-                        border: departmentError ? '2px solid #f44336' : '1px solid #ccc',
-                        borderRadius: '4px',
-                        fontSize: '16px',
-                        backgroundColor: '#fff'
-                      }}
-                      defaultValue=""
-                    >
-                      <option value="" disabled>בחר מחלקה</option>
-                      <option value="bar">בר</option>
-                      <option value="kitchen">מטבח</option>
-                    </select>
-                    {departmentError && (
-                      <div style={{ 
-                        color: '#f44336', 
-                        fontSize: '14px', 
-                        marginTop: '5px',
-                        fontWeight: 'normal'
-                      }}>
-                        {departmentError}
-                      </div>
-                    )}
-                  </label>
-                </div>
-                
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    סוג מדידה:
-                    <select
-                      name="type"
-                      defaultValue="units"
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '5px',
-                        border: '2px solid #333333',
-                        color: '#000000',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: '#ffffff'
-                      }}
-                    >
-                      <option value="units">יחידות</option>
-                      <option value="kg">ק"ג</option>
-                    </select>
-                  </label>
-                </div>
 
-                {/* Category Selection */}
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    קטגוריית מוצר:
-                    <select
-                      name="category"
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '5px',
-                        border: '2px solid #333333',
-                        color: '#000000',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: '#ffffff'
-                      }}
-                      defaultValue=""
+      {formOpen && (
+        <div className={editing ? 'edit-product-form' : 'add-product-form'}>
+          <h3>{editing ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h3>
+          <form onSubmit={handleSubmit} noValidate aria-label={editing ? 'עריכת מוצר' : 'הוספת מוצר'}>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                מזהה מוצר:
+                <input type="text" value={editing ? editing.productId : nextCode} readOnly style={{ ...fieldStyle(false), background: '#f0f0f0' }} />
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                שם מוצר: <span style={{ color: 'red' }}>*</span>
+                <input
+                  type="text"
+                  name="name"
+                  value={form.name}
+                  onChange={e => setField('name', e.target.value)}
+                  placeholder="הזן שם מוצר"
+                  disabled={saving}
+                  style={fieldStyle(!!formErrors.name)}
+                />
+                <FieldError text={formErrors.name} />
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                תוקף בימים: <span style={{ color: 'red' }}>*</span>
+                <input
+                  type="number"
+                  name="shelfLifeDays"
+                  inputMode="numeric"
+                  min="1"
+                  step="1"
+                  value={form.shelfLifeDays}
+                  onChange={e => setField('shelfLifeDays', e.target.value)}
+                  disabled={saving}
+                  style={fieldStyle(!!formErrors.shelfLifeDays)}
+                />
+                <FieldError text={formErrors.shelfLifeDays} />
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                מחלקה: <span style={{ color: 'red' }}>*</span>
+                <select
+                  name="department"
+                  value={form.area}
+                  onChange={e => setField('area', e.target.value as Department | '')}
+                  disabled={saving || allowedDepartments.length === 1}
+                  style={fieldStyle(!!formErrors.area)}
+                >
+                  <option value="" disabled>בחר מחלקה</option>
+                  {allowedDepartments.map(d => (
+                    <option key={d} value={d}>{departmentLabel(d)}</option>
+                  ))}
+                </select>
+                <FieldError text={formErrors.area} />
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                סוג מדידה:
+                <select
+                  name="type"
+                  value={form.type}
+                  onChange={e => setField('type', e.target.value as 'kg' | 'units')}
+                  disabled={saving || !!editing}
+                  title={editing ? 'לא ניתן לשנות סוג מדידה למוצר קיים' : undefined}
+                  style={fieldStyle(!!formErrors.type)}
+                >
+                  <option value="units">יחידות</option>
+                  <option value="kg">ק"ג</option>
+                </select>
+                <FieldError text={formErrors.type} />
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                קטגוריית מוצר:
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={e => setField('category', e.target.value)}
+                  disabled={saving}
+                  style={fieldStyle(false)}
+                >
+                  <option value="">בחר קטגוריה (אופציונלי)</option>
+                  {allCategories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </label>
+
+              {isBusinessAdmin && (
+                <div style={{ marginTop: '10px' }}>
+                  {!showAddCategoryForm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategoryForm(true)}
+                      disabled={disabled}
+                      style={{ background: '#4CAF50', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
                     >
-                      <option value="">בחר קטגוריה (אופציונלי)</option>
-                      {allCategories.map((category, index) => (
-                        <option key={index} value={category}>{category}</option>
-                      ))}
-                    </select>
-                  </label>
-                  
-                  {/* Add Custom Category Button */}
-                  <div style={{ marginTop: '10px' }}>
-                    {!showAddCategoryForm ? (
+                      הוסף קטגוריה חדשה
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={e => setNewCategoryName(e.target.value)}
+                        placeholder="שם הקטגוריה החדשה"
+                        style={{ ...fieldStyle(false), flex: 1, marginTop: 0 }}
+                      />
                       <button
                         type="button"
-                        onClick={() => setShowAddCategoryForm(true)}
-                        style={{
-                          background: '#4CAF50',
-                          color: 'white',
-                          padding: '8px 16px',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
+                        onClick={handleAddCategory}
+                        disabled={disabled || !newCategoryName.trim()}
+                        style={{ background: '#4CAF50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
                       >
-                        הוסף קטגוריה חדשה
+                        הוסף
                       </button>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          placeholder="שם הקטגוריה החדשה"
-                          style={{
-                            flex: 1,
-                            padding: '8px',
-                            border: '2px solid #333333',
-                            borderRadius: '4px',
-                            color: '#000000',
-                            fontSize: '16px',
-                            fontWeight: 'bold'
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddCategory}
-                          style={{
-                            background: '#4CAF50',
-                            color: 'white',
-                            padding: '8px 12px',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '14px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          הוסף
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddCategoryForm(false);
-                            setNewCategoryName('');
-                          }}
-                          style={{
-                            background: '#f44336',
-                            color: 'white',
-                            padding: '8px 12px',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '14px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          ביטול
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddCategoryForm(false);
+                          setNewCategoryName('');
+                        }}
+                        style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        ביטול
+                      </button>
+                    </div>
+                  )}
                 </div>
-
-                {/* Refrigerator Selection */}
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' }}>
-                    מקרר:
-                    <select
-                      name="fridgeId"
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '5px',
-                        border: '2px solid #333333',
-                        color: '#000000',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: '#ffffff'
-                      }}
-                      defaultValue=""
-                    >
-                      <option value="">בחר מקרר (אופציונלי)</option>
-                      {fridges.map((fridge) => (
-                        <option key={fridge.id} value={fridge.id}>
-                          {fridge.name} ({fridge.department === 'bar' ? 'בר' : 'מטבח'})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    style={{
-                      width: '65%',
-                      padding: '12px',
-                      background: '#228B22',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }}
-                  >
-                    {loading ? 'מוסיף...' : 'הוסף מוצר'}
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={() => setShowAddForm(false)}
-                    style={{
-                      width: '30%',
-                      padding: '12px',
-                      background: '#9E9E9E',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }}
-                  >
-                    ביטול
-                  </button>
-                </div>
-              </form>
+              )}
             </div>
-          )}
-          
-          {editMode && selectedProduct && (
-            <div className="edit-product-form">
-              <h3>עריכת מוצר</h3>
-              <form onSubmit={handleUpdateProduct}>
-                <div className="form-group">
-                  <label htmlFor="edit-productId">מזהה מוצר</label>
-                  <input
-                    type="text"
-                    id="edit-productId"
-                    value={selectedProduct?.productId || ''}
-                    disabled={true}
-                    style={{
-                      width: '100%', 
-                      padding: '10px', 
-                      marginBottom: '10px',
-                      background: '#f0f0f0',
-                      zIndex: 100,
-                      position: 'relative'
-                    }}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="edit-name">שם מוצר</label>
-                  <input
-                    type="text"
-                    id="edit-name"
-                    ref={editNameInputRef}
-                    defaultValue={selectedProduct?.name || ''}
-                    required
-                    disabled={loading}
-                    placeholder="הזן שם מוצר"
-                    style={{
-                      width: '100%', 
-                      padding: '10px', 
-                      marginBottom: '10px',
-                      border: '2px solid #2196F3',
-                      zIndex: 100,
-                      position: 'relative'
-                    }}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="edit-shelfLifeDays">תוקף בימים</label>
-                  <input
-                    type="number"
-                    id="edit-shelfLifeDays"
-                    ref={editExpiryInputRef}
-                    defaultValue={selectedProduct?.shelfLifeDays || 0}
-                    min="1"
-                    required
-                    disabled={loading}
-                    placeholder="מספר ימים עד לפקיעת תוקף"
-                    style={{
-                      width: '100%', 
-                      padding: '10px', 
-                      marginBottom: '10px',
-                      border: '2px solid #2196F3',
-                      zIndex: 100,
-                      position: 'relative'
-                    }}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label>אזור</label>
-                  <div className="radio-group">
-                    <label>
-                      <input
-                        type="radio"
-                        name="edit-area"
-                        value="bar"
-                        checked={selectedProduct?.area === 'bar'}
-                        onChange={() => setSelectedProduct(prev => prev ? {...prev, area: 'bar'} : null)}
-                        disabled={loading}
-                      />
-                      בר
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="edit-area"
-                        value="kitchen"
-                        checked={selectedProduct?.area === 'kitchen'}
-                        onChange={() => setSelectedProduct(prev => prev ? {...prev, area: 'kitchen'} : null)}
-                        disabled={loading}
-                      />
-                      מטבח
-                    </label>
-                  </div>
-                </div>
-                
-                <div className="form-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                  <button
-                    type="submit"
-                    className="submit-button"
-                    disabled={loading}
-                    style={{
-                      flex: '2',
-                      padding: '12px',
-                      background: '#4CAF50',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {loading ? 'מעדכן...' : 'עדכן מוצר'}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    className="cancel-button"
-                    onClick={() => {
-                      setSelectedProduct(null);
-                      setEditMode(false);
-                    }}
-                    disabled={loading}
-                    style={{
-                      flex: '1',
-                      padding: '12px',
-                      background: '#9E9E9E',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    ביטול
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-          
-          <div className="products-list">
-            <h3>רשימת מוצרים</h3>
-            {loading && !editMode && <p>טוען מוצרים...</p>}
-            
-            {products.length === 0 ? (
-              <div className="no-products">
-                {canManageAllDepartments ? (
-                  <p>לא נמצאו מוצרים.</p>
-                ) : userDepartment ? (
-                  <p>לא נמצאו מוצרים עבור מחלקת {userDepartment === 'bar' ? 'הבר' : 'המטבח'}.</p>
-                ) : (
-                  <p>לא נמצאו מוצרים.</p>
-                )}
-              </div>
-            ) : (
-              <table className="products-table">
-                <thead>
-                  <tr>
-                    <th>מזהה מוצר</th>
-                    <th>שם</th>
-                    <th>תוקף בימים</th>
-                    <th>אזור</th>
-                    <th>פעולות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((product) => (
-                    <tr key={product.id}>
-                      <td>{product.productId}</td>
-                      <td>{product.name}</td>
-                      <td>{product.shelfLifeDays}</td>
-                      <td>{product.area === 'bar' ? 'בר' : 'מטבח'}</td>
-                      <td className="actions-cell">
-                        <button
-                          className="edit-button"
-                          onClick={() => {
-                            setSelectedProduct(product);
-                            setEditMode(true);
-                            setShowAddForm(false); // Ensure add form is hidden
-                            setSuccess(null);
-                            setError(null);
-                            // Set default values in the edit form input refs
-                            setTimeout(() => {
-                              if (editNameInputRef.current) editNameInputRef.current.value = product.name;
-                              if (editExpiryInputRef.current) editExpiryInputRef.current.value = product.shelfLifeDays.toString();
-                            }, 0);
-                          }}
-                          disabled={loading}
-                        >
-                          ערוך
-                        </button>
-                        <button
-                          className="delete-button"
-                          onClick={() => product.id && handleDeleteProduct(product.id)}
-                          disabled={loading}
-                        >
-                          מחק
-                        </button>
-                      </td>
-                    </tr>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>
+                מקרר:
+                <select
+                  name="fridgeId"
+                  value={form.fridgeId}
+                  onChange={e => setField('fridgeId', e.target.value)}
+                  disabled={saving}
+                  style={fieldStyle(false)}
+                >
+                  <option value="">בחר מקרר (אופציונלי)</option>
+                  {fridgeOptions.map(fridge => (
+                    <option key={fridge.id} value={fridge.id}>
+                      {fridge.name} ({departmentLabel(fridge.department) ?? '?'})
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
+                </select>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
+              <button
+                type="submit"
+                disabled={disabled}
+                style={{ width: '65%', padding: '12px', background: disabled ? '#9E9E9E' : '#228B22', color: 'white', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+              >
+                {saving ? 'שומר...' : editing ? 'עדכן מוצר' : 'הוסף מוצר'}
+              </button>
+              <button
+                type="button"
+                onClick={closeForm}
+                disabled={saving}
+                style={{ width: '30%', padding: '12px', background: '#9E9E9E', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
+        </div>
       )}
-      
+
+      <div className="products-list">
+        <h3>רשימת מוצרים</h3>
+        {loading && <p>טוען מוצרים...</p>}
+
+        {!loading && products.length === 0 ? (
+          <div className="no-products">
+            <p>
+              {allowedDepartments.length === 1
+                ? `לא נמצאו מוצרים עבור מחלקת ${departmentLabel(allowedDepartments[0])}.`
+                : 'לא נמצאו מוצרים.'}
+            </p>
+          </div>
+        ) : (
+          products.length > 0 && (
+            <table className="products-table">
+              <thead>
+                <tr>
+                  <th>מזהה מוצר</th>
+                  <th>שם</th>
+                  <th>תוקף בימים</th>
+                  <th>סוג</th>
+                  <th>אזור</th>
+                  <th>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map(product => (
+                  <tr key={product.id}>
+                    <td>{product.productId}</td>
+                    <td>{product.name}</td>
+                    <td>{product.shelfLifeDays}</td>
+                    <td>{product.type === 'kg' ? 'ק"ג' : 'יחידות'}</td>
+                    <td>{departmentLabel(product.area) ?? 'לא הוגדר'}</td>
+                    <td className="actions-cell">
+                      <button className="edit-button" onClick={() => openEdit(product)} disabled={disabled}>
+                        ערוך
+                      </button>
+                      <button className="delete-button" onClick={() => handleDeleteProduct(product)} disabled={disabled}>
+                        מחק
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        )}
+      </div>
+
       <style>{`
         /* Base styles */
         .product-management {

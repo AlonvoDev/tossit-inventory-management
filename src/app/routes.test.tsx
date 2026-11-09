@@ -39,7 +39,7 @@ const renderAt = (path: string) =>
 
 const expected: Record<'admin' | 'manager' | 'staff', Record<AppRouteId, boolean>> = {
   admin: { dashboard: true, admin: true, adminUsers: true, adminFridges: true, reports: true, settings: true },
-  manager: { dashboard: true, admin: true, adminUsers: false, adminFridges: false, reports: true, settings: false },
+  manager: { dashboard: true, admin: true, adminUsers: false, adminFridges: true, reports: true, settings: false },
   staff: { dashboard: true, admin: false, adminUsers: false, adminFridges: false, reports: false, settings: false },
 };
 

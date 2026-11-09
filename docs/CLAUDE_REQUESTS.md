@@ -2,6 +2,25 @@
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 
+## From U3c (2026-11-09)
+
+1. **Scoped catalog reads** (C2): `getBusinessProducts`, `getBusinessFridges` (`productsAPI`/`fridgesAPI`) query the whole
+   business. Under C1b rules a manager/staff query without an `area`/`department` constraint is rejected as a whole.
+   The UI already filters to the role's departments (legacy Hebrew values included), but the query itself must be scoped
+   (`in ['bar','בר']` style) for non-admins. Please also make `getBusinessProducts` surface errors instead of falling back
+   to its local cache on permission errors.
+2. **Product display code** (`productId` like `P004`): the UI computes it from the products it can see, so a department
+   manager may reuse a code that exists in the other department. Display only, but if it matters please assign it
+   server-side or drop the uniqueness expectation.
+3. **Legacy local data — please include in C3 legacy import/review, do not silently discard:** the old ProductManagement
+   wrote offline catalog adds to `localStorage['pendingOperations']` (`type: 'addProduct'`, fake `offline-product-*` IDs)
+   and caches under `cachedProducts_admin` / `cachedProducts_bar` / `cachedProducts_kitchen` (not account-scoped).
+   The UI no longer reads or writes these keys and catalog changes now require a connection.
+4. **Remove the client `users/{uid}` businessId write path** if any other caller exists: the UI "set business ID" panel
+   (which let a user write their own `businessId`) is removed.
+5. **`normalizeDepartment` in `src/app/access.ts`** mirrors the legacy-Hebrew handling. When C2 publishes
+   `domain/normalizeItem` (or a department normalizer), I will switch to it to avoid two definitions.
+
 ## From U3b (2026-11-09)
 
 1. **Manager department is overwritten with `bar`** in `src/api/authAPI.ts`:

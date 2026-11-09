@@ -14,16 +14,12 @@ import {
   UserFormErrors,
   validateUserForm,
 } from '../features/users/userForm';
+import { errorMessage } from '../features/common/errorMessage';
 
-const errorText = (err: unknown, fallback: string): string => {
-  const code = (err as { code?: unknown } | null)?.code;
-  if (code === 'permission-denied' || code === 'functions/permission-denied') {
-    return 'אין לך הרשאה לבצע פעולה זו.';
-  }
-  if (code === 'auth/email-already-in-use') return 'כתובת הדוא״ל כבר רשומה במערכת.';
-  if (code === 'unavailable' || code === 'auth/network-request-failed') return 'אין חיבור לשרת. בדוק את החיבור ונסה שוב.';
-  return fallback;
-};
+const errorText = (err: unknown, fallback: string): string =>
+  (err as { code?: unknown } | null)?.code === 'auth/email-already-in-use'
+    ? 'כתובת הדוא״ל כבר רשומה במערכת.'
+    : errorMessage(err, fallback);
 
 const formatCreatedAt = (createdAt: UserProfile['createdAt']): string => {
   const millis = (createdAt as { toMillis?: () => number } | undefined)?.toMillis?.();

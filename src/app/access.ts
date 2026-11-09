@@ -27,7 +27,8 @@ export const ROUTE_ACCESS: Record<AppRouteId, RouteAccess> = {
   dashboard: { path: '/dashboard', roles: ['admin', 'manager', 'staff'] },
   admin: { path: '/admin', roles: ['admin', 'manager'] },
   adminUsers: { path: '/admin/users', roles: ['admin'] },
-  adminFridges: { path: '/admin/fridges', roles: ['admin'] },
+  // Managers manage fridges of their own department (C1b rules); the page scopes the list and form.
+  adminFridges: { path: '/admin/fridges', roles: ['admin', 'manager'] },
   reports: { path: '/reports', roles: ['admin', 'manager'] },
   settings: { path: '/settings', roles: ['admin'] },
 };
@@ -59,7 +60,30 @@ export const DEPARTMENT_LABELS: Record<'bar' | 'kitchen', string> = {
   kitchen: 'מטבח',
 };
 
-export const departmentLabel = (department: unknown): string | null => {
-  if (department === 'bar' || department === 'kitchen') return DEPARTMENT_LABELS[department];
+export type Department = 'bar' | 'kitchen';
+
+/**
+ * Read-compatible department value: canonical 'bar' | 'kitchen' plus legacy Hebrew values
+ * still present in older documents. Unknown values return null (never guessed).
+ */
+export const normalizeDepartment = (department: unknown): Department | null => {
+  if (department === 'bar' || department === 'בר') return 'bar';
+  if (department === 'kitchen' || department === 'מטבח') return 'kitchen';
   return null;
+};
+
+export const departmentLabel = (department: unknown): string | null => {
+  const normalized = normalizeDepartment(department);
+  return normalized ? DEPARTMENT_LABELS[normalized] : null;
+};
+
+/**
+ * Departments whose catalog (products, fridges) the role may manage in the UI.
+ * Mirrors the C1b rules: admin business-wide; manager only their own department; staff none.
+ */
+export const manageableDepartments = (role: unknown, ownDepartment: unknown): Department[] => {
+  const appRole = toAppRole(role);
+  if (appRole === 'admin') return ['bar', 'kitchen'];
+  const own = normalizeDepartment(ownDepartment);
+  return appRole === 'manager' && own ? [own] : [];
 };

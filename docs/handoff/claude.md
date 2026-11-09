@@ -1,8 +1,21 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U3b — admin users screen semantics (U3 split: U3a reports ✓, U3b users, U3c catalog/fridges scope, U3d settings after C2)
-Status: checkpoint — U3b passes checks against the existing authAPI; final wiring waits for C1c callables. U1 remains a checkpoint until C1 is merged.
-Last previously confirmed remote SHA: 6b489622299d88e611058ae8344c44c41b65549c (U3a)
+Task / bounded subtask: U3c — catalog (products, fridges, categories) validation and manager department scope (U3 split: U3a reports ✓, U3b users ✓ pending C1c, U3c catalog, U3d settings after C2)
+Status: checkpoint — U3c passes checks. U1 remains a checkpoint until C1 is merged; U3b final wiring waits for C1c; U3d waits for C2.
+Last previously confirmed remote SHA: ad0421e1fe0dc4c08d6961047398fe1f11862c4b (U3b)
+
+## U3c changed files
+- `src/app/access.ts`: `normalizeDepartment` (canonical + legacy Hebrew), `manageableDepartments` (admin both, manager own, staff none); `/admin/fridges` now admin+manager (C1b rules let managers manage own-department fridges); department labels accept legacy values.
+- `src/features/catalog/productForm.ts` (new): shelf life must be a whole number of days 1–3650 (no truncation of "1.5"), department within scope, display code generation.
+- `src/features/common/errorMessage.ts` (new): Hebrew messages by error `code`; used by users, products, fridges.
+- `src/components/ProductManagement.tsx` (logic/markup rewritten, CSS kept): removed the self-service "set business ID" panel (client wrote its own `businessId`), removed offline fake-success adds and the `pendingOperations`/`cachedProducts_*` localStorage queue/cache, debug panel removed; managers see/manage only their department (legacy Hebrew included) with a locked department field and department-matched fridges; category creation admin-only; unit type locked on edit; one controlled add/edit form; permission errors shown, never success; changes disabled offline.
+- `src/pages/AdminFridgesPage.tsx`: manager scope (list, form department), duplicate name check, Hebrew mapped errors instead of raw Firebase messages, double-submit guard, offline disables changes.
+- `src/pages/AdminUsersPage.tsx`: uses the shared error mapper.
+- Tests: `ProductManagement.test.tsx` (11), `AdminFridgesPage.test.tsx` (5); routes/nav matrix tests updated for manager fridges.
+
+## U3c checks
+- `npm run build`: PASS. `npm run test:run`: 8 files, 74/74 pass. `npm run lint`: 3 errors / 7 warnings (no new issues; errors are pre-existing in `src/types/pwa.d.ts` and `src/utils/syncManager.ts`). `git diff --check`: clean.
+- NOT RUN: emulator/real Firestore. Manager catalog reads will be denied under C1b rules until C2 scopes the queries (request U3c-1).
 
 ## U3b changed files
 - `src/features/users/userForm.ts` (new): form defaults, Hebrew validation, create/update payloads. Department required for staff AND managers (managers are department-scoped); admins business-wide.
@@ -61,7 +74,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-U3c: product/fridge/category validation and manager department scope (C1b rules: managers manage products and fridges in their own department; categories admin-only). Then wire U3b to C1c callables when published. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
+Gate 2 Claude work that does not depend on Codex is done. Remaining U3: wire U3b to C1c callables (deactivate/reactivate) and U3d settings to C2 `settingsAPI`, after merging those pinned checkpoints. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume
 ```bash
