@@ -100,19 +100,22 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
     catch (error) { try { tx.abort(); } catch { /* Already committed or aborted. */ } await completed.catch(() => undefined); throw error; }
   }
   async function leasedChange(scope: OfflineScope, id: string, token: string, apply: (op: StoredOperation) => void): Promise<boolean> {
+    const key = keyFor(scope, id);
     return transaction(operations, 'readwrite', async tx => {
       const table = tx.objectStore(operations);
-      const op = await request(table.get(keyFor(scope, id))) as StoredOperation | undefined;
+      const op = await request(table.get(key)) as StoredOperation | undefined;
       if (!op || op.state !== 'pending' || op.lease?.token !== token) return false;
       apply(op); delete op.lease; await request(table.put(op)); return true;
     });
   }
   return {
     async enqueue(scope, original) {
+      const owner = { ...scope };
+      const scopeId = scopeKey(owner);
       validateIntent(original);
       const intent = serialized(original);
       const digest = fingerprint(intent);
-      const key = keyFor(scope, intent.input.operationId);
+      const key = keyFor(owner, intent.input.operationId);
       return transaction([operations, 'meta'], 'readwrite', async tx => {
         const table = tx.objectStore(operations);
         const previous = await request(table.get(key)) as StoredOperation | undefined;
@@ -124,7 +127,7 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
         const sequence = ((await request(meta.get('sequence'))) as number | undefined ?? 0) + 1;
         await request(meta.put(sequence, 'sequence'));
         const op: StoredOperation = {
-          key, scope: scopeKey(scope), owner: { ...scope }, intent, fingerprint: digest,
+          key, scope: scopeId, owner, intent, fingerprint: digest,
           operationId: intent.input.operationId, itemId: intent.kind === 'open' ? intent.input.operationId : intent.input.itemId,
           state: 'pending', createdAt: Date.now(), sequence, attempts: 0,
         };
@@ -132,16 +135,18 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
       });
     },
     async list(scope) {
+      const scopeId = scopeKey(scope);
       return transaction(operations, 'readonly', async tx => {
-        const records = await request(tx.objectStore(operations).index('scope').getAll(scopeKey(scope))) as StoredOperation[];
+        const records = await request(tx.objectStore(operations).index('scope').getAll(scopeId)) as StoredOperation[];
         return records.sort((a, b) => a.sequence - b.sequence);
       });
     },
     async claimNext(scope, token, now, leaseMs = 30000) {
+      const scopeId = scopeKey(scope);
       if (!token || !Number.isFinite(now) || !Number.isFinite(leaseMs) || leaseMs <= 0) invalid('Invalid replay lease');
       return transaction(operations, 'readwrite', async tx => {
         const table = tx.objectStore(operations);
-        const records = await request(table.index('scope').getAll(scopeKey(scope))) as StoredOperation[];
+        const records = await request(table.index('scope').getAll(scopeId)) as StoredOperation[];
         const pending = records.filter(op => op.state === 'pending').sort((a, b) => a.sequence - b.sequence);
         // Preserve operation order: a leased earlier intent blocks later intents.
         const op = pending[0];
@@ -157,9 +162,10 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
       if (errorCode) op.errorCode = errorCode; else delete op.errorCode;
     }),
     async retry(scope, id) {
+      const key = keyFor(scope, id);
       await transaction(operations, 'readwrite', async tx => {
         const table = tx.objectStore(operations);
-        const op = await request(table.get(keyFor(scope, id))) as StoredOperation | undefined;
+        const op = await request(table.get(key)) as StoredOperation | undefined;
         if (!op) throw new InventoryError('not-found', 'Offline operation not found');
         if (op.state === 'failed') { op.state = 'pending'; delete op.errorCode; delete op.lease; await request(table.put(op)); }
       });
@@ -169,8 +175,9 @@ export function createQueueStore(databaseName = 'tossit-offline-v1'): QueueStore
       await transaction('cache', 'readwrite', async tx => { await request(tx.objectStore('cache').put(record)); });
     },
     async getCache<T>(scope: OfflineScope, name: string): Promise<T | undefined> {
+      const key = keyFor(scope, name);
       return transaction('cache', 'readonly', async tx => {
-        const record = await request(tx.objectStore('cache').get(keyFor(scope, name))) as { value: T } | undefined;
+        const record = await request(tx.objectStore('cache').get(key)) as { value: T } | undefined;
         return record?.value;
       });
     },

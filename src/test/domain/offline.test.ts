@@ -50,6 +50,14 @@ describe('durable account-scoped offline store', () => {
     expect(await queue.claimNext(other, 'worker-b', 1000)).toBeNull();
     expect(await queue.list(scope)).toHaveLength(1);
   });
+  it('captures the owning scope before asynchronous database opening instead of retaining mutable session objects', async () => {
+    const queue = store(); const mutable = { ...scope };
+    const saving = queue.enqueue(mutable, intent());
+    mutable.uid = other.uid;
+    await saving;
+    expect(await queue.list(scope)).toMatchObject([{ owner: scope }]);
+    expect(await queue.list(other)).toEqual([]);
+  });
   it('atomically lets only one tab lease a pending intent', async () => {
     const first = store(); const second = store();
     await first.enqueue(scope, intent());

@@ -1,8 +1,8 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: C2 — correct online inventory and stable UI contracts
-Status: done (implementation/emulator verification; NOT deployed)
-Last previously confirmed remote SHA: 6401bacfe08b26769cbf3634c55f744d3a0f9a2c
+Task / bounded subtask: C3b — durable replay foundation; C3 remains in progress
+Status: C3 IN PROGRESS (C1/C2 done; no deployment)
+Last previously confirmed remote SHA: 8eeaf29424eb8c8aa60b38016a323c573b59fb32
 
 ## Delivered
 - C1a f9d488f: one AuthContext and legacy hook facade; realtime profile authority, atomic UID changes, saved shift restoration, disabled/missing/malformed profile denial; no local demo authority.
@@ -110,3 +110,21 @@ Base C2 published and remotely verified: 1f55cc4ccf58f728aa46c0a5ac99d05c449b9ca
 - Added fake-indexeddb as a dev-only dependency to exercise actual IndexedDB transaction semantics in the test host.
 - Verification: 10 storage tests PASS, including reload, two accounts/businesses, two tabs, interrupted lease, retained catalog-changed conflict, retry, cache, legacy corruption, quota failure and same-millisecond FIFO. Full client suite65/65 PASS; official app build PASS; changed-file lint PASS; git diff --check PASS. FIFO regression was observed RED→GREEN.
 - This is a foundation checkpoint only: inventoryOperations still uses C2 online-only behavior. No OfflineProvider, replay worker, online-cache integration or UI pending state is connected yet. Do NOT advertise working offline inventory from C3a. Next: implement and test replay/session lifecycle, connect inventory APIs/cache/subscriptions, publish provider contract for Claude to mount and remove Dashboard queue-clearing behavior.
+
+## C3b checkpoint — replay foundation (C3 still IN PROGRESS)
+Base C3a published/remotely verified: 8eeaf29424eb8c8aa60b38016a323c573b59fb32.
+- src/offline/replay.ts drains only the active UID/business queue, uses a fresh token per lease claim, checks session/connectivity after asynchronous boundaries, validates exact synced operation/item receipts, and retains original intent payloads.
+- A real server acknowledgement lookup runs BEFORE catalog comparison, so a committed-but-lost-ack write can recover even after a later catalog change. New writes compare captured catalog configuration; stale config becomes retained catalog-changed instead of silently regenerating expiry.
+- Transient network/auth/lease errors release to pending and stop for a later trigger. Permission, closed-batch, shift and catalog conflicts remain failed with their code and immutable payload. Logout/account change during a request leaves the original intent pending; a later matching account verifies/retries it idempotently.
+- ReplayOptions deliberately injects real server acknowledgement/catalog/execution services. The execution adapter MUST bind expected UID/business internally across its own awaits; the runner's checks are additional defenses, not server authority. Integration is not provided by a blind call to an API under a subsequently signed-in account.
+- Fixed a storage ownership race, reproduced RED→GREEN: enqueue retained a mutable caller scope across database opening. All scoped store operations now capture their keys/owner before awaiting storage. No action can migrate to a mutated caller account object.
+- Verification: 11 storage + 13 replay tests PASS; full client suite79/79 PASS (9 files); app build + TypeScript PASS; lint all changed TS files PASS; git diff --check PASS. Lost-ack/catalog-change recovery also observed RED→GREEN. Fresh independent storage/replay review reported no Critical/Important findings; subsequent mutable-scope regression was reproduced and fixed with tests.
+- Storage tests use fake-indexeddb in the test host. Replay transport is injected/stubbed. These are not real-browser persistence, network toggling or live Firestore replay claims. C2's real SDK/emulator verification remains separately recorded.
+
+### Resume C3c — connect the tested foundations
+1. Keep C2's actual online implementations separately callable and add an expected-scope guard inside them. Wire replay's server lookup/catalog/execution adapters against those guarded operations, never recursively against an offline wrapper.
+2. Add account-scoped durable verified-profile/catalog/item caches. Only explicit offline/unavailable conditions may use them; permission errors must not become cache success. Filter cached values against the current profile's role/department and invalidate known disabled/malformed profiles.
+3. Connect inventoryOperations: validate against captured catalog/item before durable enqueue; return pending only after committed storage; preserve opening instants/configuration; enqueue online transport failures only when the original intent snapshot is retained, never permission/validation failures. Surface failed operations via subscriptions. Scope every asynchronous notification to the current account/business.
+4. Publish OfflineProvider/lifecycle contract for Claude to mount (Claude owns app entry/UI). Subscribe to session/connectivity, safe cross-tab triggers, no background old-account replay after logout. Feed canonical cached/pending inventory to subscribers. Replace unused legacy syncManager with adapters that preserve/quarantine old keys; do not activate the old destructive replayer.
+5. Test browser/API-facing offline reload/replay, logout/re-login/account changes, stale catalogs, interrupted writes and provider cleanup with actual adapters; then mark C3 complete and ask Claude to remove Dashboard queue clearing and wire pending/failed UI. C3a/C3b alone do NOT enable offline inventory in the app.
+C4 scheduled push and C5 integrated candidate remain untouched.
