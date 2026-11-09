@@ -1,11 +1,23 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: C3 integration — merged pinned Codex C3 (89920b2), mounted OfflineProvider, pending/failed UI (U2 remainder + U4b)
-Status: U1, U2, U3 done. U4a + U4b done; U4c (notification controls) waits for C4. U5 waits for the C5 candidate.
-Last previously confirmed remote SHA: b3971399283086026ec4013bf5271b5cd171e3e6 (U2c)
+Task / bounded subtask: C4 integration + U4c — merged pinned Codex C4 (818931e), per-device notification controls
+Status: U1, U2, U3, U4 done. **Pinned Claude checkpoint for C5 = the commit containing this handoff (read SHA from git log).** U5 waits for the C5 candidate.
+Last previously confirmed remote SHA: e7cc27bcdd8ec3fe1d8db7dea723383317d5852b (C3 integration / U4b)
 
 ## Integrated other-agent SHAs
-- C1 `70d953e`, C2 `1f55cc4`, **C3 `89920b2c`** (normal merge, no conflicts; Codex handoff: C3 done, 95 client + 41 emulator tests).
+- C1 `70d953e`, C2 `1f55cc4`, C3 `89920b2`, **C4 `818931e`** (normal merges, no conflicts).
+
+## U4c changed files
+- `src/pwa/NotificationControls.tsx` (new): reads `getPushNotificationState()` on open (no prompt, no subscription); "הפעל התראות במכשיר הזה" calls `enablePushNotifications()` directly from the click (browser prompt only there); "enabled" shown only for the server-confirmed result; rejection (e.g. disconnect mid-registration, account change) → Hebrew error, state re-read, never "enabled"; `denied` → browser-settings guidance + "בדוק שוב" (no enable button); `unsupported` → no fake enable, iPhone-not-installed gets Home Screen instructions; `pending-disable` shown separately with retry; read errors retryable; role-specific description of what is sent; missing `VITE_VAPID_PUBLIC_KEY` → "not available yet", no button, no state read.
+- `src/pwa/pushEnv.ts` (new): `pushConfigured` (presence only; request C4-1 to replace with a Codex export), `needsHomeScreenInstall`.
+- `src/components/UnifiedNavigation.tsx`: "התראות במכשיר" menu item for **all roles** (staff receive evening reminders; Settings is admin-only) opening a dialog with the controls.
+- `src/features/common/errorMessage.ts`: `failed-precondition`, `internal`.
+- Tests: `NotificationControls.test.tsx` (10), nav matrix updated.
+
+## C4 / U4c checks
+- `npm ci`, `npm run build`: PASS (injectManifest, one `service-worker.js`). `npm run test:run`: all files pass (Claude UI + Codex C1–C4 client suites). `npm run lint`: 0 errors. `git diff --check`: clean.
+- Chromium smoke on the merged build (`serve -s dist`): 1 registration `/service-worker.js` scope `/`, 12 precached files, **0 permission requests on load**, offline deep-link reload renders the app, no failed requests/page errors. Verified C4 code contains no `serviceWorker.register` / `new Notification(`.
+- NOT RUN: real push delivery (needs VAPID keys, deployed functions, billing per docs/RELEASE.md), real iPhone/Android opt-in and closed-app delivery — see docs/PILOT.md.
 
 ## C3 integration changes
 - `src/app/main.tsx`: `OfflineProvider` mounted once, directly inside `AuthProvider`, wrapping Notification/Shift providers, App, PWAPrompt and OfflineIndicator (as specified by Codex).
@@ -175,7 +187,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-Wait for Codex C4 (`enable/disablePushNotifications`, VAPID, worker-ready flow) → U4c notification controls (explicit button, 'enabled' | 'denied' | 'unsupported', no prompt on load). Then U5 against the pinned C5 candidate. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+Codex C5: merge this pinned Claude checkpoint, run combined CI and publish the release-candidate SHA. Then Claude U5: pilot/demo docs and README against that candidate (no claims beyond verified behavior). Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume

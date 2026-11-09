@@ -39,12 +39,14 @@ import {
   Category as CategoryIcon,
   Assessment as ReportsIcon,
   Settings as SettingsIcon,
+  NotificationsActive as DeviceNotificationsIcon,
 
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useOffline } from '../offline/OfflineProvider';
 import { SyncStatus } from '../pwa/SyncStatus';
+import { NotificationControls } from '../pwa/NotificationControls';
 import tossitFavicon from '../assets/tossit-favicon.png';
 import ClockDisplay from './ClockDisplay';
 
@@ -78,6 +80,9 @@ const UnifiedNavigation: React.FC = () => {
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
   });
+
+  // Per-device notification opt-in, reachable by every role (staff receive the evening reminders).
+  const [showNotificationsDialog, setShowNotificationsDialog] = useState(false);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -194,6 +199,7 @@ const UnifiedNavigation: React.FC = () => {
     { id: 'add-category', label: 'הוסף קטגוריה חדשה', icon: <CategoryIcon />, onClick: handleCategoryModalOpen, visible: isBusinessAdmin },
     { id: 'reports', label: 'דוחות', icon: <ReportsIcon />, onClick: go('/reports'), visible: canAccessRoute(role, 'reports') },
     { id: 'settings', label: 'הגדרות', icon: <SettingsIcon />, onClick: go('/settings'), visible: canAccessRoute(role, 'settings') },
+    { id: 'device-notifications', label: 'התראות במכשיר', icon: <DeviceNotificationsIcon />, onClick: () => { setShowNotificationsDialog(true); handleMenuClose(); }, visible: true },
     { id: 'divider3', label: '', icon: <></>, onClick: () => {}, divider: true, visible: true },
     { id: 'logout', label: 'התנתק', icon: <LogoutIcon />, onClick: handleSignOut, visible: true },
   ];
@@ -395,6 +401,17 @@ const UnifiedNavigation: React.FC = () => {
           );
         })}
       </Menu>
+
+      {/* Device notifications */}
+      <Dialog open={showNotificationsDialog} onClose={() => setShowNotificationsDialog(false)} maxWidth="sm" fullWidth dir="rtl">
+        <DialogTitle>התראות במכשיר</DialogTitle>
+        <DialogContent>
+          {showNotificationsDialog && <NotificationControls />}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowNotificationsDialog(false)}>סגור</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Category Creation Modal */}
       <Dialog 

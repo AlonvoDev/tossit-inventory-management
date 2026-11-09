@@ -12,6 +12,7 @@ vi.mock('../context/NotificationContext', () => ({
 vi.mock('../api/authAPI', () => ({ createUserByAdmin: vi.fn() }));
 vi.mock('../api/categoriesAPI', () => ({ addCustomCategory: vi.fn() }));
 vi.mock('./ClockDisplay', () => ({ default: () => null }));
+vi.mock('../pwa/NotificationControls', () => ({ NotificationControls: () => <div>NOTIFICATION_CONTROLS</div> }));
 const offline = vi.hoisted(() => ({ pendingCount: 0, failedCount: 0 }));
 vi.mock('../offline/OfflineProvider', () => ({
   useOffline: () => ({ operations: [], pendingCount: offline.pendingCount, failedCount: offline.failedCount, error: null, retry: vi.fn() }),
@@ -47,12 +48,12 @@ const openMenu = async (role: Role) => {
   return within(screen.getByRole('menu'));
 };
 
-const ALL = ['לוח הבקרה', 'ניהול מערכת', 'ניהול משתמשים', 'הוסף משתמש חדש', 'ניהול מקררים', 'הוסף קטגוריה חדשה', 'דוחות', 'הגדרות', 'התנתק'];
+const ALL = ['לוח הבקרה', 'ניהול מערכת', 'ניהול משתמשים', 'הוסף משתמש חדש', 'ניהול מקררים', 'הוסף קטגוריה חדשה', 'דוחות', 'הגדרות', 'התראות במכשיר', 'התנתק'];
 
 const visibleFor: Record<Role, string[]> = {
   admin: ALL,
-  manager: ['לוח הבקרה', 'ניהול מערכת', 'ניהול מקררים', 'דוחות', 'התנתק'],
-  staff: ['לוח הבקרה', 'התנתק'],
+  manager: ['לוח הבקרה', 'ניהול מערכת', 'ניהול מקררים', 'דוחות', 'התראות במכשיר', 'התנתק'],
+  staff: ['לוח הבקרה', 'התראות במכשיר', 'התנתק'],
 };
 
 describe('UnifiedNavigation menu matches route access', () => {

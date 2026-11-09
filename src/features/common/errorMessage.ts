@@ -26,6 +26,10 @@ export const errorMessage = (err: unknown, fallback: string): string => {
     case 'already-exists':
     case 'auth/email-already-in-use':
       return 'הרשומה כבר קיימת.';
+    case 'failed-precondition':
+      return 'הפעולה אינה אפשרית כרגע. רענן את האפליקציה ונסה שוב.';
+    case 'internal':
+      return 'אירעה שגיאה בשרת. נסה שוב מאוחר יותר.';
     case 'invalid-input':
     case 'invalid-argument':
       return 'הנתונים שנשלחו אינם תקינים.';

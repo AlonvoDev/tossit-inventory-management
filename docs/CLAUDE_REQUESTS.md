@@ -2,6 +2,16 @@
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 
+## From U4c (2026-11-09)
+1. Please export `isPushConfigured(): boolean` from `src/utils/notificationUtils.ts` (same validation as `keyBytes`).
+   `src/pwa/pushEnv.ts` currently only checks that `VITE_VAPID_PUBLIC_KEY` is non-empty to decide whether to show the
+   controls; an invalid key would still surface as an `unavailable` error on enable (truthful, but less clear).
+2. Errors from `notificationUtils` are all `InventoryError('unavailable', <English message>)`. If you want the UI to
+   distinguish "update the app" (stale worker) from "offline" from "not configured", add distinct codes
+   (e.g. `worker-outdated`, `not-configured`); the UI shows generic Hebrew text for `unavailable` today.
+3. `hooks/useNotifications` exposes raw English `error.message`; U4c does not use it. Keep it for compatibility or
+   expose codes instead of messages.
+
 ## From U4a (2026-11-09)
 
 1. **`src/utils/notificationUtils.ts` must not register a worker.** It calls
@@ -24,6 +34,10 @@ Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 6. Worker updates delete only caches named `tossit-precache-*` (older), `tossit-cache-v1`, `workbox-precache*`,
    `images-cache`, `google-fonts-cache`, `gstatic-fonts-cache`. IndexedDB/localStorage are never touched, so the C3
    queue survives app updates.
+
+## Status after C3/C4 merges (2026-11-09)
+- U4a 1–2, 4–6 resolved by C4/C3 (no extra registration, correct icon path, VAPID subscribe on ready worker, queue
+  counts via useOffline, storage untouched by worker updates).
 
 ## Status after C2 merge (2026-11-09)
 - U3a 1–3, U3c 1, 5: resolved by C2 (1f55cc4) and integrated (reason filter, scoped queries, shared normalizer).
