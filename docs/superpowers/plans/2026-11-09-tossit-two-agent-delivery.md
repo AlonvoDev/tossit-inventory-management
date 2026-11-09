@@ -285,11 +285,11 @@ Every task may be split into 30–90 minute bounded subtasks if it would otherwi
 - [x] Add CI for build, unit/integration and rules checks; keep secrets out.
 - [x] Resolve remaining owner-specific lint errors and record any warnings.
 - [x] Merge pinned Claude checkpoints, verify no placeholders are represented as functioning features, run the complete check set.
-- [ ] Review cross-worker boundaries: profile/route authorization, receipts/notifications, logout/push/queue, worker registration and item terminal states.
-- [ ] Push and publish candidate SHA plus release instructions. Coordinate U5 findings and fix each issue in an owner-scoped commit.
+- [x] Review cross-worker boundaries: profile/route authorization, receipts/notifications, logout/push/queue, worker registration and item terminal states.
+- [x] Push and publish candidate SHA plus release instructions. Coordinate U5 findings and fix each issue in an owner-scoped commit.
 **Acceptance:** Clean build and zero lint errors; meaningful domain/rules tests plus UI tests pass; release blockers explicitly listed.
 
-C5 checkpoint evidence: Node 22.23.4, client296/server41/rules42/callables3/browser4 passing; build and lint0errors/7warnings. Final independent review and remote CI/native worker pending. See latest Codex handoff.
+C5 checkpoint evidence: Node 22.23.4, client296/server41/rules42/callables3/browser4 passing; build and lint0errors/7warnings. Final focused independent review completed without Critical/Important findings. Remote CI run42708118669 SUCCESS in all three jobs, including native Node22 Functions worker/3 integration tests and four browser tests. Tested code candidate3be1d676aa66baf448a802521d9d29b60e8af64e; U5 unblocked. See latest Codex handoff.
 
 ## Tasks — Claude
 
