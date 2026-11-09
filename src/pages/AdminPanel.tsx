@@ -376,7 +376,7 @@ const AdminPanel: React.FC = () => {
                       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr' } }}>
                         <Card sx={{ p: 2 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                            מוצרים שפג תוקפם
+                            פג תוקף וממתינים לטיפול
                           </Typography>
                           <ItemsList 
                             showExpiredOnly={true}

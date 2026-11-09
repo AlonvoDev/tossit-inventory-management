@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { normalizeDepartment } from '../app/access';
+import React, { useState, useEffect } from 'react';
+import { departmentLabel } from '../app/access';
+import { shiftBlocksOpening } from '../features/inventory/openItem';
 import LoadingSkeleton from './LoadingSkeleton';
-import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Item, getBusinessItems, markItemAsDiscarded, getDiscardedItems, markItemAsFinished, getFinishedItems } from '../api/firestoreAPI';
+import { Item, subscribeBusinessItems } from '../api/firestoreAPI';
 import { getBusinessFridges } from '../api/fridgesAPI';
 import { Fridge } from '../types/Fridge';
 import { formatExpiryTime, getExpiryStatus } from '../utils/expiryUtils';
-import { ItemActionModal } from './ui/ItemActionModal';
+import { ItemActionModal, ItemActionConfirm } from './ui/ItemActionModal';
+import { useCloseItem } from '../hooks/useItemActions';
+import { selectItems, ListMode } from '../features/inventory/itemSelection';
+import { errorMessage } from '../features/common/errorMessage';
 
 interface ItemsListProps {
   areaFilter?: 'bar' | 'kitchen' | 'בר' | 'מטבח';
@@ -16,7 +19,8 @@ interface ItemsListProps {
   showExpiringsSoon?: boolean; // Items expiring within 3 days
   showActiveOnly?: boolean; // Active items only
   showFinishedOnly?: boolean; // Items that were used up completely
-  refreshTrigger: number;
+  /** Unused since the list is realtime; kept so existing callers compile. */
+  refreshTrigger?: number;
   isOffline?: boolean;
   onItemUpdated?: () => void; // Callback for when items are updated
 }
@@ -28,308 +32,146 @@ const ItemsList: React.FC<ItemsListProps> = ({
   showExpiringsSoon = false,
   showActiveOnly = false,
   showFinishedOnly = false,
-  refreshTrigger,
   isOffline = false,
   onItemUpdated
 }) => {
-  const { businessId, profile, isManager, loading } = useAuth();
+  const { businessId, profile, role, isOnShift, loading } = useAuth();
+  // Closing follows the same rule as opening: staff need an active shift (C1b `operates`).
+  const offShift = shiftBlocksOpening(role, !!isOnShift);
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // State for unified item action modal
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Item action dialog (finished / discarded)
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionModalItem, setActionModalItem] = useState<Item | null>(null);
-  const [isActionLoading, setIsActionLoading] = useState(false);
-
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const close = useCloseItem();
+  const isActionLoading = close.submitting;
 
   // Fridges for filtering and name lookup
   const [fridges, setFridges] = useState<Fridge[]>([]);
   const [fridgeMap, setFridgeMap] = useState<{ [id: string]: string }>({});
   const [fridgeFilter, setFridgeFilter] = useState<string>('all');
 
-  // Get user's department for filtering (managers can see all departments)
   const userDepartment = profile?.department;
-  const canSeeAllDepartments = isManager || profile?.role === 'admin';
+  const canSeeAllDepartments = role === 'admin';
 
-  // Load items
-  const loadItems = useCallback(async () => {
-    if (!businessId) return;
-    
-    console.log('loadItems called with:', {
-      businessId,
-      areaFilter,
-      showDiscardedOnly,
-      showExpiredOnly,
-      userDepartment,
-      canSeeAllDepartments
-    });
-    
+  const mode: ListMode = showDiscardedOnly
+    ? 'discarded'
+    : showFinishedOnly
+      ? 'finished'
+      : showExpiredOnly
+        ? 'expired'
+        : showExpiringsSoon
+          ? 'expiring'
+          : showActiveOnly
+            ? 'active'
+            : 'open';
+
+  // Realtime, server-scoped inventory (C2 subscribeBusinessItems): other devices' opens and
+  // closes appear without refreshing. `refreshTrigger` is kept for compatibility only.
+  useEffect(() => {
+    if (loading || !profile || !businessId) return;
     setIsLoading(true);
     setError(null);
-    
-    try {
-      let fetchedItems: Item[];
-      
-      // Load different data based on view mode
-      if (showFinishedOnly) {
-        fetchedItems = await getFinishedItems(businessId);
-        console.log('Loaded finished items:', fetchedItems.length);
-      } else if (showDiscardedOnly) {
-        fetchedItems = await getDiscardedItems(businessId);
-        console.log('Loaded discarded items:', fetchedItems.length);
-      } else {
-        fetchedItems = await getBusinessItems(businessId);
-        console.log('Loaded business items:', fetchedItems.length);
-        
-        // Filter by area first - handle both English and Hebrew values
-        // C2 returns canonical areas; legacy Hebrew values are normalized on both sides.
-        let filteredByArea = areaFilter 
-          ? fetchedItems.filter(item => normalizeDepartment(item.area) === normalizeDepartment(areaFilter))
-          : fetchedItems;
-        console.log('After area filter:', filteredByArea.length);
+    const unsubscribe = subscribeBusinessItems(
+      businessId,
+      next => {
+        setItems(next);
+        setIsLoading(false);
+        setError(null);
+      },
+      err => {
+        console.error('Error loading items:', err);
+        setError(errorMessage(err, 'טעינת הפריטים נכשלה. נסה שוב.'));
+        setIsLoading(false);
+      },
+    );
+    return unsubscribe;
+  }, [businessId, loading, profile]);
 
-        // Then filter by user's department if no area filter is provided AND user is not manager/admin
-        if (!areaFilter && userDepartment && !canSeeAllDepartments) {
-          filteredByArea = filteredByArea.filter(item => normalizeDepartment(item.area) === normalizeDepartment(userDepartment));
-          console.log('After department filter:', filteredByArea.length);
-        }
-        
-        // Apply different filters based on props
-        const now = Timestamp.now();
-        const threeDaysFromNow = new Timestamp(now.seconds + (3 * 24 * 60 * 60), now.nanoseconds);
-        
-        if (showActiveOnly) {
-          // Show only active items (not discarded, not thrown, not expired, not finished)
-          filteredByArea = filteredByArea.filter(item => 
-            !item.discarded && 
-            !item.isThrown && 
-            !item.finished &&
-            item.expiryTime.toMillis() > now.toMillis()
-          );
-          console.log('After active-only filter:', filteredByArea.length);
-        } else if (showExpiringsSoon) {
-          // Show items expiring within 3 days (but not expired yet)
-          filteredByArea = filteredByArea.filter(item => 
-            !item.discarded && 
-            !item.isThrown && 
-            !item.finished &&
-            item.expiryTime.toMillis() > now.toMillis() &&
-            item.expiryTime.toMillis() <= threeDaysFromNow.toMillis()
-          );
-          console.log('After expiring-soon filter:', filteredByArea.length);
-        } else if (showExpiredOnly) {
-          // Show expired items only (includes discarded expired items)
-          filteredByArea = filteredByArea.filter(item => 
-            item.expiryTime.toMillis() < now.toMillis()
-          );
-          console.log('After expired filter:', filteredByArea.length);
-        } else if (!showDiscardedOnly && !showFinishedOnly) {
-          // Normal view - filter out discarded and finished items
-          const beforeDiscardFilter = filteredByArea.length;
-          filteredByArea = filteredByArea.filter(item => !item.discarded && !item.isThrown && !item.finished);
-          console.log('After discard/finished filter:', filteredByArea.length, 'removed:', beforeDiscardFilter - filteredByArea.length);
-        }
-        // If showDiscardedOnly or showFinishedOnly is true, don't filter anything - show all relevant items
-        
-        fetchedItems = filteredByArea;
-      }
-      
-      console.log('Final items to display:', fetchedItems.length);
-      console.log('Final items list:', fetchedItems.map(item => ({ id: item.id, name: item.productName, area: item.area })));
-      setItems(fetchedItems);
-      setFilteredItems(fetchedItems);
-    } catch (error) {
-      console.error('Error loading items:', error);
-      setError('Failed to load items. Please try again.');
-    } finally {
-      setIsLoading(false);
+  // Expiry state changes with time even without data changes.
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!businessId) return;
+    let cancelled = false;
+    getBusinessFridges(businessId)
+      .then(data => {
+        if (cancelled) return;
+        setFridges(data);
+        const map: { [id: string]: string } = {};
+        data.forEach(f => {
+          if (f.id) map[f.id] = f.name;
+        });
+        setFridgeMap(map);
+      })
+      .catch(err => console.error('Error fetching fridges:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
+
+  useEffect(() => {
+    let selected = selectItems(items, { mode, department: areaFilter }, nowMs);
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      selected = selected.filter(item => item.productName.toLowerCase().includes(query));
     }
-  }, [businessId, areaFilter, showFinishedOnly, showDiscardedOnly, userDepartment, canSeeAllDepartments, showActiveOnly, showExpiringsSoon, showExpiredOnly]);
+    if (fridgeFilter && fridgeFilter !== 'all') {
+      selected = selected.filter(item => item.fridgeId === fridgeFilter);
+    }
+    setFilteredItems(selected);
+  }, [items, mode, areaFilter, nowMs, searchQuery, fridgeFilter]);
 
-  // Open unified action modal
   const openActionModal = (item: Item) => {
+    close.reset();
+    setActionNotice(null);
     setActionModalItem(item);
     setShowActionModal(true);
   };
 
-  // Handle action confirmation from modal
-  const handleActionConfirm = async (action: 'finished' | 'discarded', quantity?: number, reason?: string) => {
-    if (!actionModalItem || !profile || !actionModalItem.id) return;
-
-    setIsActionLoading(true);
-    
-    try {
-      if (action === 'finished') {
-        await handleMarkAsFinished(actionModalItem);
-      } else {
-        // Convert reason string to proper type
-        const discardReason = reason === 'פג תוקף' ? 'expired' : 
-                             reason === 'נפגם' ? 'damaged' : 'other';
-        await handleMarkAsDiscarded(actionModalItem, quantity, discardReason);
-      }
-      
-      // Close modal
-      setShowActionModal(false);
-      setActionModalItem(null);
-    } catch (error) {
-      console.error('Error processing action:', error);
-      // Error is already handled in the individual functions
-    } finally {
-      setIsActionLoading(false);
-    }
+  const closeActionModal = () => {
+    setShowActionModal(false);
+    setActionModalItem(null);
+    close.reset();
   };
 
-  // Handle marking item as discarded
-  const handleMarkAsDiscarded = async (item: Item, quantity?: number, reason?: 'expired' | 'damaged' | 'other') => {
-    if (!profile || !item.id) return;
-    
-    try {
-      console.log('Marking item as discarded:', item.id, 'with quantity:', quantity, 'reason:', reason);
-      await markItemAsDiscarded(
-        item.id, 
-        profile.uid, 
-        profile.fullName || profile.email?.split('@')[0] || 'Unknown User',
-        quantity,
-        reason
-      );
-      
-      console.log('Item marked as discarded successfully');
-      
-      // Refresh the items list
-      await loadItems();
-      
-      // Notify parent component to refresh all tabs
-      if (onItemUpdated) {
-        console.log('Calling onItemUpdated callback to refresh all tabs');
-        onItemUpdated();
-      }
-    } catch (error) {
-      console.error('Error marking item as discarded:', error);
-      setError('Failed to mark item as discarded. Please try again.');
-    }
+  // Success is reported only for a receipt; the realtime list then reflects the server state.
+  const handleActionConfirm = async (input: ItemActionConfirm) => {
+    if (!actionModalItem?.id) return;
+    const receipt = await close.submit({ itemId: actionModalItem.id, ...input });
+    if (!receipt) return; // error shown in the dialog; same intent is reused on retry
+    const name = actionModalItem.productName;
+    setActionNotice(
+      receipt.state === 'synced'
+        ? input.action === 'finished'
+          ? `"${name}" סומן כנגמר`
+          : `"${name}" סומן כנזרק`
+        : `העדכון של "${name}" ממתין לשליחה לשרת ועדיין לא נשמר`,
+    );
+    setShowActionModal(false);
+    setActionModalItem(null);
+    onItemUpdated?.();
   };
 
-  // Handle marking item as finished
-  const handleMarkAsFinished = async (item: Item) => {
-    if (!profile || !item.id) return;
-    
-    try {
-      console.log('Marking item as finished:', item.id);
-      await markItemAsFinished(
-        item.id, 
-        profile.uid, 
-        profile.fullName || profile.email?.split('@')[0] || 'Unknown User'
-      );
-      
-      console.log('Item marked as finished successfully');
-      
-      // Refresh the items list
-      await loadItems();
-      
-      // Notify parent component to refresh all tabs
-      if (onItemUpdated) {
-        console.log('Calling onItemUpdated callback to refresh all tabs');
-        onItemUpdated();
-      }
-    } catch (error) {
-      console.error('Error marking item as finished:', error);
-      setError('Failed to mark item as finished. Please try again.');
-    }
-  };
-
-
-
-  // Only load items if user profile is loaded
+  // Close the dialog if the item disappears or is closed elsewhere while it is open.
   useEffect(() => {
-    console.log('ItemsList useEffect triggered with refreshTrigger:', refreshTrigger);
-    console.log('useEffect dependencies:', { businessId, areaFilter, userDepartment, loading, profile: !!profile, canSeeAllDepartments, showDiscardedOnly, showExpiredOnly });
-    if (!loading && profile) {
-      console.log('Calling loadItems from useEffect');
-      loadItems();
-    } else {
-      console.log('Skipping loadItems - loading:', loading, 'profile:', !!profile);
+    if (!actionModalItem || isActionLoading) return;
+    const current = items.find(i => i.id === actionModalItem.id);
+    if (current && (current.finished || current.discarded || current.isThrown) && !close.alreadyClosed) {
+      setActionNotice(`"${current.productName}" כבר עודכן ממכשיר אחר`);
+      closeActionModal();
     }
-  }, [businessId, areaFilter, userDepartment, refreshTrigger, loading, profile, canSeeAllDepartments, showDiscardedOnly, showExpiredOnly, showExpiringsSoon, showActiveOnly, showFinishedOnly, loadItems]);
-
-  // Load fridges for the business. This is used for filtering and displaying fridge names
-  useEffect(() => {
-    const fetchFridges = async () => {
-      if (!businessId) return;
-      try {
-        const data = await getBusinessFridges(businessId);
-        setFridges(data);
-        const map: { [id: string]: string } = {};
-        data.forEach((f) => {
-          if (f.id) map[f.id] = f.name;
-        });
-        setFridgeMap(map);
-      } catch (err) {
-        console.error('Error fetching fridges:', err);
-      }
-    };
-    fetchFridges();
-  }, [businessId]);
-
-  // Load cached items when going offline
-  useEffect(() => {
-    if (isOffline) {
-      const cachedKey = userDepartment ? `cachedItems_${userDepartment}` : 'cachedItems_all';
-      const cached = localStorage.getItem(cachedKey);
-      if (cached) {
-        try {
-          const parsedItems = JSON.parse(cached);
-          // setCachedItems(parsedItems); // Commented out as cachedItems state was removed
-          setItems(parsedItems);
-          setError('מציג נתונים מהמטמון המקומי במצב לא מקוון');
-        } catch (e) {
-          console.error('Error parsing cached items:', e);
-        }
-      } else {
-        setError('אין נתונים זמינים במצב לא מקוון');
-      }
-    }
-  }, [isOffline, areaFilter, userDepartment]);
-
-  // Apply filters
-  useEffect(() => {
-    if (items.length === 0) {
-      setFilteredItems([]);
-      return;
-    }
-
-    let filtered = [...items];
-
-    // Apply expired only filter
-    if (showExpiredOnly) {
-      const now = Timestamp.now();
-      filtered = filtered.filter(
-        (item) => !item.isThrown && item.expiryTime.toMillis() < now.toMillis()
-      );
-    }
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.productName.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply fridge filter
-    if (fridgeFilter && fridgeFilter !== 'all') {
-      filtered = filtered.filter((item) => item.fridgeId === fridgeFilter);
-    }
-
-    // Sort by expiry date (soonest first)
-    filtered.sort((a, b) => a.expiryTime.toMillis() - b.expiryTime.toMillis());
-
-    setFilteredItems(filtered);
-  }, [items, showExpiredOnly, searchQuery, fridgeFilter]);
-
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   // Group items by department and fridge for better organization
   const groupItemsByFridge = (items: Item[]) => {
@@ -400,6 +242,13 @@ const ItemsList: React.FC<ItemsListProps> = ({
         </div>
       </div>
 
+      {actionNotice && (
+        <div className="action-notice" role="status">{actionNotice}</div>
+      )}
+      {offShift && !showDiscardedOnly && !showFinishedOnly && (
+        <div className="offline-note" role="note">יש להתחיל משמרת כדי לסמן פריטים כנגמרו או כנזרקו.</div>
+      )}
+
       {isLoading ? (
         /* Show nicer loading state with skeletons instead of plain text */
         <LoadingSkeleton type="admin" message="טוען פריטים..." />
@@ -413,21 +262,21 @@ const ItemsList: React.FC<ItemsListProps> = ({
               : showDiscardedOnly
                 ? canSeeAllDepartments
                   ? 'לא נמצאו פריטים נזרקים'
-                  : `לא נמצאו פריטים נזרקים במחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`
+                  : `לא נמצאו פריטים נזרקים במחלקת ${'ה' + (departmentLabel(userDepartment) ?? '')}`
                 : showExpiredOnly 
                   ? canSeeAllDepartments 
                     ? 'לא נמצאו פריטים שפג תוקפם' 
-                    : `לא נמצאו פריטים שפג תוקפם במחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`
+                    : `לא נמצאו פריטים שפג תוקפם במחלקת ${'ה' + (departmentLabel(userDepartment) ?? '')}`
                   : canSeeAllDepartments
                     ? 'אין פריטים במלאי'
                     : userDepartment
-                      ? `אין פריטים במלאי של מחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`
+                      ? `אין פריטים במלאי של מחלקת ${'ה' + (departmentLabel(userDepartment) ?? '')}`
                       : 'אין פריטים במלאי'
             }
           </p>
           {!canSeeAllDepartments && userDepartment && !showDiscardedOnly && (
             <p className="filter-info">
-              מציג פריטים עבור מחלקת {userDepartment === 'bar' ? 'הבר' : 'המטבח'} בלבד
+              מציג פריטים עבור מחלקת {'ה' + (departmentLabel(userDepartment) ?? '')} בלבד
             </p>
           )}
           {canSeeAllDepartments && !showDiscardedOnly && (
@@ -437,7 +286,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
           )}
           {showDiscardedOnly && (
             <p className="filter-info">
-              מציג פריטים נזרקים {canSeeAllDepartments ? 'מכל המחלקות' : `ממחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`}
+              מציג פריטים נזרקים {canSeeAllDepartments ? 'מכל המחלקות' : `ממחלקת ${'ה' + (departmentLabel(userDepartment) ?? '')}`}
             </p>
           )}
           {isOffline && <p className="offline-note">במצב לא מקוון, ייתכן שהנתונים אינם מעודכנים</p>}
@@ -539,7 +388,8 @@ const ItemsList: React.FC<ItemsListProps> = ({
                                   <button
                                     className={`quick-action-btn ${statusText.toLowerCase()}-action`}
                                     onClick={() => openActionModal(item)}
-                                    disabled={isOffline}
+                                    disabled={isOffline || offShift}
+                                    title={isOffline ? 'אין חיבור' : offShift ? 'יש להתחיל משמרת' : undefined}
                                   >
                                     <span className="action-icon">🗑️</span>
                                     עדכן סטטוס
@@ -616,6 +466,15 @@ const ItemsList: React.FC<ItemsListProps> = ({
           border-radius: 4px;
         }
         
+        .action-notice {
+          background: #e8f5e9;
+          color: #1b5e20;
+          border-radius: 6px;
+          padding: 10px 14px;
+          margin-bottom: 12px;
+          font-weight: 600;
+        }
+
         .error {
           color: #C62828;
           background-color: #FFEBEE;
@@ -1216,18 +1075,16 @@ const ItemsList: React.FC<ItemsListProps> = ({
       {showActionModal && actionModalItem && (
         <ItemActionModal
           open={showActionModal}
-          onClose={() => {
-            setShowActionModal(false);
-            setActionModalItem(null);
-          }}
+          onClose={closeActionModal}
           onConfirm={handleActionConfirm}
           itemName={actionModalItem.productName}
           itemAmount={actionModalItem.amount}
           itemType={actionModalItem.type}
           loading={isActionLoading}
+          error={close.error}
+          closedElsewhere={close.alreadyClosed}
         />
       )}
-
 
     </div>
   );

@@ -1,8 +1,19 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: U2a — Dashboard scope/cleanup and opening items on C2 `openInventoryItem` (U2 split: U2a open ✓, U2b list + finished/discarded on `closeInventoryItem` + realtime, U2c shift button; pending/provider parts after C3c)
+Task / bounded subtask: U2b — realtime item list and finished/discarded on C2 `closeInventoryItem` (U2 split: U2a open ✓, U2b list/close ✓, U2c shift button; pending/provider parts after C3c)
 Status: checkpoint. U1, U3 done; U4a done; U4b waits for C3c, U4c for C4.
-Last previously confirmed remote SHA: 8f461c216945c4e216512fbd23ba785c83a2c5e2 (U3d)
+Last previously confirmed remote SHA: 51c3815955bb19eaeb97b016c67de1ebf0046692 (U2a)
+
+## U2b changed files
+- `src/components/ItemsList.tsx` (data/action logic rewritten, rendering kept): one realtime `subscribeBusinessItems` subscription (server-scoped; other devices' opens/closes appear live; `refreshTrigger` now optional/unused); tab filtering via pure `selectItems` (canonical + legacy Hebrew departments, expiry re-evaluated every minute); closes via `useCloseItem`; success notice only after a receipt; already-closed and load errors explained in Hebrew; off-shift staff cannot open the action dialog; removed the localStorage `cachedItems_*` offline view and English error strings; department names via `departmentLabel` (legacy Hebrew no longer shows the wrong department).
+- `src/hooks/useItemActions.ts` → `useCloseItem`: `closeInventoryItem({ operationId, itemId, action, discardedAmount?, reason? })`; one UUID per intent (item + action + amount + reason) reused on retry; no UI-supplied actor name/uid; repeated clicks ignored while sending.
+- `src/components/ui/ItemActionModal.tsx` (rewritten): finished vs discarded; discarded requires amount (decimal kg / whole units, ≤ batch) and reason (פג תוקף / נפגם / אחר radio — the old free-text reason was keyword-guessed); states that the whole batch closes and the amount is recorded as waste; shows the last error and keeps the dialog open for retry; "closed elsewhere" state removes the confirm button.
+- `src/features/inventory/itemSelection.ts`, `closeItem.ts` (new, tested). "Expired" now means expired and still open (needs handling); AdminPanel card relabelled "פג תוקף וממתינים לטיפול".
+- Tests: `itemSelection.test.ts` (6, includes the C2 canonical-area regression), `ItemsList.test.tsx` (7).
+
+## U2b checks
+- `npm run build`: PASS. `npm run test:run`: 25 files, 225/225 pass. `npm run lint`: 2 errors / 6 warnings (Codex `syncManager.ts`). `git diff --check`: clean.
+- NOT RUN: emulator/real Firestore concurrent closes from two devices (Codex reports transaction tests); manual two-device check listed for U5.
 
 ## U2a changed files
 - `src/components/OpenItemForm.tsx` (rewritten): `openInventoryItem({ operationId, productId, amount, fridgeId?, openedAtMs })` only — no actor/business/name/unit/expiry from the UI. One UUID + opening instant per intent (`src/features/inventory/openItem.ts`), reused on retry of the same payload and renewed when it changes. Decimal kg (comma or dot, ≤3 decimals) vs whole units; department catalog and fridges only (fridge optional, product default preselected); off-shift staff blocked; offline blocked with explanation; success only for a receipt (`synced` → "נפתח. תוקף עד …" in Asia/Jerusalem; `pending` → explicitly not saved yet); `unavailable` keeps the intent; permission/shift/catalog errors shown. Removed the `pendingOperations` localStorage queue, fake "saved locally" success, local product cache, made-up departments (מחסן/אחר) and `parseInt` truncation (0.5 kg was impossible).
@@ -141,7 +152,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-U2b: ItemsList + `useItemActions`/`ItemActionModal` on `closeInventoryItem` (UUID per close intent, finished vs discarded with reason/amount ≤ batch, `already-closed` shown, no optimistic success) and realtime `subscribeBusinessItems`; then U2c ShiftButton. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+U2c: ShiftButton (start/end shift via existing API, errors shown, no optimistic state). Then U2 online is done; pending/failed presentation and OfflineProvider mount wait for C3c. Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume
