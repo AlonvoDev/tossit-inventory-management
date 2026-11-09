@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getDiscardReport, DiscardReportItem } from '../api/firestoreAPI';
 import DateRangePicker from './DateRangePicker';
+import { toQueryBounds } from './dateRange';
 import {
   Box,
   Typography,
@@ -19,6 +20,7 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Button,
   useTheme,
   alpha,
   TextField,
@@ -65,13 +67,9 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
     setError(null);
     
     try {
-      let endDateWithTime: Date | undefined;
-      if (endDate) {
-        endDateWithTime = new Date(endDate);
-        endDateWithTime.setHours(23, 59, 59, 999); // Include end of day
-      }
-      
-      const data = await getDiscardReport(businessId, startDate || undefined, endDateWithTime);
+      // Whole local days: first day from 00:00, last day through 23:59:59.999.
+      const bounds = toQueryBounds(startDate, endDate);
+      const data = await getDiscardReport(businessId, bounds.start, bounds.end);
       setReportData(data);
       setFilteredData(data);
     } catch (err: unknown) {
@@ -175,7 +173,15 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ m: 2 }}>
+      <Alert
+        severity="error"
+        sx={{ m: 2 }}
+        action={
+          <Button color="inherit" size="small" onClick={() => loadReport()}>
+            נסה שוב
+          </Button>
+        }
+      >
         {error}
       </Alert>
     );
@@ -471,7 +477,11 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
             אין נתונים להצגה
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {searchQuery ? 'לא נמצאו מוצרים התואמים לחיפוש' : 'עדיין לא בוצעו זריקות במערכת'}
+            {searchQuery
+              ? 'לא נמצאו מוצרים התואמים לחיפוש'
+              : dateFilterActive
+                ? 'לא נמצאו זריקות בטווח התאריכים שנבחר'
+                : 'עדיין לא בוצעו זריקות במערכת'}
           </Typography>
         </Box>
       )}

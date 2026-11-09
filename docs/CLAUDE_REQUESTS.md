@@ -2,6 +2,18 @@
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 
+## From U3a (2026-11-09)
+
+1. **Discard report must be department-scoped for managers** (`getDiscardReport` / `getDiscardedItemsWithDateFilter`
+   in `src/api/firestoreAPI.ts`). They query `items where businessId == X` with no `area` constraint. Under the C1b
+   rules (rules are not filters) a manager's query will be rejected as a whole. Please constrain by the actor's department
+   for non-admins (including legacy Hebrew area values) or move the report behind a callable.
+2. **Reason filter:** please add an optional `reason?: DiscardReason` (and later `department?`) parameter to
+   `getDiscardReport` so totals are computed only from matching discards. The UI currently shows per-reason counts
+   but cannot filter totals by reason without duplicating the aggregation.
+3. **Date bounds:** the UI now passes inclusive whole local-day bounds (`start` 00:00:00.000, `end` 23:59:59.999).
+   Items without `discardedAt` fall back to `openingTime` in the API filter; please confirm or drop that fallback in C2.
+
 ## From U1 (2026-11-09)
 
 1. **Disabled/inactive profiles must resolve to `isAuthenticated: false`** in `src/context/AuthContext.tsx`
