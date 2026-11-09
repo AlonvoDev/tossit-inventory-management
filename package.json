@@ -16,7 +16,11 @@
     "preview": "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}",
     "start": "serve -s dist -l tcp://0.0.0.0:$PORT",
     "emulators": "firebase emulators:start",
-    "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\""
+    "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tossit-auth \"vitest run --config vitest.rules.config.ts\"",
+    "test:functions": "vitest run --config vitest.functions.config.ts",
+    "build:functions": "npm --prefix functions run build",
+    "test:callables": "npm run build:functions && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -39,6 +43,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

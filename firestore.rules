@@ -1,48 +1,124 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Development mode rules - allow all operations (REPLACE WITH STRICTER RULES IN PRODUCTION)
-    match /{document=**} {
-      allow read, write: if true;
+    function signedIn() { return request.auth != null; }
+    function actor() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function active() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && actor().get('isActive', true) == true
+        && actor().role in ['admin', 'manager', 'staff', 'user']
+        && actor().businessId is string && actor().businessId.size() > 0;
     }
-    
-    // THE FOLLOWING RULES ARE COMMENTED OUT FOR DEVELOPMENT
-    // UNCOMMENT AND MODIFY THESE RULES BEFORE GOING TO PRODUCTION
-    
-    /* 
-    // כללים בסיסיים
-    match /{document=**} {
-      allow read, write: if false; // חסימת גישה כברירת מחדל
+    function sameBusiness(data) { return active() && data.businessId == actor().businessId; }
+    function admin() { return active() && actor().role == 'admin'; }
+    function departmentMatches(area) {
+      return (actor().department in ['bar', 'בר'] && area in ['bar', 'בר'])
+        || (actor().department in ['kitchen', 'מטבח'] && area in ['kitchen', 'מטבח']);
     }
-    
-    // הרשאות למשתמשים - משתמש יכול לקרוא ולעדכן את המידע שלו עצמו
-    match /users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || 
-                               exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    function scoped(data, area) { return sameBusiness(data) && (admin() || departmentMatches(area)); }
+    function manages(data, area) {
+      return scoped(data, area) && actor().role in ['admin', 'manager'];
     }
-    
-    // הרשאות לניהול מוצרים
-    match /products/{productId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-                   exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                   (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.businessId == resource.data.businessId);
+    function operates(data, area) {
+      return scoped(data, area)
+        && (actor().role in ['admin', 'manager'] || actor().get('isOnShift', false) == true);
     }
-    
-    // הרשאות לניהול פריטים
-    match /items/{itemId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && 
-                    exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isOnShift == true;
-      allow update, delete: if request.auth != null && 
-                           (request.auth.uid == resource.data.userId || 
-                            exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    function canonicalArea(area) { return area in ['bar', 'kitchen']; }
+    function sameDepartment(a, b) {
+      return (a in ['bar', 'בר'] && b in ['bar', 'בר'])
+        || (a in ['kitchen', 'מטבח'] && b in ['kitchen', 'מטבח']);
     }
-    */
+
+    match /users/{uid} {
+      // Disabled/missing users may discover their own profile status, but nothing else.
+      allow read: if signedIn() && (request.auth.uid == uid || (admin() && sameBusiness(resource.data)));
+      // Provisioning, profile edits, disabling and role changes are callable-server operations.
+      allow create, delete: if false;
+      allow update: if active() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOnShift', 'shiftStartedAt'])
+        && request.resource.data.isOnShift is bool
+        && ((request.resource.data.isOnShift == true && request.resource.data.shiftStartedAt == request.time)
+          || (request.resource.data.isOnShift == false && request.resource.data.shiftStartedAt == null));
+    }
+
+    match /products/{id} {
+      function validProduct(data) {
+        return data.name is string && data.name.size() > 0
+          && canonicalArea(data.area) && data.type in ['kg', 'units']
+          && data.shelfLifeDays is int && data.shelfLifeDays > 0;
+      }
+      allow read: if scoped(resource.data, resource.data.area);
+      allow create: if manages(request.resource.data, request.resource.data.area) && validProduct(request.resource.data);
+      allow update: if manages(resource.data, resource.data.area)
+        && manages(request.resource.data, request.resource.data.area)
+        && request.resource.data.businessId == resource.data.businessId && validProduct(request.resource.data);
+      allow delete: if manages(resource.data, resource.data.area);
+    }
+
+    match /fridges/{id} {
+      function validFridge(data) { return data.name is string && data.name.size() > 0 && canonicalArea(data.department); }
+      allow read: if scoped(resource.data, resource.data.department);
+      allow create: if manages(request.resource.data, request.resource.data.department) && validFridge(request.resource.data);
+      allow update: if manages(resource.data, resource.data.department)
+        && manages(request.resource.data, request.resource.data.department)
+        && request.resource.data.businessId == resource.data.businessId && validFridge(request.resource.data);
+      allow delete: if manages(resource.data, resource.data.department);
+    }
+
+    match /categories/{id} {
+      allow read: if sameBusiness(resource.data);
+      allow create: if admin() && sameBusiness(request.resource.data)
+        && request.resource.data.name is string && request.resource.data.name.size() > 0;
+      allow update: if admin() && sameBusiness(resource.data) && sameBusiness(request.resource.data)
+        && request.resource.data.name is string && request.resource.data.name.size() > 0;
+      allow delete: if admin() && sameBusiness(resource.data);
+    }
+
+    match /items/{id} {
+      function product(data) { return get(/databases/$(database)/documents/products/$(data.productId)).data; }
+      function validFridge(data) {
+        return !('fridgeId' in data) || (data.fridgeId is string
+          && get(/databases/$(database)/documents/fridges/$(data.fridgeId)).data.businessId == data.businessId
+          && sameDepartment(get(/databases/$(database)/documents/fridges/$(data.fridgeId)).data.department, data.area));
+      }
+      function validOpening(data) {
+        return data.keys().hasOnly(['productId', 'productName', 'type', 'amount', 'openingTime', 'expiryTime',
+          'userId', 'businessId', 'area', 'isThrown', 'discarded', 'finished', 'fridgeId', 'reminderSent', 'adminNotified'])
+          && data.userId == request.auth.uid && canonicalArea(data.area)
+          && data.amount is number && data.amount > 0
+          && (data.type == 'kg' || (data.type == 'units' && data.amount is int))
+          && data.openingTime is timestamp && data.expiryTime is timestamp
+          && data.openingTime <= request.time
+          && data.isThrown == false && data.discarded == false && data.finished == false
+          && data.get('reminderSent', false) == false && data.get('adminNotified', false) == false
+          && product(data).businessId == data.businessId && sameDepartment(product(data).area, data.area)
+          && data.productName == product(data).name && data.type == product(data).type
+          && data.expiryTime == data.openingTime + duration.value(product(data).shelfLifeDays, 'd')
+          && validFridge(data);
+      }
+      function stillOpen(data) {
+        return data.get('isThrown', false) == false && data.get('discarded', false) == false && data.get('finished', false) == false;
+      }
+      function validClose(before, after) {
+        return stillOpen(before)
+          && after.diff(before).affectedKeys().hasOnly(['finished', 'finishedAt', 'finishedBy', 'finishedByName',
+            'discarded', 'discardedAt', 'discardedBy', 'discardedByName', 'discardedQuantity', 'discardReason', 'isThrown'])
+          && ((after.finished == true && after.discarded == false && after.isThrown == false
+              && after.finishedBy == request.auth.uid && after.finishedAt == request.time)
+            || (after.discarded == true && after.finished == false && after.isThrown == true
+              && after.discardedBy == request.auth.uid && after.discardedAt == request.time
+              && after.discardedQuantity is number && after.discardedQuantity > 0 && after.discardedQuantity <= before.amount
+              && after.discardReason in ['expired', 'damaged', 'other']));
+      }
+      allow read: if scoped(resource.data, resource.data.area);
+      allow create: if operates(request.resource.data, request.resource.data.area) && validOpening(request.resource.data);
+      allow update: if operates(resource.data, resource.data.area) && validClose(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    // No catch-all grants: settings, subscriptions and operation receipts are added
+    // with explicit validation in their owning delivery tasks.
+    match /{document=**} { allow read, write: if false; }
   }
 }

@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Timestamp } from 'firebase/firestore';
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
+import type { Timestamp } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { startShift, endShift } from '../api/authAPI';
 
-// Types
 interface ShiftContextType {
   isOnShift: boolean;
   shiftStartedAt: Timestamp | null;
@@ -12,90 +11,38 @@ interface ShiftContextType {
   isLoading: boolean;
   error: string | null;
 }
-
-// Create the context with default values
-const ShiftContext = createContext<ShiftContextType>({
-  isOnShift: false,
-  shiftStartedAt: null,
-  startUserShift: async () => {},
-  endUserShift: async () => {},
-  isLoading: false,
-  error: null,
-});
-
-// Hook for using the shift context
-export const useShift = () => useContext(ShiftContext);
-
-// Shift provider component
-export const ShiftProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { currentUser, isOnShift: authIsOnShift, shiftStartedAt: authShiftStartedAt } = useAuth();
-  const [isOnShift, setIsOnShift] = useState(authIsOnShift);
-  const [shiftStartedAt, setShiftStartedAt] = useState<Timestamp | null>(authShiftStartedAt);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Update local state when auth context changes
-  useEffect(() => {
-    setIsOnShift(authIsOnShift);
-    setShiftStartedAt(authShiftStartedAt);
-  }, [authIsOnShift, authShiftStartedAt]);
-
-  // Start user shift
-  const startUserShift = async (): Promise<void> => {
-    if (!currentUser) {
-      setError('You must be logged in to start a shift');
+const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
+export function useShift() {
+  const value = useContext(ShiftContext);
+  if (!value) throw new Error('useShift must be used within a ShiftProvider');
+  return value;
+}
+interface Operation { id: number; uid: string | null; pending: boolean; error: string | null }
+export function ShiftProvider({ children }: { children: ReactNode }) {
+  const { currentUser, isAuthenticated, isOnShift, shiftStartedAt } = useAuth();
+  const [operation, setOperation] = useState<Operation>({ id: 0, uid: null, pending: false, error: null });
+  const sequence = useRef(0);
+  const uid = currentUser?.uid ?? null;
+  const isCurrent = operation.uid === uid;
+  async function changeShift(start: boolean) {
+    const id = ++sequence.current;
+    if (!uid || !isAuthenticated) {
+      setOperation({ id, uid, pending: false, error: 'יש להתחבר עם פרופיל עובד פעיל' });
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
-
+    setOperation({ id, uid, pending: true, error: null });
     try {
-      await startShift(currentUser.uid);
-      setIsOnShift(true);
-      setShiftStartedAt(Timestamp.now());
-    } catch (error) {
-      console.error('Error starting shift:', error);
-      setError('Failed to start shift. Please try again.');
-    } finally {
-      setIsLoading(false);
+      await (start ? startShift(uid) : endShift(uid));
+      setOperation(current => current.id === id ? { ...current, pending: false } : current);
+    } catch {
+      setOperation(current => current.id === id ? { ...current, pending: false, error: 'עדכון המשמרת נכשל. נסה שוב.' } : current);
     }
-  };
-
-  // End user shift
-  const endUserShift = async (): Promise<void> => {
-    if (!currentUser) {
-      setError('You must be logged in to end a shift');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await endShift(currentUser.uid);
-      setIsOnShift(false);
-      setShiftStartedAt(null);
-    } catch (error) {
-      console.error('Error ending shift:', error);
-      setError('Failed to end shift. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const value = {
-    isOnShift,
-    shiftStartedAt,
-    startUserShift,
-    endUserShift,
-    isLoading,
-    error,
-  };
-
-  return (
-    <ShiftContext.Provider value={value}>
-      {children}
-    </ShiftContext.Provider>
-  );
-}; 
+  }
+  return <ShiftContext.Provider value={{
+    // Authority comes only from the profile snapshot; no second optimistic copy.
+    isOnShift, shiftStartedAt,
+    startUserShift: () => changeShift(true), endUserShift: () => changeShift(false),
+    isLoading: isCurrent && operation.pending,
+    error: isCurrent ? operation.error : null,
+  }}>{children}</ShiftContext.Provider>;
+}
