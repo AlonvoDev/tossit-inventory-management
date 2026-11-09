@@ -1,8 +1,18 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: C2 integration — merged pinned Codex C2 (1f55cc4) and adapted U3 screens
-Status: checkpoint. U1 done; U3a/b/c done on C2 APIs; U3d (settings) and U2 (inventory online) now unblocked; U4a done; U4b waits for C3c provider; U4c waits for C4.
-Last previously confirmed remote SHA: 1b8195ab3bfad99f996f23f2e6554668ab0e100a (U4a)
+Task / bounded subtask: U3d — business settings on C2 settingsAPI; removal of the live-data QA tool. U3 complete.
+Status: U3 done (no reactivation control: not offered by C1). U1 done. U4a done; U4b waits for C3c, U4c for C4. Next: U2 online inventory.
+Last previously confirmed remote SHA: 753ba3a2cdb06cfd378c988ed3cb92e4aac8eb56 (C2 integration)
+
+## U3d changed files
+- `src/features/settings/SettingsPage.tsx`: loads `getBusinessSettings()` (defaults when no document), three real settings (evening reminders 23:00/23:20/23:40, 08:00 manager summary, midnight auto-end), timezone shown read-only; save enabled only when changed and online; success only after `saveBusinessSettings` resolves; errors keep the draft; retryable load error (never silently shows defaults on failure); cancel restores. Removed placeholder "company name", "notifications" and "auto sync" fields and the console.log save. Info note: reminders are sent only once the server notification service and device opt-in exist (C4/U4c).
+- `src/components/UnifiedNavigation.tsx`: "הגדרות" menu entry for admins (route admin-only); removed "בדיקת איכות" entry.
+- `src/pages/AdminPanel.tsx`: removed the QA tab — `QATestSuite` created real `TEST-*` inventory items and discarded them in the live business (items cannot be deleted under C1 rules, so this would pollute discard reports); removed the localhost debug card and stale QA notes. `?tab=qa` falls back to the inventory tab. (`QATestSuite.tsx` remains only in unrouted showcase components.)
+- Tests: `SettingsPage.test.tsx` (6), `AdminPanel.test.tsx` (4), nav test updated.
+
+## U3d checks
+- `npm run build`: PASS. `npm run test:run`: all files pass. `npm run lint`: 2 errors / 6 warnings (Codex `syncManager.ts` only). `git diff --check`: clean.
+- NOT RUN: emulator/real Firestore for settings (Codex reports businessSettings rules tests passing).
 
 ## Integrated other-agent SHAs
 - C1 `70d953e21a8b70c6b46d1fbddc6b01226e78f26e` (earlier merge).
@@ -119,7 +129,7 @@ None. C1 not yet published.
 See `docs/CLAUDE_REQUESTS.md` (U1 section): disabled → not authenticated, remove demoUser and fake profile defaults, retire client `signUp`, confirm manager scope.
 
 ## Next smallest action
-U3d settings on `getBusinessSettings`/`saveBusinessSettings` (admin-only, persisted success, recoverable errors), then U2 online inventory on `openInventoryItem`/`closeInventoryItem`/`subscribeBusinessItems` (UUID per intent, synced-only success). Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
+U2 online inventory on `openInventoryItem`/`closeInventoryItem`/`subscribeBusinessItems` (UUID per intent, synced-only success). Do not remove Dashboard legacy queue code until C3c asks; never clear legacy keys. U4b (queue-aware status) after C3; U4c (notification controls) after C4.
 Remaining U3: U3d settings after C2 `settingsAPI`; reactivation only if Codex publishes a lifecycle operation. Meanwhile U2 online parts wait for C2; U4 (service worker/PWA) can start with isolated worker tests per gate 4. Also review the "בדיקת איכות" (QA) tab and AdminPanel localhost debug card. U3d settings waits for C2 `settingsAPI`. When Codex marks C1 complete, merge that pinned SHA, re-run U1 tests and mark U1 done.
 
 ## Commands to resume

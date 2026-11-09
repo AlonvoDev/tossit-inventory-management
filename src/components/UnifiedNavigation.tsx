@@ -37,8 +37,8 @@ import {
   Close as CloseIcon,
   Add as AddIcon,
   Category as CategoryIcon,
-  BugReport as BugReportIcon,
   Assessment as ReportsIcon,
+  Settings as SettingsIcon,
 
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
@@ -180,8 +180,7 @@ const UnifiedNavigation: React.FC = () => {
     { id: 'fridges', label: 'ניהול מקררים', icon: <FridgeIcon />, onClick: go('/admin/fridges'), visible: canAccessRoute(role, 'adminFridges') },
     { id: 'add-category', label: 'הוסף קטגוריה חדשה', icon: <CategoryIcon />, onClick: handleCategoryModalOpen, visible: isBusinessAdmin },
     { id: 'reports', label: 'דוחות', icon: <ReportsIcon />, onClick: go('/reports'), visible: canAccessRoute(role, 'reports') },
-    // Settings is not advertised until it is connected to real persistence (U3, after C2 settingsAPI).
-    { id: 'qa-tests', label: 'בדיקת איכות', icon: <BugReportIcon />, onClick: go('/admin?tab=qa'), visible: canSeeAdminPanel },
+    { id: 'settings', label: 'הגדרות', icon: <SettingsIcon />, onClick: go('/settings'), visible: canAccessRoute(role, 'settings') },
     { id: 'divider3', label: '', icon: <></>, onClick: () => {}, divider: true, visible: true },
     { id: 'logout', label: 'התנתק', icon: <LogoutIcon />, onClick: handleSignOut, visible: true },
   ];

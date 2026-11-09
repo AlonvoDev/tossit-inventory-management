@@ -43,11 +43,11 @@ const openMenu = async (role: Role) => {
   return within(screen.getByRole('menu'));
 };
 
-const ALL = ['לוח הבקרה', 'ניהול מערכת', 'ניהול משתמשים', 'הוסף משתמש חדש', 'ניהול מקררים', 'הוסף קטגוריה חדשה', 'דוחות', 'בדיקת איכות', 'התנתק'];
+const ALL = ['לוח הבקרה', 'ניהול מערכת', 'ניהול משתמשים', 'הוסף משתמש חדש', 'ניהול מקררים', 'הוסף קטגוריה חדשה', 'דוחות', 'הגדרות', 'התנתק'];
 
 const visibleFor: Record<Role, string[]> = {
   admin: ALL,
-  manager: ['לוח הבקרה', 'ניהול מערכת', 'ניהול מקררים', 'דוחות', 'בדיקת איכות', 'התנתק'],
+  manager: ['לוח הבקרה', 'ניהול מערכת', 'ניהול מקררים', 'דוחות', 'התנתק'],
   staff: ['לוח הבקרה', 'התנתק'],
 };
 
@@ -65,9 +65,8 @@ describe('UnifiedNavigation menu matches route access', () => {
     });
   }
 
-  it('does not advertise placeholder settings or fake notification counts', async () => {
-    const menu = await openMenu('admin');
-    expect(menu.queryByText('הגדרות')).not.toBeInTheDocument();
+  it('does not show fake notification counts', async () => {
+    await openMenu('admin');
     expect(screen.queryByText('3')).not.toBeInTheDocument();
   });
 
