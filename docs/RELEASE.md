@@ -37,6 +37,20 @@ missing/non-loopback emulator hosts. UI/domain tests exclude emulator suites.
 When emulators are explicitly selected on localhost (`VITE_USE_FIREBASE_EMULATORS=true`, including the built browser test), Firebase services
 connect synchronously to the local demo project; absent services fail locally.
 
+## Final U5 candidate and local demo prerequisites
+
+Claude U5 `357bf15cd03ba728531b3607d9d442945d6e586f` completes the notification UI/helper adoption and README/pilot documentation. All three GitHub CI jobs passed on that tree (run42709976471); fresh local merged-tree checks pass298client tests, build and lint0errors/7warnings. Real devices and live push remain NOT RUN.
+
+For the two-account demo, use **separate browser profiles or normal plus incognito**, not two ordinary windows in one profile: Firebase Auth is shared between ordinary windows. Keep each demo profile online for its initial sign-in/catalog load before simulating offline work.
+
+Before starting the native Functions emulator for the demo, create the ignored local secret override used by CI:
+
+```bash
+printf '%s\n' 'WEB_PUSH_VAPID_PRIVATE_KEY=emulator-only-no-real-key' > functions/.secret.local
+```
+
+This dummy value is only for `demo-tossit-auth` emulator startup and cannot deliver push. Never use it in production or commit `.secret.local`; do not provide real project credentials/keys for a local demo. The app remains unconfigured for push without a valid matching public key. Follow the README emulator command and first-admin instructions, then the pilot demo script. Native Functions startup may be unavailable in a restricted host; CI has verified it on Ubuntu/Node22.
+
 ## Prerequisites before approved deployment
 
 - Verify the Firebase project identity, current deployed rules, authorized domains

@@ -1,106 +1,139 @@
-# TossIt - Inventory & Expiry Management PWA
+# TossIt — inventory & expiry tracking for bars and kitchens
 
-TossIt is a business-grade Inventory & Expiry Management Progressive Web App (PWA) designed for bar/kitchen environments. It helps track items opened during shifts, calculates expiry dates, and sends notifications for expired items.
+TossIt is a Hebrew, mobile-first Progressive Web App for tracking opened inventory in a bar or
+kitchen: who opened what and when, when it expires, and whether it was finished or thrown away.
 
-## Features
+> **Status: release candidate, not deployed.** All of the behaviour below is implemented and covered
+> by automated tests against Firebase emulators and a real Chromium browser. It has **not** yet been
+> deployed to the live Firebase project, and real-phone checks (install, offline use, closed-app push)
+> have **not** been run. See [What is not verified yet](#what-is-not-verified-yet).
 
-- **Shift Management**: Users can start/end shifts
-- **Inventory Tracking**: Open items with product name, amount, area (bar/kitchen)
-- **Expiry Calculation**: Automatic expiry date calculation based on product configurations
-- **Notifications**: Alerts for expired items
-- **Role-Based Access**: Admin and user roles with appropriate permissions
-- **PWA Support**: Installable on mobile & desktop devices
+## What it does
 
-## Tech Stack
+**Accounts and permissions**
+- Three roles: **admin** (whole business), **manager** (one department), **staff** (one department,
+  inventory actions only during an active shift). Departments are `bar` and `kitchen`.
+- No public sign-up. The business admin creates, edits and **deactivates** employees through
+  server-side functions; a deactivated account keeps its history and can no longer sign in.
+- Menus, routes and Firestore security rules enforce the same scope. A missing or disabled profile
+  gets no access.
 
-- **Frontend**: React + Vite + TypeScript
-- **Backend**: Firebase (Firestore + Auth)
-- **PWA**: manifest.json, service-worker.ts, Notifications API
-- **Hosting**: Firebase Hosting (optional)
-- **Structure**: Multi-tenant (each business has its own businessId)
+**Inventory**
+- Admins and managers maintain a product catalog per department: name, unit (kg or units),
+  shelf life in whole days, optional category and fridge.
+- Staff open an item by choosing a product, an optional fridge and an amount. Name, unit and expiry
+  come from the catalog on the server. Kilograms may be decimal (e.g. 0.5); units are whole numbers.
+- Each item is closed exactly once, as **finished** or **discarded** (with discarded amount and reason:
+  expired / damaged / other). If two people close the same item at once, one succeeds and the
+  other sees "already closed" — never a false success.
+- The inventory list updates live across devices.
+- Discard report with date range and reason filter, grouped by product and unit.
 
-## Getting Started
+**Offline**
+- Opening and closing items work without a connection. The action is saved on the device first
+  (IndexedDB), shown as "ממתין לשליחה", and sent once when the connection returns, with the original
+  opening time. Retries never create duplicates.
+- Failed actions (e.g. the item was closed elsewhere) stay visible with a Hebrew reason and an
+  explicit "נסה שוב". Pending work is bound to the signed-in account and business and is not shown
+  to, or sent by, another account on the same device.
+- Catalog, settings, users and shift changes need a connection; the app says so.
 
-### Prerequisites
+**App and notifications**
+- Installable PWA with one service worker: the app opens offline, updates wait for the user's
+  "עדכן עכשיו", and only the app's own files are cached (no API data).
+- Scheduled push notifications from the server: evening reminders (23:00, 23:20, 23:40 Israel time)
+  to on-shift staff with expired items, and an 08:00 summary for admins/managers. Each user turns
+  notifications on per device from the menu ("התראות במכשיר"); nothing is requested on launch.
+  **Requires deployment configuration** (VAPID keys, deployed functions) — until then the app shows
+  notifications as not available.
+- Business settings (admin): evening reminders, morning summary, end shifts automatically at midnight.
 
-- Node.js (v16+)
-- npm or yarn
-- Firebase account
+## Architecture
 
-### Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/tossit.git
-   cd tossit
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Create a `.env.local` file in the project root with your Firebase configuration:
-   ```
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   ```
-
-4. Start the development server:
-   ```
-   npm run dev
-   ```
-
-### Firebase Setup
-
-1. Create a new Firebase project in the [Firebase Console](https://console.firebase.google.com/)
-2. Enable Authentication with Email/Password and Google providers
-3. Create a Firestore database and set up the security rules
-4. Add your web app to the Firebase project to get the configuration values
-
-## Project Structure
+| Layer | Technology |
+| --- | --- |
+| UI | React 19, TypeScript, Vite, MUI, RTL Hebrew |
+| Data & auth | Firebase Auth, Cloud Firestore with tested security rules |
+| Server | Firebase Functions (Node 22): employee provisioning callables, push device callables, scheduled notifications |
+| Offline | IndexedDB operation queue + replay (`src/offline`) |
+| PWA | `vite-plugin-pwa` `injectManifest`; single worker `src/pwa/service-worker.ts` served at `/service-worker.js` |
 
 ```
 src/
-├── api/           # Firebase API functions
-├── components/    # UI components
-├── context/       # Context providers (Auth, Shift)
-├── pages/         # Main app screens
-└── utils/         # Helper functions
+├── app/         routes, access matrix, entry point
+├── pages/       login, dashboard, admin screens
+├── components/  inventory list, forms, navigation
+├── features/    reports, settings, form rules
+├── api/         Firestore and callable adapters
+├── domain/      shared contracts and inventory rules
+├── offline/     durable queue, replay, provider
+├── pwa/         service worker, update prompt, sync status, notification controls
+└── test/        domain and rules tests
+functions/       server functions and tests
+tests/browser/   Playwright tests against the emulators
+docs/            release gates, pilot checklist, delivery handoffs
 ```
 
-## Deployment
+## Running locally
 
-### Production Build
+Requirements: **Node 22** (`.node-version`), and **Java 21** for the Firebase emulators.
 
+```bash
+npm ci
+npm ci --prefix functions
+npm run dev            # http://localhost:5173
 ```
-npm run build
+
+> ⚠️ Plain `npm run dev` connects to the **live** Firebase project configured in
+> `src/services/firebase.ts`. For demos and experiments use the emulators below.
+
+### Local demo with emulators (no real data)
+
+The emulators use the demo project `demo-tossit-auth`; nothing reaches the live project.
+
+```bash
+npm run build:functions
+npx firebase emulators:start --only auth,firestore,functions --project demo-tossit-auth
+# in another terminal
+VITE_USE_FIREBASE_EMULATORS=true npm run dev
 ```
 
-### Deploy to Firebase Hosting
+1. **First admin (emulator only):** in the Emulator UI (http://127.0.0.1:4000) create an Auth user,
+   then a Firestore document `users/<that uid>` with
+   `{ uid, email, fullName, role: "admin", department: "bar", businessId: "demo-business", isActive: true }`.
+   Public sign-up is disabled by design; in production the first admin is created with a trusted
+   Admin SDK step (see [docs/RELEASE.md](docs/RELEASE.md)).
+2. Follow the [demo script](docs/PILOT.md#demo-script-about-10-minutes).
 
-1. Install Firebase CLI: `npm install -g firebase-tools`
-2. Login to Firebase: `firebase login`
-3. Initialize Firebase: `firebase init`
-4. Deploy: `firebase deploy`
+## Tests
 
-## PWA Features
+| Command | What it covers | Needs |
+| --- | --- | --- |
+| `npm run test:run` | UI, domain, offline queue, worker logic | — |
+| `npm run test:functions` | server functions | — |
+| `npm run test:rules` | Firestore security rules | Java (emulator) |
+| `npm run test:callables` | real callable/Auth/Firestore integration | Java (emulators) |
+| `npm run test:browser` | real Chromium: worker, offline reload & replay, role denial, account isolation | Java, Playwright Chromium |
+| `npm run lint`, `npm run build`, `npm run build:functions` | lint and production builds | — |
 
-- Installable on desktop and mobile devices
-- Works offline
-- Push notifications for expired items
+GitHub Actions runs the full set on Node 22 / Java 21 (`.github/workflows`).
 
-## License
+## Deploying
 
-[MIT License](LICENSE)
+Deployment is a manual, owner-approved step. Prerequisites (billing for scheduled functions, VAPID keys,
+rules and functions deployment, first-admin bootstrap, existing-profile review) and the release gates are
+in **[docs/RELEASE.md](docs/RELEASE.md)**. Do not deploy the security rules without the matching client.
 
-## Acknowledgements
+## What is not verified yet
 
-- [React](https://reactjs.org/)
-- [Vite](https://vitejs.dev/)
-- [Firebase](https://firebase.google.com/)
-- [TypeScript](https://www.typescriptlang.org/)
+- Live Firebase project: rules, functions, scheduler and indexes are **not deployed**.
+- Real phones: iPhone/Android install, offline use, update flow — **NOT RUN**.
+- Real push delivery with the app closed — **NOT RUN** (needs deployment).
+- A pilot with real staff — **NOT RUN**. Checklist: [docs/PILOT.md](docs/PILOT.md).
+
+## Documentation
+
+- [docs/RELEASE.md](docs/RELEASE.md) — release gates, deployment prerequisites, full check commands.
+- [docs/PILOT.md](docs/PILOT.md) — demo script and device/pilot checklist.
+- [docs/superpowers/plans/2026-11-09-tossit-two-agent-delivery.md](docs/superpowers/plans/2026-11-09-tossit-two-agent-delivery.md) — delivery plan.
+- `docs/handoff/` — per-agent delivery records.

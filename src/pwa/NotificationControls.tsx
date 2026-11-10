@@ -55,6 +55,10 @@ export const NotificationControls: React.FC = () => {
       setState(result === 'enabled' ? 'enabled' : result);
     } catch (err) {
       console.error('Enabling notifications failed:', err);
+      if ((err as { code?: unknown } | null)?.code === 'not-configured') {
+        setState('not-configured');
+        return;
+      }
       setError(errorMessage(err, 'הפעלת ההתראות לא הושלמה. ההתראות לא הופעלו.'));
       // Re-read the truthful state (e.g. a partial registration is still "disabled").
       try {
@@ -76,7 +80,11 @@ export const NotificationControls: React.FC = () => {
     } catch (err) {
       console.error('Disabling notifications failed:', err);
       setState('pending-disable');
-      setError(errorMessage(err, 'הכיבוי לא הושלם. הוא יושלם אוטומטית כשהחיבור יחזור, או נסה שוב.'));
+      setError(
+        (err as { code?: unknown } | null)?.code === 'offline'
+          ? 'אין חיבור. הכיבוי נשמר במכשיר ויושלם כשהחיבור יחזור.'
+          : errorMessage(err, 'הכיבוי לא הושלם. הוא יושלם אוטומטית כשהחיבור יחזור, או נסה שוב.'),
+      );
     } finally {
       setBusy(null);
     }

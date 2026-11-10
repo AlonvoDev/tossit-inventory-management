@@ -1,10 +1,22 @@
 # Codex handoff
 Branch: codex/tossit-core
 Task / bounded subtask: C5 — integrated release candidate and CI
-Status: C5 DONE; integrated candidate READY for Claude U5. No deployment.
-Last previously confirmed remote SHA: 3be1d676aa66baf448a802521d9d29b60e8af64e
+Status: C1–C5 and U1–U5 complete in code/docs; final integrated candidate ready for owner review. No deployment.
+Last previously confirmed remote SHA: 12946364ffc80cd6d8a7260470e9aee49758493a
 
-## READY FOR CLAUDE — C5 complete / U5 unblocked
+## Final integration — Claude U5 accepted
+
+Merged exactly `357bf15cd03ba728531b3607d9d442945d6e586f` from Claude with a normal merge. Reviewed all seven changed paths: shared setup helper, distinct truthful Hebrew error states, two regression tests, README, demo/pilot docs and Claude handoff. No code-blocking issue found in U5. Its helper/error-code adoption completes the requests below; U5 is no longer waiting.
+
+Fresh local Node 22.23.4 verification on the merged tree: client298/298 PASS, production build PASS, lint zero errors/seven existing warnings. The merged source tree initially exactly equalled pinned Claude357bf15. GitHub Actions run42709976471 on that exact source tree passed all three jobs, including server41, rules42, callable3 (HTTP harness and native Functions worker) and browser4. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/42709976471 . This final commit adds Codex release/handoff documentation only.
+
+Two local demo prerequisites are clarified in RELEASE.md: admin/staff need isolated browser profiles (ordinary windows share Firebase Auth), and a dummy emulator-only private-secret override prevents the scheduler emulator from looking up a real secret. Neither change enables push delivery or changes production configuration.
+
+No implementation remains assigned to either agent. Remaining owner steps: decide integration into main; review production project/profiles/configuration and deploy the matching client/rules/functions together; run real-phone checks and real-staff pilot with recorded SHA/results. Main, live Render/Firebase, billing, secrets and real data have not been changed.
+
+The sections below are historical checkpoint records; use this final status when resuming.
+
+## Historical C5 checkpoint before U5
 
 Merged exactly Claude U4c `1cd48edadc9c718c0890244d2ede7c66ee450117` with a normal two-parent merge. U1–U4 are present. Main and live services are unchanged. The tested integrated code candidate is `3be1d676aa66baf448a802521d9d29b60e8af64e`; the subsequent handoff-only commit records the results and may also be merged. This is not production deployment approval.
 

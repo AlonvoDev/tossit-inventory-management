@@ -26,6 +26,15 @@ export const errorMessage = (err: unknown, fallback: string): string => {
     case 'already-exists':
     case 'auth/email-already-in-use':
       return 'הרשומה כבר קיימת.';
+    // Push setup (Codex C5 codes)
+    case 'not-configured':
+      return 'ההתראות עדיין לא הוגדרו באפליקציה.';
+    case 'worker-not-ready':
+      return 'האפליקציה עדיין נטענת. סגור ופתח את TossIt ונסה שוב.';
+    case 'worker-outdated':
+      return 'יש לעדכן את TossIt לגרסה האחרונה לפני הפעלת התראות.';
+    case 'offline':
+      return 'אין חיבור. התחבר לאינטרנט ונסה שוב.';
     case 'failed-precondition':
       return 'הפעולה אינה אפשרית כרגע. רענן את האפליקציה ונסה שוב.';
     case 'internal':
