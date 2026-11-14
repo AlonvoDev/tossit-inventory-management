@@ -4,6 +4,12 @@ Task / bounded subtask: C5 — integrated release candidate and CI
 Status: C1–C5 and U1–U5 complete in code/docs; final integrated candidate ready for owner review. No deployment.
 Last previously confirmed remote SHA: 12946364ffc80cd6d8a7260470e9aee49758493a
 
+## Neon hosting change — design awaiting approval
+
+Alon explicitly chose to keep employee administration/push features and add Neon rather than remove Functions-dependent features or enable Blaze. Firebase login now succeeds for his account; tossit-4cc02 is accessible and its default STANDARD Firestore database is in me-west1. Cloud Functions API is now enabled and functions:list returns an empty list. Read-only Cloud Billing check returns billingEnabled:false. No production data/configuration/billing/deploy change was made by Codex. Latest preparation head5f0d84e has successful push and PR CI runs43623360924/43623363827; PR#1 remains draft.
+
+Proposed host-only migration design: docs/superpowers/specs/2026-11-14-tossit-neon-functions-design.md. Retain Firebase Auth/Firestore/offline and port server transport/schedule to Neon Node runtime; no Postgres data migration. Fresh builder check: nothing important left. Await design approval and connected Neon account; do not implement/create external projects or deploy before that. Neon Free runtime/bundling/secrets/trigger provenance remain explicit proof gates. Render workspace selection is also still unconfirmed. Do not ask for an install if a subsequent connection event confirms Neon access.
+
 ## Release preparation follow-up
 
 Verified final integration e02398b has successful GitHub Actions run42799141294 (all three jobs). Main remains9948d34. Found and corrected stale Render Node pins18/20 to22 in both committed Render definitions; parsed YAML and validated both against `.node-version`. Added Render rollout prerequisites to RELEASE.md. Actual Render settings, Firebase billing/configuration/profiles and live deployment remain unverified; do not infer them from repository files. A draft integration PR preserves the candidate for coordinated release; no main/production mutation is part of this checkpoint.
