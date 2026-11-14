@@ -4,6 +4,10 @@ Task / bounded subtask: C5 — integrated release candidate and CI
 Status: C1–C5 and U1–U5 complete in code/docs; final integrated candidate ready for owner review. No deployment.
 Last previously confirmed remote SHA: 12946364ffc80cd6d8a7260470e9aee49758493a
 
+## Release preparation follow-up
+
+Verified final integration e02398b has successful GitHub Actions run42799141294 (all three jobs). Main remains9948d34. Found and corrected stale Render Node pins18/20 to22 in both committed Render definitions; parsed YAML and validated both against `.node-version`. Added Render rollout prerequisites to RELEASE.md. Actual Render settings, Firebase billing/configuration/profiles and live deployment remain unverified; do not infer them from repository files. A draft integration PR preserves the candidate for coordinated release; no main/production mutation is part of this checkpoint.
+
 ## Final integration — Claude U5 accepted
 
 Merged exactly `357bf15cd03ba728531b3607d9d442945d6e586f` from Claude with a normal merge. Reviewed all seven changed paths: shared setup helper, distinct truthful Hebrew error states, two regression tests, README, demo/pilot docs and Claude handoff. No code-blocking issue found in U5. Its helper/error-code adoption completes the requests below; U5 is no longer waiting.

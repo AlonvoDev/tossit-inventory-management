@@ -51,6 +51,10 @@ printf '%s\n' 'WEB_PUSH_VAPID_PRIVATE_KEY=emulator-only-no-real-key' > functions
 
 This dummy value is only for `demo-tossit-auth` emulator startup and cannot deliver push. Never use it in production or commit `.secret.local`; do not provide real project credentials/keys for a local demo. The app remains unconfigured for push without a valid matching public key. Follow the README emulator command and first-admin instructions, then the pilot demo script. Native Functions startup may be unavailable in a restricted host; CI has verified it on Ubuntu/Node22.
 
+## Render rollout preparation
+
+Both committed Render definitions pin Node 22, matching `.node-version` and CI. Confirm the actual Render service uses Node 22 and the intended build/start commands; repository YAML does not prove the running service applies them. Confirm its tracked branch and automatic deploy setting before merging to main. Pause automatic client deployment until the matching Firebase rules/functions and existing profiles have been reviewed and the rollout sequence is agreed. The production Firebase project configured by this client is `tossit-4cc02`; verify that identity in the owner account before any deployment. Do not set `VITE_USE_FIREBASE_EMULATORS` in production. Push requires the matching valid public VAPID key at build time; keep the private key only in Firebase Secret Manager.
+
 ## Prerequisites before approved deployment
 
 - Verify the Firebase project identity, current deployed rules, authorized domains
