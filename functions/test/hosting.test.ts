@@ -38,6 +38,11 @@ describe('callable HTTP boundary', () => {
   const failed=await handler()(request('/createEmployee',{data:{}},{authorization:'Bearer valid'}));expect(failed.status).toBe(500);
   expect(JSON.stringify(await failed.json())).not.toContain('secret');
  });
+ it('maps Firebase Admin account conflicts to the existing callable error codes', async () => {
+  call.mockRejectedValueOnce(Object.assign(new Error('private email'),{code:'auth/email-already-exists'}));
+  const r=await handler()(request('/createEmployee',{data:{}},{authorization:'Bearer valid'}));
+  expect(r.status).toBe(409);expect(await r.json()).toEqual({error:{status:'ALREADY_EXISTS',message:'Record already exists'}});
+ });
  it('rejects bad origins, methods, types and malformed callable envelopes before calling a service', async () => {
   const h=handler();expect((await h(request('/createEmployee',{data:{}},{origin:'https://evil.test'}))).status).toBe(403);
   expect((await h(new Request('https://server.example/createEmployee'))).status).toBe(405);
@@ -56,6 +61,16 @@ describe('callable HTTP boundary', () => {
   const h=handler();expect((await h(request('/createEmployee',{data:{}},{'content-length':'999999',authorization:'Bearer valid'}))).status).toBe(413);
   const r=new Request('https://server.example/createEmployee',{method:'POST',headers:{origin,'content-type':'application/json',authorization:'Bearer valid'},body:new ReadableStream({start(c){c.enqueue(new Uint8Array(33000));c.close();}}),duplex:'half'} as RequestInit);
   expect((await h(r)).status).toBe(413);expect(call).not.toHaveBeenCalled();
+ });
+ it('times out an unfinished body and does not wait for a stalled stream cancellation', async () => {
+  vi.useFakeTimers();
+  try {
+   const stream=new ReadableStream({cancel:()=>new Promise(()=>{})});
+   const request=new Request('https://server.example/revokePushDevice',{method:'POST',headers:{origin,'content-type':'application/json'},body:stream,duplex:'half'} as RequestInit);
+   const response=handler()(request);
+   await vi.advanceTimersByTimeAsync(10001);
+   expect((await response).status).toBe(504);expect(call).not.toHaveBeenCalled();
+  } finally { vi.useRealTimers(); }
  });
  it('rejects spoofed schedules and passes authenticated occurrence time without a user token', async () => {
   expect((await handler()(request('/scheduled',{at:123}))).status).toBe(401);expect(scheduled).not.toHaveBeenCalled();

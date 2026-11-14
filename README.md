@@ -4,7 +4,7 @@ TossIt is a Hebrew, mobile-first Progressive Web App for tracking opened invento
 kitchen: who opened what and when, when it expires, and whether it was finished or thrown away.
 
 > **Status: release candidate, not deployed.** All of the behaviour below is implemented and covered
-> by automated tests against Firebase emulators and a real Chromium browser. It has **not** yet been
+> by automated tests against Firebase emulators and a real Chromium browser. The Neon server has only an unconfigured staging deployment (health/security checks pass; no production credentials). It has **not** yet been
 > deployed to the live Firebase project, and real-phone checks (install, offline use, closed-app push)
 > have **not** been run. See [What is not verified yet](#what-is-not-verified-yet).
 
@@ -54,7 +54,7 @@ kitchen: who opened what and when, when it expires, and whether it was finished 
 | --- | --- |
 | UI | React 19, TypeScript, Vite, MUI, RTL Hebrew |
 | Data & auth | Firebase Auth, Cloud Firestore with tested security rules |
-| Server | Firebase Functions (Node 22): employee provisioning callables, push device callables, scheduled notifications |
+| Server | Neon Functions (Node 24): employee/device callable HTTP API and scheduled notifications; legacy Firebase host retained for emulator compatibility |
 | Offline | IndexedDB operation queue + replay (`src/offline`) |
 | PWA | `vite-plugin-pwa` `injectManifest`; single worker `src/pwa/service-worker.ts` served at `/service-worker.js` |
 
@@ -76,7 +76,7 @@ docs/            release gates, pilot checklist, delivery handoffs
 
 ## Running locally
 
-Requirements: **Node 22** (`.node-version`), and **Java 21** for the Firebase emulators.
+Requirements: **Node 22** (`.node-version`) for the frontend, **Node 24** for the Neon server artifact, and **Java 21** for Firebase emulators. The Neon ZIP build also uses the Python 3 standard library.
 
 ```bash
 npm ci
@@ -112,21 +112,23 @@ VITE_USE_FIREBASE_EMULATORS=true npm run dev
 | `npm run test:run` | UI, domain, offline queue, worker logic | — |
 | `npm run test:functions` | server functions | — |
 | `npm run test:rules` | Firestore security rules | Java (emulator) |
+| `npm run test:callables:neon` | host-neutral callable API with real Auth/Firestore SDKs | Java (emulators) |
+| `npm run test:callables:neon:bundle` | isolated actual Neon artifact through the same SDK integration tests | Node 24, Java, Python 3 |
 | `npm run test:callables` | real callable/Auth/Firestore integration | Java (emulators) |
 | `npm run test:browser` | real Chromium: worker, offline reload & replay, role denial, account isolation | Java, Playwright Chromium |
 | `npm run lint`, `npm run build`, `npm run build:functions` | lint and production builds | — |
 
-GitHub Actions runs the full set on Node 22 / Java 21 (`.github/workflows`).
+GitHub Actions runs the existing set on Node 22 / Java 21 and adds a Node 24 Neon-host job (`.github/workflows`).
 
 ## Deploying
 
-Deployment is a manual, owner-approved step. Prerequisites (billing for scheduled functions, VAPID keys,
-rules and functions deployment, first-admin bootstrap, existing-profile review) and the release gates are
-in **[docs/RELEASE.md](docs/RELEASE.md)**. Do not deploy the security rules without the matching client.
+Deployment is a manual, owner-approved step. Prerequisites (dedicated Firebase server credentials stored in Neon, matching VAPID keys,
+Neon/rules/client deployment, first-admin bootstrap, existing-profile review) and the release gates are
+in **[docs/RELEASE.md](docs/RELEASE.md)**. The Neon path does not deploy Firebase Functions or require Firebase Blaze. Keep usage within the providers' Free quotas. Do not deploy the security rules without the matching client.
 
 ## What is not verified yet
 
-- Live Firebase project: rules, functions, scheduler and indexes are **not deployed**.
+- Production cutover: new rules/indexes/client are **not deployed**. The Neon staging server has no Firebase credential, no VAPID keys, and no enabled schedule.
 - Real phones: iPhone/Android install, offline use, update flow — **NOT RUN**.
 - Real push delivery with the app closed — **NOT RUN** (needs deployment).
 - A pilot with real staff — **NOT RUN**. Checklist: [docs/PILOT.md](docs/PILOT.md).

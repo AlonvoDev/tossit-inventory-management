@@ -39,8 +39,8 @@
 ### Task 3: Neon bundle, staging proof, CI and release docs
 **Files:** create functions/scripts/build-neon.mjs, functions/neon.ts (or root config scoped source); update package/lockfiles, CI, ignores, env examples, RELEASE/README/own handoff; hosting schedule/config tests.
 **Interfaces:** `npm run build:neon` produces ignored deploy ZIP with Node24 fetch entry; six callable paths and `/scheduled` plus `/health`. `/scheduled` uses provider parser, expected trigger identity and existing israelSlot(service.run).
-- [ ] Bundle and test import on Node24, checking firebase-admin/web-push load; write failing schedule/config tests before implementation where behavior added. Add Node24 CI adapter/build coverage while retaining existing suites.
-- [ ] Create separate Free Neon project/branch, deploy candidate without production credentials or schedule, observe health and unauthorized/forged requests; explicitly record what was NOT tested. No actual device push, employee writes or auto-end in staging smoke.
+- [x] Bundle and test import on Node24, checking firebase-admin/web-push load; write failing schedule/config tests before implementation where behavior added. Add Node24 CI adapter/build coverage while retaining existing suites.
+- [x] Create separate Free Neon project/branch, deploy candidate without production credentials or schedule, observe health and unauthorized/forged requests; explicitly record what was NOT tested. No actual device push, employee writes or auto-end in staging smoke.
 - [ ] Update reproducible local commands and production secret/rollout gates; run all meaningful checks and inspect actual CI.
 - [ ] Fresh independent final review; one TDD fix pass for important findings; publish final checkpoint and leave PR draft until credential/cutover authorization.
 

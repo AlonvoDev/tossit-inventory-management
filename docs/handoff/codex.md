@@ -1,8 +1,16 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: C5 — integrated release candidate and CI
-Status: C1–C5 and U1–U5 complete in code/docs; final integrated candidate ready for owner review. No deployment.
-Last previously confirmed remote SHA: 12946364ffc80cd6d8a7260470e9aee49758493a
+Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
+Status: Neon adapter/client complete; staging deployed without production credentials. Final review/CI pending; no production cutover.
+Last previously confirmed remote SHA: 03c13dd3bba63834e809618d7be46d7011c1157b
+
+## Neon N3 candidate — packaged and running in isolated staging
+
+Shared callable host and client adapter are implemented, existing Auth/Firestore services retained. Built Node24 ESM/ZIP artifact with exact dependency lock; fresh server58/58, source and isolated actual-bundle real SDK/Auth/Firestore6/6 each, and browser5/5 pass. Browser now actually creates a synthetic employee through VITE_SERVER_API_URL, alongside previous four worker/offline/account-isolation scenarios. JSON stream deadline and Firebase Admin duplicate-email mapping have RED→GREEN regression tests. Final local client304/304, rules42/42, legacy callable3/3, production build and lint0errors/7existingwarnings pass. Fresh independent review found no Critical/Important issue; the two minor notes (secret-store wording and direct expired/revoked coverage) are addressed in documentation/verification. Expanded expired/revoked token regressions pass through both source and isolated artifact, with no employee/device mutation; Node22 server58/58 also passes. Remote CI remains pending until observed.
+
+Neon project misty-flower-45450210/staging br-flat-mud-b9coh1k6: deployment1 completed, runtimeNode24, URL https://br-flat-mud-b9coh1k6-tossitapi.compute.c-7.eu-central-1.aws.neon.tech/ . Artifact SHA2560c5b6e586827e7302d2c4f1319c4e75fa648b5615f75cdec1ea912cce31ad159. Six hosted checks PASS: health200/configured:false, unsigned401, legitimate preflight204, forbidden origin403, forged schedule401 (Neon edge stripping independently observed), oversized revoke413. No production Firebase credential or VAPID keys uploaded. Disabled inventory trigger trigger-f2baa3cc-f349-4d46-a316-abbc26890e98 exists with next_run_at:null; stage expected trigger ID intentionally remains the non-working probe ID. Provider-authentic scheduled delivery/real Firebase credential access/real push/mobile remain NOT RUN. Default unused Postgres compute is observed idle/suspended; no app data copied. Existing alondb/main/live site unchanged; Google billing remains off.
+
+Production next gate is a reviewed dedicated service account with project-scoped Firebase Auth Admin and Datastore User roles, installed only as Neon runtime secrets, plus VAPID keys and actual trigger ID. This security-sensitive credential action is NOT covered by implementation approval: obtain owner approval against the concrete account/roles before creating it. Never request private JSON in chat, use Owner/Editor or reuse interactive Google CLI auth as server auth. RELEASE.md has the staged cutover and legacy Google-hosted notes are explicitly superseded. Render workspace selection and main/client/rules deployment remain owner gates; PR#1 stays draft.
 
 ## Neon N2 checkpoint — client callable URL transport
 

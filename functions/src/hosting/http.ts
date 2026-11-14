@@ -15,6 +15,7 @@ const errors: Record<string, [number, string]> = {
   'invalid-argument': [400, 'Invalid request'], 'not-found': [404, 'Not found'],
   'already-exists': [409, 'Record already exists'], 'failed-precondition': [400, 'Operation cannot be completed in this state'],
   'aborted': [409, 'Another operation is in progress; retry'], 'unavailable': [503, 'Server unavailable; retry'],
+  'deadline-exceeded': [504, 'Request timed out; retry'],
   'resource-exhausted': [429, 'Too many requests'], 'internal': [500, 'Operation failed; retry'],
 };
 const maxBytes = 32768;
@@ -25,13 +26,15 @@ async function readJson(request: Request): Promise<unknown> {
   if (length !== null && (!/^\d+$/.test(length) || Number(length) > maxBytes)) throw new HostingError('too-large');
   const reader = request.body?.getReader(); if (!reader) throw new HostingError('invalid-argument');
   const chunks: Uint8Array[] = []; let size = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve,reject) => { timer=setTimeout(()=>reject(new HostingError('deadline-exceeded')),10000); });
   try {
     while (true) {
-      const { value, done } = await reader.read(); if (done) break;
-      size += value.byteLength; if (size > maxBytes) { await reader.cancel(); throw new HostingError('too-large'); }
+      const { value, done } = await Promise.race([reader.read(), deadline]); if (done) break;
+      size += value.byteLength; if (size > maxBytes) { throw new HostingError('too-large'); }
       chunks.push(value);
     }
-  } finally { reader.releaseLock(); }
+  } finally { clearTimeout(timer); void reader.cancel().catch(() => undefined); reader.releaseLock(); }
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
@@ -79,7 +82,8 @@ export function createHttpHandler(deps: HostingDependencies): (request: Request)
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || !Object.hasOwn(body, 'data')) return failure('invalid-argument');
       return json({ result: await deps.call(name as ServerCallName, (body as {data:unknown}).data, uid) });
     } catch (error) {
-      const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' ? error.code : 'internal';
+      const rawCode = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' ? error.code : 'internal';
+      const code = rawCode === 'auth/email-already-exists' ? 'already-exists' : ['auth/invalid-email', 'auth/invalid-password'].includes(rawCode) ? 'invalid-argument' : rawCode;
       if (code === 'too-large') return json({ error: { status: 'RESOURCE_EXHAUSTED', message: 'Request is too large' } }, 413);
       return failure(code);
     }

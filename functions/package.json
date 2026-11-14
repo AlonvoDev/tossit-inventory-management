@@ -6,16 +6,20 @@
     "node": "22"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "build:neon": "tsc -p tsconfig.neon.json && node scripts/build-neon.mjs"
   },
   "dependencies": {
+    "@neon/functions": "^0.11.0",
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.4.0",
     "web-push": "^4.0.0"
   },
   "devDependencies": {
+    "@neon/config": "^1.14.0",
     "@types/node": "^22.0.0",
     "@types/web-push": "^3.6.4",
+    "esbuild": "^0.25.8",
     "typescript": "~5.7.2"
   }
 }

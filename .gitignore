@@ -55,3 +55,8 @@ functions/lib/
 # Browser verification artifacts
 test-results/
 playwright-report/
+
+# Neon host build, project links and local credentials
+functions/dist-neon/
+.neon
+functions/.neon

@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
+import { mkdtemp, copyFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawn, type ChildProcess } from 'node:child_process';
 import express from 'express';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { initializeApp as initializeAdmin, deleteApp as deleteAdmin, getApp, type App as AdminApp } from 'firebase-admin/app';
 import { getAuth as adminAuth } from 'firebase-admin/auth';
 import { getFirestore as adminStore } from 'firebase-admin/firestore';
@@ -14,6 +18,8 @@ let admin: AdminApp;
 let client: FirebaseApp;
 let functions: Functions;
 let server: Server | undefined;
+let bundleDirectory: string | undefined;
+let bundleServer: ChildProcess | undefined;
 const uids = new Set<string>();
 const ownerUid = `owner-${randomUUID()}`;
 const password = 'emulator-test-password';
@@ -32,12 +38,23 @@ beforeAll(async () => {
   if (process.env.TOSSIT_NATIVE_FUNCTIONS_EMULATOR !== 'true') {
     const app = express();
     app.use(express.json());
-    if (process.env.TOSSIT_CALLABLE_HOST === 'neon') {
+    if (process.env.TOSSIT_CALLABLE_HOST?.startsWith('neon')) {
       process.env.TOSSIT_SERVER_EMULATORS = 'true';
       process.env.TOSSIT_FIREBASE_PROJECT_ID = projectId;
       const { createHttpHandler } = await import('../src/hosting/http');
       const { hostingServices } = await import('../src/hosting/services');
       const handler = createHttpHandler({ ...hostingServices(), allowedOrigins: [], parseTrigger: () => null });
+      if (process.env.TOSSIT_CALLABLE_HOST === 'neon-bundle') {
+        bundleDirectory = await mkdtemp(join(tmpdir(),'tossit-neon-bundle-'));
+        const bundlePath=join(bundleDirectory,'index.mjs');
+        await copyFile('functions/dist-neon/index.mjs',bundlePath);
+        bundleServer=spawn(process.execPath,['functions/scripts/serve-test-bundle.mjs',bundlePath],{env:process.env,stdio:['ignore','pipe','pipe']});
+        await new Promise<void>((resolve,reject)=>{
+          const timer=setTimeout(()=>reject(new Error('Bundle host start timed out')),10000);
+          bundleServer!.stdout!.on('data',data=>{if(String(data).includes('tossit-test-host-ready')){clearTimeout(timer);resolve();}});
+          bundleServer!.on('error',reject);bundleServer!.on('exit',code=>{clearTimeout(timer);if(code!==null)reject(new Error('Bundle host failed to start'));});
+        });
+      } else {
       app.post(/.*/, async (req,res) => {
         const headers = new Headers();
         for (const [key,value] of Object.entries(req.headers)) if (typeof value === 'string') headers.set(key,value);
@@ -46,6 +63,7 @@ beforeAll(async () => {
         reply.headers.forEach((value,key)=>res.setHeader(key,value));
         res.status(reply.status).send(await reply.text());
       });
+      }
     } else {
     const handlers = await import('../src/index');
     app.post(`/${projectId}/us-central1/createEmployee`, handlers.createEmployee);
@@ -55,7 +73,7 @@ beforeAll(async () => {
     app.post(`/${projectId}/us-central1/revokePushDevice`, handlers.revokePushDevice);
     app.post(`/${projectId}/us-central1/getPushDeviceStatus`, handlers.getPushDeviceStatus);
     }
-    await new Promise<void>(resolve => { server = app.listen(5001, '127.0.0.1', resolve); });
+    if (!bundleServer) await new Promise<void>(resolve => { server = app.listen(5001, '127.0.0.1', resolve); });
   }
   const store = adminStore(admin);
   await adminAuth(admin).createUser({ uid: ownerUid, email: ownerEmail, password });
@@ -68,6 +86,7 @@ beforeAll(async () => {
   await signInWithEmailAndPassword(getAuth(client), ownerEmail, password);
 });
 afterAll(async () => {
+  if (bundleServer && bundleServer.exitCode === null && bundleServer.signalCode === null) { const stopped=new Promise<void>(resolve=>bundleServer!.once('exit',()=>resolve()));bundleServer.kill('SIGTERM');await stopped; }
   if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
   if (admin) {
     for (const name of ['pushDevices', 'pushEndpointClaims', 'pushRevocations', 'notificationDeliveries']) {
@@ -80,9 +99,10 @@ afterAll(async () => {
       await adminAuth(admin).deleteUser(uid).catch(() => undefined);
     }
     await deleteAdmin(admin);
-    if (process.env.TOSSIT_NATIVE_FUNCTIONS_EMULATOR !== 'true') await deleteAdmin(getApp());
+    if (process.env.TOSSIT_NATIVE_FUNCTIONS_EMULATOR !== 'true' && !bundleServer) await deleteAdmin(getApp());
   }
   if (client) await deleteApp(client);
+  if (bundleDirectory) await rm(bundleDirectory,{recursive:true,force:true});
 });
 
 describe('real callable provisioning against local emulators', () => {
@@ -158,15 +178,37 @@ describe('real push callables and scheduler persistence', () => {
 
 // The host-neutral adapter additionally rejects disabled/revoked identities before domain work.
 describe('Neon host verified token boundary', () => {
-  it.runIf(process.env.TOSSIT_CALLABLE_HOST === 'neon')('uses the real SDK with an explicit non-Google callable URL', async () => {
+  beforeEach(async()=>{if(process.env.TOSSIT_CALLABLE_HOST?.startsWith('neon'))await signInWithEmailAndPassword(getAuth(client),ownerEmail,password);});
+  it.runIf(process.env.TOSSIT_CALLABLE_HOST?.startsWith('neon'))('rejects expired and revoked tokens on privileged writes and capability revoke', async () => {
+    await signInWithEmailAndPassword(getAuth(client),ownerEmail,password);
+    const token=await getAuth(client).currentUser!.getIdToken();
+    const [header,payload]=token.split('.');const claims=JSON.parse(Buffer.from(payload,'base64url').toString());
+    const expired=header+'.'+Buffer.from(JSON.stringify({...claims,exp:Math.floor(Date.now()/1000)-60})).toString('base64url')+'.';
+    const {createECDH}=await import('node:crypto');const key=createECDH('prime256v1');key.generateKeys();
+    const binding={deviceId:`token-device-${randomUUID()}`,deviceToken:randomUUID()+randomUUID(),bindingId:`binding-${randomUUID()}`,expectedActorUid:ownerUid,expectedBusinessId:'integration-a',subscription:{endpoint:`https://fcm.googleapis.com/fcm/send/${randomUUID()}`,keys:{p256dh:key.getPublicKey().toString('base64url'),auth:Buffer.alloc(16,3).toString('base64url')}}};
+    await httpsCallable(functions,'upsertPushDevice')(binding);
+    const submit=(name:string,value:unknown,bearer:string)=>fetch(`http://127.0.0.1:5001/${projectId}/us-central1/${name}`,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+bearer},body:JSON.stringify({data:value})});
+    const before=(await adminStore(admin).collection('users').get()).size;
+    const createInput={requestId:randomUUID(),fullName:'Must not exist',email:`expired-${randomUUID()}@example.test`,password,role:'staff',department:'bar',expectedActorUid:ownerUid,expectedBusinessId:'integration-a'};
+    expect((await submit('createEmployee',createInput,expired)).status).toBe(401);
+    expect((await submit('revokePushDevice',binding,expired)).status).toBe(401);
+    await expect.poll(()=>Math.floor(Date.now()/1000)).toBeGreaterThan(Number(claims.auth_time));
+    await adminAuth(admin).revokeRefreshTokens(ownerUid);
+    const revoked=await submit('revokePushDevice',binding,token);expect(revoked.status).toBe(401);expect(await revoked.json()).toMatchObject({error:{status:'UNAUTHENTICATED'}});
+    expect((await adminStore(admin).doc(`pushDevices/${binding.deviceId}`).get()).data()!.enabled).toBe(true);
+    expect((await adminStore(admin).collection('users').get()).size).toBe(before);
+  });
+
+  it.runIf(process.env.TOSSIT_CALLABLE_HOST?.startsWith('neon'))('uses the real SDK with an explicit non-Google callable URL', async () => {
     const create = httpsCallableFromURL<unknown,{uid:string}>(functions,'http://127.0.0.1:5001/createEmployee');
     const input={requestId:randomUUID(),fullName:'Hosted Staff',email:`hosted-${randomUUID()}@example.test`,password,role:'staff',department:'bar',expectedActorUid:ownerUid,expectedBusinessId:'integration-a'};
     const result=await create(input);uids.add(result.data.uid);
     expect((await create(input)).data.uid).toBe(result.data.uid);
+    await expect(create({...input,requestId:randomUUID()})).rejects.toMatchObject({code:'functions/already-exists'});
     expect((await adminStore(admin).doc(`users/${result.data.uid}`).get()).data()).toMatchObject({role:'staff',businessId:'integration-a'});
   });
 
-  it.runIf(process.env.TOSSIT_CALLABLE_HOST === 'neon')('rejects forged and disabled user tokens through the real HTTP adapter', async () => {
+  it.runIf(process.env.TOSSIT_CALLABLE_HOST?.startsWith('neon'))('rejects forged and disabled user tokens through the real HTTP adapter', async () => {
     const endpoint = `http://127.0.0.1:5001/${projectId}/us-central1/getPushDeviceStatus`;
     const forged = await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer forged'},body:JSON.stringify({data:{}})});
     expect(forged.status).toBe(401);

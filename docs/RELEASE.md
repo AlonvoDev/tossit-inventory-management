@@ -1,5 +1,42 @@
 # TossIt release gates
 
+## Current hosting direction — Neon replaces Firebase Functions
+
+This section supersedes historical Firebase Functions/Blaze/Secret Manager deployment instructions below. Firebase Auth and Firestore remain in tossit-4cc02. Employee/device services and scheduling now have a Neon Node24 host. Do not enable Google billing or deploy Firebase Functions for this path.
+
+### Verified nonproduction resources
+
+- Neon Free organization org-aged-cell-89320935; isolated project tossit-server (misty-flower-45450210), aws-eu-central-1, branch staging (br-flat-mud-b9coh1k6).
+- Native URL: https://br-flat-mud-b9coh1k6-tossitapi.compute.c-7.eu-central-1.aws.neon.tech/
+- Deployment1 completed on Node24. Artifact SHA2560c5b6e586827e7302d2c4f1319c4e75fa648b5615f75cdec1ea912cce31ad159. No Firebase production credential, VAPID key or application Postgres data was uploaded.
+- Six real hosted checks pass: health200/configured:false, unsigned employee call401, allowed preflight204, forbidden origin403, spoofed schedule header401 (edge strips client x-neon headers), oversized anonymous revoke413. This is a staging smoke test, not a working production backend claim.
+- Disabled schedule trigger: `trigger-f2baa3cc-f349-4d46-a316-abbc26890e98` (`inventory`), next_run_at:null. The staging environment still pins the deliberately non-working probe ID, so a real schedule is fail-closed until its reviewed credential/configuration cutover. Schedule remains disabled. Authentic provider-trigger delivery, real Google credential/permissions, push transport and mobile display still require verification.
+
+### Reproduce the Neon checks
+
+Install both lockfiles (`npm ci`, `npm ci --prefix functions`). Use Node24, Java21 and Python3 (standard ZIP module), then:
+
+```bash
+npm run test:functions
+npm run test:callables:neon
+npm run test:callables:neon:bundle
+npm run build:neon
+```
+
+Five browser scenarios additionally verify actual admin employee creation through the configured external callable URL, alongside the retained worker/offline/role/account-isolation checks. The last integration mode copies the built artifact into a temporary directory outside node_modules and starts a separate Node process. It verifies real SDK calls/auth/provisioning/idempotency/push bindings through the artifact, using only local demo Auth/Firestore. The six cases include actual expired/revoked token denial and retained device state, not only mocks. Native host tests and client tests are retained. No paid cloud project is used in tests.
+
+### Secure connection and cutover (not authorized by implementation alone)
+
+1. Review a dedicated service account in tossit-4cc02 with `roles/firebaseauth.admin` and `roles/datastore.user` only, scoped to this project. These grant sensitive Auth/Firestore server access: create/install the credential only after owner authorization. Do not use Owner/Editor or interactive CLI refresh tokens as server credentials. Never paste private JSON into chat or git. Prefer a supported keyless exchange if available; otherwise install the dedicated JSON directly as a Neon runtime secret over the authenticated deployment channel.
+2. Configure server-only `TOSSIT_FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `TOSSIT_ALLOWED_ORIGINS`, matching `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY`, and `WEB_PUSH_CONTACT`. `functions/.env.example` is a template only. `functions/neon.ts` declares required runtime env and a disabled UTC schedule; Neon environment values are deployment secrets, never frontend env. Existing stage secrets are intentionally absent.
+3. Build/deploy the reviewed artifact. Required `neon.ts` env prevents a full configured deploy with missing values. Retrieve the actual schedule trigger ID, set `TOSSIT_NEON_TRIGGER_ID`, keep the trigger disabled, and verify real identity/profile authority using a separate demo Firebase project before production employee writes. Health `configured:true` means structural credential config only, not successful credential/role/push validation.
+4. The schedule is `0,20,40 * * * *` UTC (72 light calls/day); existing Israel/DST slot logic filters actual 23:00/23:20/23:40,08:00 and optional00:00. Parser requires provider-attested metadata and the exact trigger ID. No secret or database work on irrelevant, stale or future ticks. Test genuine provider delivery/retry before enabling. Local forged-header tests do not substitute for provider provenance checks; the staging spoof rejection has been observed separately.
+5. Review production profiles/rules/indexes and the current Render service's tracked branch/auto-deploy settings before any main merge. Build Render with `VITE_SERVER_API_URL` set to the configured Neon base URL and `VITE_VAPID_PUBLIC_KEY` set to the matching public key. An invalid configured URL fails closed; it never silently switches to Google. Missing URL selects the retained legacy/emulator adapter and is not the intended Neon production configuration.
+6. Coordinate matching rules/functions-client cutover. Complete docs/PILOT.md real-device and staff tests. Enable only the reviewed real trigger after the authorized push pilot. Keep the old code candidate and environment/rules backup for coordinated rollback; never clear IndexedDB/device bindings. Do not roll back to a client incompatible with deployed rules.
+
+## Historical Firebase-hosted release gates
+
+
 Implementation checkpoints are not production deployments. Do not deploy the C1
 rules by themselves against an older client: the C2 inventory adapters and the
 reviewed Claude UI checkpoints must be integrated first.

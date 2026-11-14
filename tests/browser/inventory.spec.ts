@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { createServer, type Server } from 'node:http';
 import { test, expect, type Page } from '@playwright/test';
 const serverRequire = createRequire(new URL('../../functions/package.json', import.meta.url));
-const { initializeApp, deleteApp } = serverRequire('firebase-admin/app');
+const { initializeApp, deleteApp, getApps } = serverRequire('firebase-admin/app');
 const { getAuth } = serverRequire('firebase-admin/auth');
 const { getFirestore, Timestamp } = serverRequire('firebase-admin/firestore');
 const projectId = 'demo-tossit-auth';
@@ -11,6 +12,21 @@ for (const name of ['FIRESTORE_EMULATOR_HOST', 'FIREBASE_AUTH_EMULATOR_HOST']) {
 }
 const app = initializeApp({ projectId }, `browser-${randomUUID()}`);
 const db = getFirestore(app);
+let apiServer: Server;
+const createdEmployees: string[]=[];
+test.beforeAll(async()=>{
+  process.env.TOSSIT_SERVER_EMULATORS='true';process.env.TOSSIT_FIREBASE_PROJECT_ID=projectId;
+  const {createHttpHandler}=serverRequire('./lib/hosting/http.js');
+  const {hostingServices}=serverRequire('./lib/hosting/services.js');
+  const handler=createHttpHandler({...hostingServices(),allowedOrigins:['http://127.0.0.1:4173'],parseTrigger:()=>null});
+  apiServer=createServer(async(req,res)=>{
+    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(chunk);
+    const headers=new Headers();for(const [key,value] of Object.entries(req.headers))if(typeof value==='string')headers.set(key,value);
+    const response=await handler(new Request('http://127.0.0.1:5001'+req.url,{method:req.method,headers,body:req.method==='OPTIONS'?undefined:Buffer.concat(chunks)}));
+    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(await response.text());
+  });
+  await new Promise<void>(resolve=>apiServer.listen(5001,'127.0.0.1',resolve));
+});
 const accounts: { uid: string; email: string; password: string; businessId: string; productId: string; productName: string }[] = [];
 async function seed(role = 'staff', department = 'bar') {
   const id = randomUUID(); const fixture = { uid: `e2e-${id}`, email: `e2e-${id}@example.test`, password: `Local-${randomUUID()}`, businessId: `e2e-${id}`, productId: `e2e-product-${id}`, productName: `חלב בדיקה ${id.slice(0, 5)}` };
@@ -30,11 +46,14 @@ async function openForm(page: Page, productName: string) {
   await page.getByRole('option', { name: productName, exact: false }).click();
 }
 test.afterAll(async () => {
+  if(apiServer)await new Promise<void>((resolve,reject)=>apiServer.close(error=>error?reject(error):resolve()));
+  for(const uid of createdEmployees){await db.doc(`users/${uid}`).delete();await getAuth(app).deleteUser(uid);}
   for (const account of accounts) {
     for (const doc of (await db.collection('items').where('businessId', '==', account.businessId).get()).docs) await doc.ref.delete();
     await db.doc(`products/${account.productId}`).delete(); await db.doc(`users/${account.uid}`).delete(); await getAuth(app).deleteUser(account.uid);
   }
   await deleteApp(app);
+  const hosted=getApps().find((entry: {name:string})=>entry.name==='[DEFAULT]');if(hosted)await deleteApp(hosted);
 });
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', async route => {
@@ -101,4 +120,21 @@ test('logout keeps an offline intent private until the original account returns'
   await login(page, first);
   await expect.poll(async () => (await db.collection('items').where('businessId', '==', first.businessId).get()).size).toBe(1);
   expect((await db.collection('items').where('businessId', '==', second.businessId).get()).size).toBe(0);
+});
+
+test('admin creates an employee through the configured external callable host',async({page})=>{
+  const admin=await seed('admin');await login(page,admin);await page.goto('/admin/users');
+  await page.getByRole('button',{name:'הוסף משתמש',exact:true}).click();
+  const email=`hosted-browser-${randomUUID()}@example.test`;
+  await page.locator('input[name="fullName"]').fill('עובד בדיקת שרת');
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="password"]').fill('Hosted-test-password');
+  await page.locator('select[name="role"]').selectOption('staff');
+  const request=page.waitForResponse(response=>response.url()==='http://127.0.0.1:5001/createEmployee' && response.request().method()==='POST');
+  await page.getByRole('button',{name:'צור משתמש',exact:true}).click();
+  expect((await request).status()).toBe(200);
+  const user=(await db.collection('users').where('email','==',email).get()).docs[0];
+  createdEmployees.push(user.id);expect(user.data()).toMatchObject({businessId:admin.businessId,role:'staff',isActive:true});
+  expect((await getAuth(app).getUser(user.id)).disabled).toBe(false);
+  await expect(page.getByText(admin.email,{exact:true}).first()).toBeVisible();
 });

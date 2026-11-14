@@ -31,6 +31,7 @@ export function hostingServices(env: Record<string,string | undefined> = process
       }
     },
     scheduled: async at => {
+      if (!Number.isFinite(at) || at > Date.now() + 60000 || Date.now() - at > 600000) return;
       const slot = israelSlot(new Date(at));
       if (!slot) return; // No secrets, database, or transport on unused UTC ticks.
       ensureHostingAdmin(env);

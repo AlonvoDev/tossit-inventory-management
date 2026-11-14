@@ -21,9 +21,11 @@
     "test:functions": "vitest run --config vitest.functions.config.ts",
     "build:functions": "npm --prefix functions run build",
     "test:callables": "npm run build:functions && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
-    "test:browser": "VITE_USE_FIREBASE_EMULATORS=true npm run build && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"playwright test\"",
+    "test:browser": "npm run build:functions && VITE_USE_FIREBASE_EMULATORS=true VITE_SERVER_API_URL=http://127.0.0.1:5001 npm run build && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"playwright test\"",
     "test:callables:native": "npm run build:functions && TOSSIT_NATIVE_FUNCTIONS_EMULATOR=true firebase emulators:exec --only auth,firestore,functions --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
-    "test:callables:neon": "npm run build:functions && TOSSIT_CALLABLE_HOST=neon firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
+    "test:callables:neon": "npm run build:functions && TOSSIT_CALLABLE_HOST=neon firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
+    "build:neon": "npm --prefix functions run build:neon",
+    "test:callables:neon:bundle": "npm run build:neon && TOSSIT_CALLABLE_HOST=neon-bundle firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
