@@ -30,15 +30,31 @@ beforeAll(async () => {
   process.env.GCLOUD_PROJECT = projectId;
   process.env.FIREBASE_CONFIG = JSON.stringify({ projectId });
   if (process.env.TOSSIT_NATIVE_FUNCTIONS_EMULATOR !== 'true') {
-    const handlers = await import('../src/index');
     const app = express();
     app.use(express.json());
+    if (process.env.TOSSIT_CALLABLE_HOST === 'neon') {
+      process.env.TOSSIT_SERVER_EMULATORS = 'true';
+      process.env.TOSSIT_FIREBASE_PROJECT_ID = projectId;
+      const { createHttpHandler } = await import('../src/hosting/http');
+      const { hostingServices } = await import('../src/hosting/services');
+      const handler = createHttpHandler({ ...hostingServices(), allowedOrigins: [], parseTrigger: () => null });
+      app.post(/.*/, async (req,res) => {
+        const headers = new Headers();
+        for (const [key,value] of Object.entries(req.headers)) if (typeof value === 'string') headers.set(key,value);
+        const path = req.path.replace(`/${projectId}/us-central1`, '');
+        const reply = await handler(new Request('http://127.0.0.1:5001'+path,{method:'POST',headers,body:JSON.stringify(req.body)}));
+        reply.headers.forEach((value,key)=>res.setHeader(key,value));
+        res.status(reply.status).send(await reply.text());
+      });
+    } else {
+    const handlers = await import('../src/index');
     app.post(`/${projectId}/us-central1/createEmployee`, handlers.createEmployee);
     app.post(`/${projectId}/us-central1/updateEmployee`, handlers.updateEmployee);
     app.post(`/${projectId}/us-central1/deactivateEmployee`, handlers.deactivateEmployee);
     app.post(`/${projectId}/us-central1/upsertPushDevice`, handlers.upsertPushDevice);
     app.post(`/${projectId}/us-central1/revokePushDevice`, handlers.revokePushDevice);
     app.post(`/${projectId}/us-central1/getPushDeviceStatus`, handlers.getPushDeviceStatus);
+    }
     await new Promise<void>(resolve => { server = app.listen(5001, '127.0.0.1', resolve); });
   }
   const store = adminStore(admin);
@@ -137,5 +153,17 @@ describe('real push callables and scheduler persistence', () => {
     await midnightService.run(midnight); expect((await store.doc(`users/${ownerUid}`).get()).data()!.isOnShift).toBe(false);
     await store.doc(`users/${ownerUid}`).update({ isOnShift: true, shiftStartedAt: Timestamp.fromMillis(midnightAt + 1000) });
     await midnightService.run(midnight); expect((await store.doc(`users/${ownerUid}`).get()).data()!.isOnShift).toBe(true);
+  });
+});
+
+// The host-neutral adapter additionally rejects disabled/revoked identities before domain work.
+describe('Neon host verified token boundary', () => {
+  it.runIf(process.env.TOSSIT_CALLABLE_HOST === 'neon')('rejects forged and disabled user tokens through the real HTTP adapter', async () => {
+    const endpoint = `http://127.0.0.1:5001/${projectId}/us-central1/getPushDeviceStatus`;
+    const forged = await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer forged'},body:JSON.stringify({data:{}})});
+    expect(forged.status).toBe(401);
+    await adminAuth(admin).updateUser(ownerUid,{disabled:true});
+    try { await expect(httpsCallable(functions,'getPushDeviceStatus')({})).rejects.toMatchObject({code:'functions/unauthenticated'}); }
+    finally { await adminAuth(admin).updateUser(ownerUid,{disabled:false}); }
   });
 });

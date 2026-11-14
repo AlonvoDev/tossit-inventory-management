@@ -4,7 +4,13 @@ Task / bounded subtask: C5 — integrated release candidate and CI
 Status: C1–C5 and U1–U5 complete in code/docs; final integrated candidate ready for owner review. No deployment.
 Last previously confirmed remote SHA: 12946364ffc80cd6d8a7260470e9aee49758493a
 
-## Neon hosting change — design awaiting approval
+## Neon N1 checkpoint — secure host adapter
+
+Design approved by Alon ('קדימה'); execution plan is docs/superpowers/plans/2026-11-14-tossit-neon-functions.md. Host-neutral callable boundary and lazy project-scoped Firebase Admin configuration implemented; existing business services reused. Bounded JSON, verified/revocation-aware bearer identity, signed-out capability revoke, exact origin/method/preflight checks and sanitized callable wire errors. Health can run without any Firebase secret. Targeted tests RED before implementation, GREEN afterward; server53/53, real SDK/Auth/Firestore integration through the new adapter4/4, Functions build and changed-file lint PASS. Baseline client298/298 passed. Client URL transport and Neon bundle/schedule remain N2/N3, not delivered yet.
+
+New isolated Neon project tossit-server: misty-flower-45450210, region aws-eu-central-1, default branch staging br-flat-mud-b9coh1k6, organization org-aged-cell-89320935 (Free). Project creation initially rejected a custom suspension value; confirmed no partial project and retried without overriding Free defaults. Auto-created Postgres is unused; no application tables/data migration. No function deployed, no trigger created, no Firebase private key/production credentials installed. Existing alondb untouched. Live app/main remain unchanged.
+
+## Historical Neon design checkpoint
 
 Alon explicitly chose to keep employee administration/push features and add Neon rather than remove Functions-dependent features or enable Blaze. Firebase login now succeeds for his account; tossit-4cc02 is accessible and its default STANDARD Firestore database is in me-west1. Cloud Functions API is now enabled and functions:list returns an empty list. Read-only Cloud Billing check returns billingEnabled:false. No production data/configuration/billing/deploy change was made by Codex. Latest preparation head5f0d84e has successful push and PR CI runs43623360924/43623363827; PR#1 remains draft.
 
