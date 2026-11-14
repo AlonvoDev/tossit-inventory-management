@@ -1,7 +1,7 @@
 import { onAuthStateChanged, signOut as firebaseSignOut, sendPasswordResetEmail, signInWithPopup, type User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { auth, db, functions, googleProvider, enhancedSignIn } from '../services/firebase';
+import { serverCallable } from '../services/serverCalls';
+import { auth, db, googleProvider, enhancedSignIn } from '../services/firebase';
 import { parseUserProfile } from '../domain/userProfile';
 import type { UserProfile } from '../types/UserProfile';
 import { disablePushNotifications } from '../utils/notificationUtils';
@@ -49,7 +49,7 @@ export async function createUserByAdmin(data: CreateUserData, businessId: string
   const key = JSON.stringify([uid, businessId, data.email.trim().toLowerCase()]);
   const requestId = data.requestId ?? provisioningRequests.get(key) ?? crypto.randomUUID();
   provisioningRequests.set(key, requestId);
-  const create = httpsCallable<CreateUserData & { expectedActorUid: string; expectedBusinessId: string }, { uid: string }>(functions, 'createEmployee');
+  const create = serverCallable<CreateUserData & { expectedActorUid: string; expectedBusinessId: string }, { uid: string }>('createEmployee', { timeout: 60000 });
   const response = await create({ ...data, requestId, expectedActorUid: uid, expectedBusinessId: businessId });
   provisioningRequests.delete(key);
   return response.data.uid;
@@ -83,11 +83,11 @@ export async function updateUserRoleToAdmin(uid: string): Promise<void> {
 }
 export async function updateUserByAdmin(uid: string, updates: UpdateUserData): Promise<void> {
   currentUid();
-  await httpsCallable(functions, 'updateEmployee')({ uid, updates });
+  await serverCallable('updateEmployee', { timeout: 60000 })({ uid, updates });
 }
 export async function deactivateUserByAdmin(uid: string): Promise<void> {
   currentUid();
-  await httpsCallable(functions, 'deactivateEmployee')({ uid });
+  await serverCallable('deactivateEmployee', { timeout: 60000 })({ uid });
 }
 /** Compatibility alias: deactivate access and retain audit identity; do not delete. */
 export const deleteUserByAdmin = deactivateUserByAdmin;

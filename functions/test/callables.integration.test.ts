@@ -7,7 +7,7 @@ import { getAuth as adminAuth } from 'firebase-admin/auth';
 import { getFirestore as adminStore } from 'firebase-admin/firestore';
 import { initializeApp, deleteApp, type FirebaseApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { connectFunctionsEmulator, getFunctions, httpsCallable, type Functions } from 'firebase/functions';
+import { connectFunctionsEmulator, getFunctions, httpsCallable, httpsCallableFromURL, type Functions } from 'firebase/functions';
 
 const projectId = 'demo-tossit-auth';
 let admin: AdminApp;
@@ -158,6 +158,14 @@ describe('real push callables and scheduler persistence', () => {
 
 // The host-neutral adapter additionally rejects disabled/revoked identities before domain work.
 describe('Neon host verified token boundary', () => {
+  it.runIf(process.env.TOSSIT_CALLABLE_HOST === 'neon')('uses the real SDK with an explicit non-Google callable URL', async () => {
+    const create = httpsCallableFromURL<unknown,{uid:string}>(functions,'http://127.0.0.1:5001/createEmployee');
+    const input={requestId:randomUUID(),fullName:'Hosted Staff',email:`hosted-${randomUUID()}@example.test`,password,role:'staff',department:'bar',expectedActorUid:ownerUid,expectedBusinessId:'integration-a'};
+    const result=await create(input);uids.add(result.data.uid);
+    expect((await create(input)).data.uid).toBe(result.data.uid);
+    expect((await adminStore(admin).doc(`users/${result.data.uid}`).get()).data()).toMatchObject({role:'staff',businessId:'integration-a'});
+  });
+
   it.runIf(process.env.TOSSIT_CALLABLE_HOST === 'neon')('rejects forged and disabled user tokens through the real HTTP adapter', async () => {
     const endpoint = `http://127.0.0.1:5001/${projectId}/us-central1/getPushDeviceStatus`;
     const forged = await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer forged'},body:JSON.stringify({data:{}})});

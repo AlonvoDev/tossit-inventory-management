@@ -1,5 +1,5 @@
-import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../services/firebase';
+import { serverCallable, type ServerCallName } from '../services/serverCalls';
+import { auth } from '../services/firebase';
 import { getCurrentActor } from '../api/access';
 import { InventoryError } from '../domain/errors';
 
@@ -59,7 +59,7 @@ async function readyWorker(requireCurrent = true): Promise<ServiceWorkerRegistra
   if (requireCurrent && (registration.scope !== location.origin + '/' || registration.active?.scriptURL !== location.origin + '/service-worker.js')) throw new PushSetupError('worker-outdated', 'Update TossIt before enabling notifications');
   return registration;
 }
-async function call<T>(name: string, input: unknown): Promise<T> { return (await httpsCallable<unknown, T>(functions, name, { timeout: 10000 })(input)).data; }
+async function call<T>(name: ServerCallName, input: unknown): Promise<T> { return (await serverCallable<unknown, T>(name, { timeout: 10000 })(input)).data; }
 const credentials = (state: DeviceState) => ({ deviceId: state.deviceId, deviceToken: state.deviceToken, bindingId: state.bindingId });
 function stillCurrent(state: DeviceState): boolean { const latest = readDevice(); return !!latest && latest.state === state.state && latest.bindingId === state.bindingId && latest.uid === state.uid && latest.businessId === state.businessId; }
 

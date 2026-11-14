@@ -32,9 +32,9 @@
 ### Task 2: Shared client callable URL transport
 **Files:** create src/services/serverCalls.ts, src/test/domain/serverCalls.test.ts; modify src/api/authAPI.ts, src/utils/notificationUtils.ts, .env.example and affected domain mocks.
 **Interfaces:** `serverCallable<Input, Output>(name: ServerCallName): (input: Input) => Promise<{data:Output}>`; VITE_SERVER_API_URL selects explicit HTTPS Neon base or loopback test URL; absent URL keeps explicit legacy emulator/current Firebase adapter until cutover.
-- [ ] Write and observe failing tests for Neon URL routing, invalid config/no fallback, timeout/error preservation and unknown endpoint rejection.
-- [ ] Implement with Firebase httpsCallableFromURL and migrate six calls without changing UI contracts/request IDs. Test hosted paths with real SDK/emulators.
-- [ ] Run client suite/build/lint; expected zero errors and all tests green; commit/push/SHA-verify.
+- [x] Write and observe failing tests for Neon URL routing, invalid config/no fallback, timeout/error preservation and unknown endpoint rejection.
+- [x] Implement with Firebase httpsCallableFromURL and migrate six calls without changing UI contracts/request IDs. Test hosted paths with real SDK/emulators.
+- [x] Run client suite/build/lint; expected zero errors and all tests green; commit/push/SHA-verify.
 
 ### Task 3: Neon bundle, staging proof, CI and release docs
 **Files:** create functions/scripts/build-neon.mjs, functions/neon.ts (or root config scoped source); update package/lockfiles, CI, ignores, env examples, RELEASE/README/own handoff; hosting schedule/config tests.

@@ -4,6 +4,10 @@ Task / bounded subtask: C5 — integrated release candidate and CI
 Status: C1–C5 and U1–U5 complete in code/docs; final integrated candidate ready for owner review. No deployment.
 Last previously confirmed remote SHA: 12946364ffc80cd6d8a7260470e9aee49758493a
 
+## Neon N2 checkpoint — client callable URL transport
+
+Published N1 e3c84c3. Added VITE_SERVER_API_URL and a shared serverCallable adapter using the real Firebase httpsCallableFromURL SDK: retains tokens/wire/error/timeout behavior, validates HTTPS URLs and local emulator exceptions, rejects unknown endpoints and never falls back after a configured URL fails. Six employee/device call sites migrated; UI interfaces and request IDs unchanged. Tests RED before module, GREEN6targeted/304client; app build PASS; lint0errors/7existingwarnings. Real Auth/Firestore SDK integration now5/5 through host adapter, including a non-Google callable URL with idempotent employee create. N3 packaging/Neon staging/scheduler remains in progress; no live server claim or production credentials.
+
 ## Neon N1 checkpoint — secure host adapter
 
 Design approved by Alon ('קדימה'); execution plan is docs/superpowers/plans/2026-11-14-tossit-neon-functions.md. Host-neutral callable boundary and lazy project-scoped Firebase Admin configuration implemented; existing business services reused. Bounded JSON, verified/revocation-aware bearer identity, signed-out capability revoke, exact origin/method/preflight checks and sanitized callable wire errors. Health can run without any Firebase secret. Targeted tests RED before implementation, GREEN afterward; server53/53, real SDK/Auth/Firestore integration through the new adapter4/4, Functions build and changed-file lint PASS. Baseline client298/298 passed. Client URL transport and Neon bundle/schedule remain N2/N3, not delivered yet.
