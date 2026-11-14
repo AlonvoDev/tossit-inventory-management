@@ -1,6 +1,6 @@
 # TossIt Neon Functions Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Retain TossIt functionality without Firebase Blaze by hosting server entry points on Neon Free.
 **Architecture:** Firebase Auth/Firestore and current business services remain authoritative. A web-standard callable HTTP adapter and shared client URL transport connect the existing app to Neon Node24. Trigger parsing replaces Google's schedule wrapper.
@@ -41,8 +41,10 @@
 **Interfaces:** `npm run build:neon` produces ignored deploy ZIP with Node24 fetch entry; six callable paths and `/scheduled` plus `/health`. `/scheduled` uses provider parser, expected trigger identity and existing israelSlot(service.run).
 - [x] Bundle and test import on Node24, checking firebase-admin/web-push load; write failing schedule/config tests before implementation where behavior added. Add Node24 CI adapter/build coverage while retaining existing suites.
 - [x] Create separate Free Neon project/branch, deploy candidate without production credentials or schedule, observe health and unauthorized/forged requests; explicitly record what was NOT tested. No actual device push, employee writes or auto-end in staging smoke.
-- [ ] Update reproducible local commands and production secret/rollout gates; run all meaningful checks and inspect actual CI.
-- [ ] Fresh independent final review; one TDD fix pass for important findings; publish final checkpoint and leave PR draft until credential/cutover authorization.
+- [x] Update reproducible local commands and production secret/rollout gates; run all meaningful checks and inspect actual CI.
+- [x] Fresh independent final review; one TDD fix pass for important findings; publish final checkpoint and leave PR draft until credential/cutover authorization.
 
 ## Deployment boundary
 Production Firebase service-account credential creation/installation is security-sensitive and requires a concrete reviewed scope after implementation. If platform staging or required native package/auth/trigger capability fails, record evidence and stop at that real blocker, never represent local tests as a deployed working backend. Free project quotas are verified, not assumed unlimited.
+
+Implementation verification complete on138eebc: client304, server58, rules42, legacycallable3, Neon source6/bundle6, browser5, all builds/lint0errors7warnings. Independent review clean; remote push43631718046 and PR43631722809 SUCCESS in all four jobs. Production connection remains gated exactly as described above; no credential creation or cutover has occurred.

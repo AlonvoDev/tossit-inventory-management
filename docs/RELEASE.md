@@ -12,6 +12,8 @@ This section supersedes historical Firebase Functions/Blaze/Secret Manager deplo
 - Six real hosted checks pass: health200/configured:false, unsigned employee call401, allowed preflight204, forbidden origin403, spoofed schedule header401 (edge strips client x-neon headers), oversized anonymous revoke413. This is a staging smoke test, not a working production backend claim.
 - Disabled schedule trigger: `trigger-f2baa3cc-f349-4d46-a316-abbc26890e98` (`inventory`), next_run_at:null. The staging environment still pins the deliberately non-working probe ID, so a real schedule is fail-closed until its reviewed credential/configuration cutover. Schedule remains disabled. Authentic provider-trigger delivery, real Google credential/permissions, push transport and mobile display still require verification.
 
+The verified implementation candidate is138eebcbff59ed9b9d66222563ca809507cc6168. All four CI jobs passed in push43631718046 and PR43631722809, including Node24 source6/bundle6 real SDK integrations and five browser scenarios. Fresh independent review found no Critical/Important issue; minor documentation/coverage notes were addressed. Production credential/trigger delivery/push/mobile gates remain unchanged.
+
 ### Reproduce the Neon checks
 
 Install both lockfiles (`npm ci`, `npm ci --prefix functions`). Use Node24, Java21 and Python3 (standard ZIP module), then:
