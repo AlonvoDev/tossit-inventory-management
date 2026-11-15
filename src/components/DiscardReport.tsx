@@ -27,10 +27,21 @@ import {
   MenuItem,
 } from '@mui/material';
 import {
+  ArrowDownward as ArrowDownwardIcon,
+  ArrowUpward as ArrowUpwardIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
 
 type SortKey = 'productName' | 'totalQuantity' | 'discardCount' | 'averageQuantity' | 'lastDiscarded';
+
+/** Same keys and labels as the desktop table headers (phone sort control, UI3-R2). */
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'productName', label: 'שם המוצר' },
+  { key: 'totalQuantity', label: 'כמות כוללת נזרקת' },
+  { key: 'discardCount', label: 'מספר זריקות' },
+  { key: 'averageQuantity', label: 'ממוצע לזריקה' },
+  { key: 'lastDiscarded', label: 'זריקה אחרונה' },
+];
 type SortOrder = 'asc' | 'desc';
 
 interface DiscardReportProps {
@@ -254,6 +265,35 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
         ))}
       </Box>
 
+      {/* UI3-R2: phones have no table headers, so expose the same sort keys/directions here. */}
+      {isPhone && reportData.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5 }}>
+          <TextField
+            select
+            size="small"
+            label="מיון לפי"
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value as SortKey)}
+            sx={{ flex: 1, minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}
+          >
+            {SORT_OPTIONS.map(option => (
+              <MenuItem key={option.key} value={option.key} sx={{ minHeight: 44 }}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button
+            variant="outlined"
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            aria-label={`כיוון מיון: ${sortOrder === 'asc' ? 'עולה' : 'יורד'}`}
+            startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
+            sx={{ minHeight: 44, flexShrink: 0 }}
+          >
+            {sortOrder === 'asc' ? 'עולה' : 'יורד'}
+          </Button>
+        </Box>
+      )}
+
       {isPhone && filteredData.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {filteredData.map(item => (
@@ -264,6 +304,9 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
               </Box>
               <Typography sx={{ fontWeight: 600 }}>
                 נזרק: {item.totalQuantity.toFixed(item.type === 'kg' ? 1 : 0)} {item.type === 'kg' ? 'ק״ג' : 'יח׳'} · {item.discardCount} פעמים
+              </Typography>
+              <Typography variant="body2">
+                ממוצע לזריקה: {Math.round(item.averageQuantity * 100) / 100} {item.type === 'kg' ? 'ק״ג' : 'יח׳'}
               </Typography>
               {reasonChips(item)}
               <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>זריקה אחרונה: {formatDate(item.lastDiscarded)}</Typography>

@@ -197,4 +197,77 @@ describe('AdminUsersPage', () => {
     expect(screen.getByRole('button', { name: 'עריכה — עובד בר' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'השבתה — עובד בר' })).toBeInTheDocument();
   });
+
+  // ---- UI3-R1: offline guard on open/linked forms and on the submit handler ----
+  const page = (path = '/admin/users') => (
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+      </Routes>
+    </MemoryRouter>
+  );
+
+  it('UI3-R1: offline ?add=1 does not open a submittable create form and explains why', async () => {
+    authState.isOffline = true;
+    renderPage('/admin/users?add=1');
+    await waitFor(() => rowOf('עובד בר'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(/אין חיבור\. ניהול משתמשים זמין רק כשיש חיבור/)).toBeInTheDocument();
+  });
+
+  it('UI3-R1: the linked create form opens once the connection returns', async () => {
+    authState.isOffline = true;
+    const view = render(page('/admin/users?add=1'));
+    await waitFor(() => rowOf('עובד בר'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    authState.isOffline = false;
+    view.rerender(page('/admin/users?add=1'));
+    expect(await screen.findByRole('dialog', { name: 'הוספת משתמש חדש' })).toBeInTheDocument();
+  });
+
+  it('UI3-R1: an open edit form is disabled when the connection drops, keeping the draft', async () => {
+    const view = render(page());
+    await waitFor(() => rowOf('מנהלת מטבח'));
+    await userEvent.click(within(rowOf('מנהלת מטבח')).getByRole('button', { name: /^עריכה/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'עריכת משתמש' });
+    fireEvent.change(within(dialog).getByPlaceholderText('שם פרטי ומשפחה'), { target: { value: 'מנהלת מטבח חדשה' } });
+    authState.isOffline = true;
+    view.rerender(page());
+    expect(screen.getByRole('button', { name: 'שמור שינויים' })).toBeDisabled();
+    expect(within(screen.getByRole('dialog')).getByText(/אין חיבור/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('שם פרטי ומשפחה')).toHaveValue('מנהלת מטבח חדשה');
+  });
+
+  it('UI3-R1: a direct submit while offline makes no API call (edit)', async () => {
+    const view = render(page());
+    await waitFor(() => rowOf('מנהלת מטבח'));
+    await userEvent.click(within(rowOf('מנהלת מטבח')).getByRole('button', { name: /^עריכה/ }));
+    await screen.findByRole('dialog');
+    authState.isOffline = true;
+    view.rerender(page());
+    fireEvent.submit(screen.getByRole('button', { name: 'שמור שינויים' }).closest('form')!);
+    expect(api.updateUserByAdmin).not.toHaveBeenCalled();
+  });
+
+  it('UI3-R1: create draft survives offline; direct submit blocked; after reconnection the same draft and requestId submit', async () => {
+    api.createUserByAdmin.mockResolvedValue('new-uid');
+    const view = render(page());
+    await waitFor(() => rowOf('עובד בר'));
+    await userEvent.click(screen.getByRole('button', { name: 'הוסף משתמש' }));
+    await screen.findByRole('dialog', { name: 'הוספת משתמש חדש' });
+    fireEvent.change(screen.getByPlaceholderText('שם פרטי ומשפחה'), { target: { value: 'רון' } });
+    fireEvent.change(screen.getByPlaceholderText('name@example.com'), { target: { value: 'r@x.co' } });
+    fireEvent.change(screen.getByPlaceholderText('לפחות 6 תווים'), { target: { value: '123456' } });
+    authState.isOffline = true;
+    view.rerender(page());
+    expect(screen.getByRole('button', { name: 'צור משתמש' })).toBeDisabled();
+    fireEvent.submit(screen.getByRole('button', { name: 'צור משתמש' }).closest('form')!);
+    expect(api.createUserByAdmin).not.toHaveBeenCalled();
+    authState.isOffline = false;
+    view.rerender(page());
+    expect(screen.getByPlaceholderText('שם פרטי ומשפחה')).toHaveValue('רון');
+    await userEvent.click(screen.getByRole('button', { name: 'צור משתמש' }));
+    await waitFor(() => expect(api.createUserByAdmin).toHaveBeenCalledTimes(1));
+    expect(api.createUserByAdmin.mock.calls[0][0]).toMatchObject({ fullName: 'רון', email: 'r@x.co', requestId: expect.any(String) });
+  });
 });

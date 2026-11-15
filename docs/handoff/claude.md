@@ -1,6 +1,55 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: **UI2 follow-up — Codex review UI2-R1 / UI2-R2** (`docs/CODEX_REQUESTS.md` at `c4df88e`)
+Task / bounded subtask: **UI3 follow-up — Codex review UI3-R1 / UI3-R2** (`docs/CODEX_REQUESTS.md` at `5c518c6`)
+Status: **UI3 READY FOR CODEX REVIEW (corrected)** — supersedes `741333a`/`71a81ee` for UI3. UI2 fixes (accepted at
+`5c518c6`) preserved unchanged; their integration tests still pass. Not deployed; `main` not touched.
+Integrated Codex SHA: `5c518c6` (docs only), normal merge.
+Last previously confirmed remote SHA: 71a81eef26c4dd7c5ef08f86cd06812654f4fd3e
+
+## UI3-R1 (Important) — offline guard on open/linked user forms and the submit handler
+- `src/pages/AdminUsersPage.tsx`:
+  - `handleSubmit` returns **before any API call** while `isOffline` (covers Enter/direct form submission, not only the
+    button) and shows "אין חיבור. השינויים לא נשלחו; הטופס נשמר…".
+  - `?add=1` opens the create form only when online (same rule as the add button); it opens once the connection
+    returns.
+  - Open dialog while offline: warning inside the dialog, save/create button disabled; draft values and the create
+    `requestId` are kept; on reconnection the same draft submits normally. Existing self-role protection, server errors
+    and in-flight behaviour unchanged.
+- Tests (`AdminUsersPage.test.tsx`, +5, all **RED before → GREEN**): offline `?add=1` opens no form + explanation;
+  linked form opens after reconnection; open edit form disabled on connectivity loss with draft kept; direct submit
+  offline → `updateUserByAdmin` not called; create draft offline → direct submit blocked (0 calls), button disabled,
+  after reconnection the same draft submits with a `requestId`.
+- Real Chromium (Playwright offline mode fires the browser `offline` event), 390 and 1280 px: save disabled, Enter keeps
+  the dialog open without submitting, draft "עובדת חדשה" kept; online again → save enabled.
+  `docs/ui-review/ui3/r1-390-users-dialog-offline.png`, `r1-1280-users-dialog-offline.png`.
+
+## UI3-R2 (Important) — report functionality on phones / zoom
+- `src/components/DiscardReport.tsx` (phone branch, < 600 px): sort control "מיון לפי" with the **same five keys and
+  labels as the desktop headers** (שם המוצר, כמות כוללת נזרקת, מספר זריקות, ממוצע לזריקה, זריקה אחרונה) and a 44 px
+  direction button (accessible name "כיוון מיון: יורד/עולה"), both driving the existing `sortKey`/`sortOrder` state;
+  each card shows "ממוצע לזריקה: <value> ק״ג/יח׳" from the existing `averageQuantity` (rounded to ≤ 2 decimals, no
+  string stripping; kg/units never mixed). Desktop table unchanged.
+- Tests — new `src/components/DiscardReport.mobile.test.tsx` (phone branch forced via `useMediaQuery`, 5 tests): average
+  with correct unit + separate kg/unit totals; real ordering changes for every key in both directions; sorting
+  combined with search and the reason filter (server reason argument asserted, sort kept); 44 px controls and one-row /
+  empty reports; average formatting (60 stays 60, 1.5 units shown). First four **RED before → GREEN**; the formatting
+  test guards a bug I caught in my own first draft (a trailing-zero regex would have shown 60 as 6).
+- Real Chromium 390 px: sort by "מספר זריקות" applied, overflow 0 px; 1280 px table unchanged, overflow 0 px.
+  `docs/ui-review/ui3/r2-390-report-phone-sort-average.png`, `r2-1280-report-table.png`.
+- Note (existing scope, unchanged): the report groups by product + unit and does not show department, so same-name bar
+  and kitchen products appear as two rows without a department label (desktop and phone alike).
+
+## UI3-R3 (Minor, coordinated) — unchanged: header menu button still `aria-label="menu"` until Codex changes the browser
+selector together with it (request UI3-1).
+
+## Checks (this checkpoint)
+- `npm run test:run`: 41 files, **354/354 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified, full output): exit 0, **Running 5 tests
+  … 5 passed (23.2 s)**.
+- NOT RUN: real phones/keyboards/screen readers.
+
+Task / bounded subtask (accepted by Codex at `5c518c6`): **UI2 follow-up — Codex review UI2-R1 / UI2-R2** (`docs/CODEX_REQUESTS.md` at `c4df88e`)
 Status: **UI2 READY (corrected)** — supersedes UI2 at `ab52a6c`. UI3 (`741333a`) remains READY FOR CODEX REVIEW and is
 contained in this checkpoint. Not deployed; `main` not touched.
 Integrated Codex SHA: `c4df88e` (UI2 review, docs only), normal merge.

@@ -98,6 +98,12 @@ const AdminUsersPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return; // ignore repeated submits while saving
+    // UI3-R1: never attempt a create/update while offline — guards Enter / direct form submission too,
+    // not only the disabled button. The draft (and create requestId) stay as they are for later.
+    if (isOffline) {
+      setError('אין חיבור. השינויים לא נשלחו; הטופס נשמר ואפשר לשלוח כשהחיבור יחזור.');
+      return;
+    }
     setError(null);
     setSuccess(null);
 
@@ -147,13 +153,14 @@ const AdminUsersPage: React.FC = () => {
 
   // The navigation menu's "add user" entry links here with ?add=1 (single create form).
   useEffect(() => {
-    if (searchParams.get('add') === '1' && isAdmin) {
+    // UI3-R1: the "?add=1" link behaves like the add button — it waits for a connection.
+    if (searchParams.get('add') === '1' && isAdmin && !isOffline) {
       openAddModal();
       const next = new URLSearchParams(searchParams);
       next.delete('add');
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams, isAdmin, openAddModal]);
+  }, [searchParams, setSearchParams, isAdmin, isOffline, openAddModal]);
 
   const openEditModal = (user: UserProfile) => {
     setFormData(formFromProfile(user));
@@ -339,6 +346,9 @@ const AdminUsersPage: React.FC = () => {
             {editMode ? 'עריכת משתמש' : 'הוספת משתמש חדש'}
           </DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+            {offline && (
+              <Alert severity="warning">אין חיבור. הטופס נשמר כאן; אפשר לשמור כשהחיבור יחזור.</Alert>
+            )}
             {error && (
               <Alert severity="error" role="alert">
                 {error}
@@ -434,7 +444,7 @@ const AdminUsersPage: React.FC = () => {
             <Button type="button" variant="outlined" onClick={closeModal} disabled={loading} sx={{ minHeight: 44 }}>
               ביטול
             </Button>
-            <Button type="submit" variant="contained" disabled={loading} sx={{ minHeight: 44, flex: 1 }}>
+            <Button type="submit" variant="contained" disabled={loading || offline} sx={{ minHeight: 44, flex: 1 }}>
               {loading ? 'שומר...' : editMode ? 'שמור שינויים' : 'צור משתמש'}
             </Button>
           </DialogActions>
