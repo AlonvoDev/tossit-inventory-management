@@ -1,7 +1,40 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: UI/UX round (2026-11-15 plan) — **UI1 inventory hierarchy and visual foundation**
-Status: **UI1 READY** (checks below pass). Next: UI2 (opening/closing on a phone), then UI3.
+Task / bounded subtask: UI1 correction — Codex review R1–R4 (docs/CODEX_REQUESTS.md at `f5ce297`)
+Status: **UI1 READY (corrected)**. Supersedes the earlier UI1 READY at `a8ed3b3`. Not deployed.
+Integrated Codex SHA: `f5ce297` (security/dependency checkpoint + review requests), normal merge, `npm ci` + `npm ci --prefix functions`.
+Last previously confirmed remote SHA: a8ed3b353a145fe23db773b26a4d3d7128592fa3
+
+## R1–R4 resolution
+- **R1 (Important) — stale hidden status filter hid discarded stock.** `ItemsList.tsx`: the status filter applies only in
+  modes where its control is shown (`effectiveStatusFilter`), `filtersActive` uses the effective value, and the selection
+  resets to "הכל" whenever the mode changes. Search/fridge semantics unchanged. Tests: Codex's mode-transition
+  reproduction (inventory "פג תוקף" → "נזרקו" shows the discarded item, no false no-match message) + return to inventory
+  ("הכל" pressed, open item visible) — **RED before, GREEN after**; genuinely empty discarded scope shows "אין פריטים שנזרקו"
+  without "נקה חיפוש וסינון" (guard).
+- **R2 (Minor) — 44 px targets.** Status chips `min-height: 44px`; search and fridge inputs `min-height: 44px`. Test asserts
+  computed 44 px for all three (RED before). Real Chromium at 390 px: overflow 0 px, visible focus ring on a chip after Tab —
+  `docs/ui-review/ui1/r2-390-controls-44px-focus.png`.
+- **R3 (Minor) — department identity in combined scope.** When no department filter is applied and the viewer can see all
+  departments (admin "נזרקו"), each card shows a department chip from `departmentLabel(item.area)` (existing normalized
+  data; no query change). Single-department tabs do not repeat it. Tests: same-name "לימון" bar + kitchen discarded items
+  → labels "בר" / "מטבח" (RED before); single-department tab has no label (guard). Screenshots:
+  `docs/ui-review/ui1/r3-390-admin-discarded-department-labels.png`, `r3-1280-admin-discarded-department-labels.png`.
+- **R4 — evidence correction.** The earlier UI1 handoff said "4/4 browser tests". That was wrong: the spec has **5** tests
+  and my command output was piped through `head -10`, which (after five emulator warning lines) cut off the fifth test and
+  the summary line. No test was removed or skipped. This checkpoint ran the repository script unmodified, full output kept:
+  `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` → exit 0, "Running 5 tests using 1 worker",
+  **5 passed (22.1 s)**, including "admin creates an employee through the configured external callable host".
+
+## Corrected UI1 checks
+- `npm run test:run`: 37 files, **319/319 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean. `npm run test:browser`: **5/5 PASS** (above).
+- Changed files: `src/components/ItemsList.tsx`, `src/components/ItemsList.test.tsx` (+5 tests),
+  `src/components/inventory/InventoryItemCard.tsx` (optional `departmentName` prop), screenshots above.
+- Request UI1-1 (expiring window) acknowledged by Codex as non-blocking; 72 h policy unchanged.
+
+Task / bounded subtask (historical, superseded above): UI1 inventory hierarchy and visual foundation at `a8ed3b3`
+Status at the time: UI1 READY — **browser count in that entry was wrong (see R4 above)**.
 Round starting HEAD: `381d7e4` (plan publication; includes live main `6addce2`), fast-forward from `357bf15`.
 Last previously confirmed remote SHA: 381d7e4e0996203afc3e5e63286c041eb0e12f8c
 
@@ -47,9 +80,7 @@ counts duplicated the list with a separate data path); the status chips give the
 ## UI1 checks (all on this checkpoint)
 - `npm run test:run`: 37 files, **314/314 pass** (baseline 304). `npm run build`: PASS. `npm run lint`: 0 errors / 7
   existing warnings. `git diff --check`: clean.
-- **Browser suite**: `npm run build:functions`, emulator build with `VITE_SERVER_API_URL=http://127.0.0.1:5001`, then
-  `firebase emulators:exec --only auth,firestore … "npx playwright test --trace off"` with
-  `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium`: **4/4 PASS**.
+- ~~Browser suite 4/4 PASS~~ — incorrect (output truncated; the suite has 5 tests). Corrected run: 5/5 PASS, see R4.
 - Narrow screen: page-level horizontal overflow **0 px** at 320, 390, 640 (=1280 at 200 % zoom), 768, 1280 (measured
   `scrollWidth - clientWidth`). Long Hebrew name wraps without hiding the action; decimal kg; item without fridge shows no
   fridge; expired + queued labels together (unit test).

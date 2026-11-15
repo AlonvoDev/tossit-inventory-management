@@ -204,6 +204,71 @@ describe('ItemsList', () => {
     expect(screen.getByText('לימון')).toBeInTheDocument();
   });
 
+  it('R1: a status filter chosen in inventory does not hide discarded items after switching mode', async () => {
+    as('admin');
+    const { rerender } = render(<ItemsList areaFilter="bar" />);
+    const records = [
+      mk('review-open', 'פתוח לבדיקה', 'bar', { expiryTime: ts(Date.now() - 3600e3) }),
+      mk('review-discarded', 'נזרק לבדיקה', 'bar', { discarded: true, isThrown: true }),
+    ];
+    push(records);
+    await userEvent.click(await screen.findByRole('button', { name: 'פג תוקף (1)' }));
+    rerender(<ItemsList showDiscardedOnly />);
+    push(records);
+    expect(await screen.findByText('נזרק לבדיקה')).toBeInTheDocument();
+    expect(screen.queryByText('אין פריטים שתואמים לחיפוש או לסינון')).not.toBeInTheDocument();
+    // Back to inventory: no stale hidden filter; all open items shown and "הכל" selected.
+    rerender(<ItemsList areaFilter="bar" />);
+    push(records);
+    expect(await screen.findByText('פתוח לבדיקה')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'הכל (1)' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('R1: a genuinely empty discarded scope says so, without a false active-filter message', async () => {
+    as('admin');
+    const { rerender } = render(<ItemsList areaFilter="bar" />);
+    push([mk('o', 'פתוח', 'bar', { expiryTime: ts(Date.now() - 3600e3) })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'פג תוקף (1)' }));
+    rerender(<ItemsList showDiscardedOnly />);
+    push([mk('o', 'פתוח', 'bar', { expiryTime: ts(Date.now() - 3600e3) })]);
+    expect(await screen.findByText('אין פריטים שנזרקו')).toBeInTheDocument();
+    expect(screen.queryByText('אין פריטים שתואמים לחיפוש או לסינון')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'נקה חיפוש וסינון' })).not.toBeInTheDocument();
+  });
+
+  it('R3: combined admin scope labels the department of same-name items', async () => {
+    as('admin');
+    render(<ItemsList showDiscardedOnly />);
+    push([
+      mk('b', 'לימון', 'bar', { discarded: true, isThrown: true }),
+      mk('k', 'לימון', 'kitchen', { discarded: true, isThrown: true }),
+    ]);
+    const cards = await screen.findAllByRole('article', { name: /לימון/ });
+    expect(cards).toHaveLength(2);
+    expect(cards.map(c => within(c).getByTestId('department').textContent).sort()).toEqual(['בר', 'מטבח']);
+  });
+
+  it('R3: a single-department tab does not repeat the department on every card', async () => {
+    as('admin');
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('b', 'לימון', 'bar')]);
+    const card = await screen.findByRole('article', { name: /לימון/ });
+    expect(within(card).queryByTestId('department')).not.toBeInTheDocument();
+  });
+
+  it('R2: search, fridge and status controls have at least 44px targets', async () => {
+    as('staff');
+    api.getBusinessFridges.mockResolvedValue([{ id: 'f1', name: 'מקרר', department: 'bar', businessId: 'b1' }]);
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar')]);
+    const chip = await screen.findByRole('button', { name: 'הכל (1)' });
+    expect(getComputedStyle(chip).minHeight).toBe('44px');
+    const search = screen.getByRole('textbox', { name: 'חיפוש פריט' }).closest('.MuiInputBase-root') as HTMLElement;
+    expect(getComputedStyle(search).minHeight).toBe('44px');
+    const fridge = (await screen.findByRole('combobox', { name: 'מקרר' })).closest('.MuiInputBase-root') as HTMLElement;
+    expect(getComputedStyle(fridge).minHeight).toBe('44px');
+  });
+
   it('off-shift staff cannot open the action dialog', async () => {
     as('staff', false);
     render(<ItemsList areaFilter="bar" />);

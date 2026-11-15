@@ -205,14 +205,21 @@ const ItemsList: React.FC<ItemsListProps> = ({
     [items, mode, areaFilter, nowMs],
   );
   const showStatusFilter = mode === 'open' || mode === 'active';
+  // R1: the status filter applies only where its control is shown, and resets when the mode changes,
+  // so a choice made in inventory can never hide items in another tab (e.g. "נזרקו").
+  const effectiveStatusFilter = showStatusFilter ? statusFilter : 'all';
+  useEffect(() => {
+    setStatusFilter('all');
+  }, [mode]);
   const statusOf = (item: Item) => displayStatus(item, nowMs);
   const statusCounts = useMemo(() => {
     const counts: Record<DisplayStatus, number> = { expired: 0, expiring: 0, ok: 0, finished: 0, discarded: 0 };
     for (const item of filteredItems) counts[displayStatus(item, nowMs)]++;
     return counts;
   }, [filteredItems, nowMs]);
-  const visibleItems = statusFilter === 'all' ? filteredItems : filteredItems.filter(i => statusOf(i) === statusFilter);
-  const filtersActive = !!searchQuery || fridgeFilter !== 'all' || statusFilter !== 'all';
+  const visibleItems =
+    effectiveStatusFilter === 'all' ? filteredItems : filteredItems.filter(i => statusOf(i) === effectiveStatusFilter);
+  const filtersActive = !!searchQuery || fridgeFilter !== 'all' || effectiveStatusFilter !== 'all';
   const clearFilters = () => {
     setSearchQuery('');
     setFridgeFilter('all');
@@ -235,6 +242,9 @@ const ItemsList: React.FC<ItemsListProps> = ({
       ? 'כל המחלקות'
       : `מחלקת ${departmentLabel(userDepartment) ?? ''}`;
 
+  // R3: with no department filter an admin sees both departments together; label each card then.
+  const combinedScope = !areaFilter && canSeeAllDepartments;
+
   const cardFor = (item: Item) => {
     const status = statusOf(item);
     const closed = status === 'finished' || status === 'discarded';
@@ -256,6 +266,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
         expiryRelative={closed ? undefined : relativeExpiry(item.expiryTime.toMillis(), nowMs)}
         opened={formatDateTime(item.openingTime.toMillis())}
         fridgeName={item.fridgeId ? fridgeMap[item.fridgeId] : undefined}
+        departmentName={combinedScope ? departmentLabel(item.area) ?? undefined : undefined}
         sync={item.id ? syncByItem[item.id] : undefined}
         details={details}
         onAction={closed || showDiscardedOnly || showFinishedOnly ? undefined : () => openActionModal(item)}
@@ -274,7 +285,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
           label="חיפוש פריט"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          sx={{ flex: '1 1 180px', minWidth: 0 }}
+          sx={{ flex: '1 1 180px', minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
           inputProps={{ 'aria-label': 'חיפוש פריט' }}
         />
@@ -285,7 +296,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
             label="מקרר"
             value={fridgeFilter}
             onChange={e => setFridgeFilter(e.target.value)}
-            sx={{ flex: '0 1 170px', minWidth: 130 }}
+            sx={{ flex: '0 1 170px', minWidth: 130, '& .MuiInputBase-root': { minHeight: 44 } }}
           >
             <MenuItem value="all">כל המקררים</MenuItem>
             {fridges.map(f => (
@@ -311,7 +322,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
                 color={statusFilter === key ? 'primary' : 'default'}
                 variant={statusFilter === key ? 'filled' : 'outlined'}
                 aria-pressed={statusFilter === key}
-                sx={{ minHeight: 36, fontWeight: 600, fontSize: '0.875rem' }}
+                sx={{ minHeight: 44, height: 'auto', borderRadius: 22, px: 0.5, fontWeight: 600, fontSize: '0.875rem' }}
               />
             );
           })}

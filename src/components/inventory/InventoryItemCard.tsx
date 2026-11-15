@@ -31,6 +31,8 @@ export interface InventoryItemCardProps {
   expiryRelative?: string;
   opened: string;
   fridgeName?: string;
+  /** Shown only when items from several departments are listed together (admin combined scope). */
+  departmentName?: string;
   sync?: 'pending' | 'failed';
   /** Closed-item details lines, e.g. "נזרק: 0.3 ק״ג · פג תוקף". */
   details?: string[];
@@ -53,6 +55,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   expiryRelative,
   opened,
   fridgeName,
+  departmentName,
   sync,
   details,
   onAction,
@@ -93,6 +96,9 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
         {/* Number + Hebrew unit read naturally in RTL; only dates/times need an LTR span. */}
         <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', unicodeBidi: 'plaintext' }}>{quantity}</Typography>
+        {departmentName && (
+          <Chip data-testid="department" size="small" variant="outlined" label={departmentName} sx={{ fontWeight: 600 }} />
+        )}
         {fridgeName && (
           <Typography variant="body2" color="text.secondary">
             · {fridgeName}
