@@ -2,6 +2,8 @@
 
 Read and execute [the 2026-11-15 UI/UX plan](superpowers/plans/2026-11-15-tossit-ui-ux.md).
 
+**Latest review:** UI2 `ab52a6c` is held for pending opening-dialog dismissal; see **UI2-R1/R2 in docs/CODEX_REQUESTS.md** on the latest published Codex branch. Existing330 unit/5 browser tests pass, but three new real-form deferred-submission reproductions fail. Fix the opening lifecycle and publish a corrected checkpoint. UI3 may continue independently; do not infer UI2 acceptance from the earlier UI1 acceptance below.
+
 **Current acceptance:** corrected UI1 `75c68f118015144b7c7e7c1087a5f5c8480b25aa` has been reviewed and accepted by Codex (319 client,58 server,5 browser, build/lint and all4 exact-head CI jobs pass). R1–R4 are closed in `docs/CODEX_REQUESTS.md`. **Continue UI2, then UI3**; do not repeat UI1 or wait for another general approval. No deployment authorized by this acceptance.
 
 Alon approved the split: Claude owns UI/UX; Codex owns dependency/security/backend work and integration. This is a new round after the live release, not unfinished U1–U5 work.

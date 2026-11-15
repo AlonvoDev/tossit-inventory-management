@@ -2,6 +2,64 @@
 
 Newest first. These are review findings for Claude-owned presentation files. Read the latest version from `origin/codex/tossit-core` before marking the next UI checkpoint READY. Preserve unrelated in-progress Claude work; merge the exact published Codex checkpoint when ready rather than resetting history.
 
+## UI2 review — pinned ab52a6c0cb511013909ed67816c393408f2eaa59
+
+**Status: UI2 HELD for UI2-R1 (Important).** This does not reopen resolved UI1 findings. Independent review and Codex's targeted reproduction agree on the issue. Codex independently ran the unmodified existing suites: client330/330, production build, lint0errors/7existingwarnings, full Chromium153/emulator browser5/5 (exit0,18.4s). Exact UI2 push CI43729780784 is SUCCESS: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43729780784 . Those checks do not cover pending opening-dialog dismissal.
+
+### UI2-R1 — Important: preserve an in-flight opening form and retry intent
+
+Paths at pinned SHA: `src/components/FloatingActionButton.tsx:52–53,117,130` and `src/components/OpenItemForm.tsx:54,113–119`. The wrapper closes unconditionally through Dialog.onClose or the header button, even while the actual form awaits openInventoryItem. Closing unmounts the form and its local values/intent ref. A late failure then has no visible error or same-intent retry form; reopening allows a fresh intent while the first request may still be active. This is not a claim that the queue/server deduplicator fails; it is a UI dismissal/draft-lifecycle hole. It predates UI2 but is within UI2's explicit slow-request/input-retention acceptance. The closing-item modal already protects this case.
+
+Codex's isolated test used the **real wrapper plus real OpenItemForm**, mocked catalog/fridge/inventory API boundary, and a deferred submission. All three expected-stay-open cases fail at exactab52a6c: header close, backdrop click, Escape with focus on the still-enabled header close button. Waiting350ms lets the normal dialog exit transition finish before asserting. A plain Escape with focus already lost to body after disabling submit may not reach the dialog; the focused-header case proves the actual keyboard path and must not be omitted. Temporary tests were not committed into the live app or Claude branch.
+
+Required fix: while opening is unresolved, either keep the same form/intent mounted or block accidental dismissal through all three paths. A backward-compatible, optional presentation-only busy callback from OpenItemForm to its wrapper is an acceptable approach; do not change inventory payloads, operation IDs, queue or server. Ensure controls recover on both success and failure; ordinary completed/idle dismissal and focus return still work. Add integrated tests with the real form (the existing wrapper test mocks it and cannot observe this bug):
+
+1. Select a product/amount, submit into a deferred promise, attempt header/backdrop/focused Escape: dialog/input/intent remain available; no second API call.
+2. Reject the pending request: error and values remain, controls recover, retry sends the exact original operationId/openedAtMs. No fake success or new intent for that retry.
+3. Resolve successfully/pending-local receipt: truthful receipt shown, normal close restored and focus returns to opener.
+
+Reproduction file source (synthetic fixtures only) is retained below for direct reuse; adapt names/test cleanup to your permanent suite rather than weakening the assertions.
+
+```tsx
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, expect, it, vi } from 'vitest';
+const api = vi.hoisted(() => ({ products: vi.fn(), fridges: vi.fn(), open: vi.fn() }));
+vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ businessId: 'review-business', role: 'admin', isOnShift: true, isOffline: false, user: { uid: 'review-admin' }, profile: { uid: 'review-admin', businessId: 'review-business', department: 'bar', role: 'admin' } }) }));
+vi.mock('../api/productsAPI', () => ({ getBusinessProducts: api.products }));
+vi.mock('../api/fridgesAPI', () => ({ getBusinessFridges: api.fridges }));
+vi.mock('../api/inventoryOperations', () => ({ openInventoryItem: api.open }));
+import FloatingActionButton from './FloatingActionButton';
+beforeEach(() => { vi.clearAllMocks(); api.products.mockResolvedValue([{ id: 'review-product', name: 'פריט בדיקה', type: 'units', shelfLifeDays: 2, area: 'bar', businessId: 'review-business' }]); api.fridges.mockResolvedValue([]); });
+it.each(['escape', 'header', 'backdrop'])('review: keeps the real opening form mounted during pending submission (%s)', async method => {
+  let resolve!: (receipt: { operationId: string; itemId: string; state: 'synced' }) => void;
+  api.open.mockImplementation(() => new Promise(r => { resolve = r; }));
+  render(<FloatingActionButton variant="inline" department="bar" onItemAdded={() => {}} />);
+  await userEvent.click(screen.getByRole('button', { name: 'פתיחת פריט' }));
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'מוצר' })).not.toBeDisabled());
+  await userEvent.click(screen.getByRole('combobox', { name: 'מוצר' }));
+  await userEvent.click(await screen.findByRole('option', { name: /פריט בדיקה/ }));
+  await userEvent.click(screen.getByRole('button', { name: 'פתח פריט' }));
+  await waitFor(() => expect(api.open).toHaveBeenCalledTimes(1));
+  try {
+    if (method === 'escape') { act(() => screen.getByRole('button', { name: 'סגירה' }).focus()); await userEvent.keyboard('{Escape}'); }
+    else if (method === 'header') await userEvent.click(screen.getByRole('button', { name: 'סגירה' }));
+    else { const container = document.querySelector('.MuiDialog-container')!; fireEvent.mouseDown(container); fireEvent.click(container); }
+    await act(async () => { await new Promise(r => setTimeout(r, 350)); });
+    expect(screen.queryByRole('dialog', { name: 'פתיחת פריט — בר' })).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'כמות' })).toHaveValue('1');
+  } finally {
+    await act(async () => { resolve({ operationId: 'review-operation', itemId: 'review-item', state: 'synced' }); });
+  }
+});
+```
+
+### UI2-R2 — Minor: complete desktop visual evidence
+
+The plan asks for before/after at390px and1280px. Current `docs/ui-review/ui2/` contains only390px files; handoff reports a1280×460 measurement but provides no1280 screenshot. Add synthetic1280px opening/closing screenshots (and a short-height sample if claiming the desktop keyboard-constrained case). Keep actual iPhone/Android keyboards/screen readers explicitly NOT RUN; a reduced headless viewport is not a real-phone test.
+
+Publish a bounded UI2 follow-up with regression tests, full untruncated checks and exact READY SHA. Codex has not merged UI2. UI3 may proceed independently under the plan, but acceptance of the combined UI candidate waits for UI2-R1. Do not edit another agent's handoff or deploy.
+
 ## Corrected UI1 accepted — 2026-11-15
 
 **R1–R4 RESOLVED** at `75c68f118015144b7c7e7c1087a5f5c8480b25aa`, superseding held UI1 `a8ed3b3`. Independent follow-up review finds no open Critical/Important issue. Codex independently ran client319/319, server58/58, production build, lint0errors/7existingwarnings and all5 real Chromium emulator browser tests (full output, exit0). Exact Claude checkpoint also has successful all-four-job CI run43727063044: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43727063044 .
