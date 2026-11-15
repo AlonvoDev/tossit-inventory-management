@@ -16,18 +16,47 @@ Counts are npm audit package findings, not confirmed exploitation. Root installe
 
 Fresh Node22 checks after refresh: client304/304, server58/58, production build PASS, lint0errors/7existingwarnings. Baseline client Node24/jsdom has a Blob-copy assertion mismatch; Node22 (the app/CI pin) passes. No worker/test assertion was weakened. S1 is a tested maintenance checkpoint, **not ready for release**; clean reinstall and full integration/browser checks are deferred to the final selected dependency graph to avoid repeating unchanged runs.
 
-## Remaining work / chosen migration boundaries
+## S2/S3 — final selected graph and local verification
 
-- Firebase11's pinned gRPC dependency causes the four omit-dev high findings; do not accept npm's suggested downgrade to Firebase9/rules-testing2. Investigate a supported newer SDK and matching emulator test library while retaining Node22.
-- Vitest3 cannot resolve its remaining pool/tool advisories by a compatible refresh. Upstream Vitest4 supports Vite6/Node22 and documents mock/config changes. Use a reviewed stable4.x version rather than jumping to5 without need.
-- Firebase CLI14 retains vulnerable toolchain dependencies; evaluate15 separately. No force/blanket override or obsolete PWA downgrade.
-- Server9moderate findings flow through older Google clients/uuid. Review Firebase Admin14/Functions7 requirements before a major update; verify actual source and isolated Neon artifact against local Auth/Firestore emulators on Node24.
+| Audit graph | Final candidate |
+| --- | --- |
+| Root, all installed packages |24: 22moderate/2low; 0high/critical; all remaining nodes dev-only|
+| Root, omit-dev |0 findings|
+| Functions, all installed packages |0 findings|
+
+Selected versions: Firebase12.19.0 + rules-unit-testing5.0.2, Firebase CLI15.36.0, Vitest4.1.12, Vite6.4.6, router7.18.5, serve14.2.8; server Firebase Admin14.5.1 + Functions7.4.0. Existing modular APIs remain supported; no application, worker, offline, UI or business-policy code changed. Root engine is now >=22.13.0 for required new transitive tooling. Use current22.x for app/native-worker work and current24.x for Neon (some optional CLI native dependencies require newer patch releases). The Functions engine stays22 as the Firebase runtime major selector. Firebase13/rules-testing6 were deliberately avoided because rules6 requires Node24.12 and would force a broader app-toolchain migration.
+
+One narrowly scoped override: `@firebase/firestore` -> `@grpc/grpc-js`1.14.7. Firebase12's Firestore package pins ~1.9.0, which retains reported issues;1.14.7 remains grpc1.x and meets both patched advisory thresholds. This affects its Node transport rather than adding browser business logic. Real SDK/emulator rules/source/bundle tests verify compatibility, not just package-version assertions. Remove the override when the selected upstream Firebase package allows a patched transport natively. No blanket overrides, force upgrades or obsolete tool downgrades.
+
+Fresh installs (`npm ci --no-fund --no-audit`, then `npm ci --prefix functions --no-fund --no-audit`) PASS on Node22.23.4. Final graph checks PASS:
+- Client304/304 on Node22; server58/58 on Node22 and separately Node24.
+- Frontend build, Functions TypeScript build, actual Neon ESM/ZIP build PASS; lint0errors/7existingwarnings.
+- Firestore rules42/42; retained legacy callable3pass/3intentionallyhost-onlyskips; Neon source6/6 and isolated actual artifact6/6 on Node24.
+- Real Chromium153/emulator browser5/5, including single worker/no load prompt/offline shell, durable replay, role denial, account-private queue and actual employee creation through the external callable URL.
+- Independent read-only review found no Critical/Important issue; the root Node-floor minor was fixed before this checkpoint. The managed host previously blocked native Functions-worker Unix sockets; native execution of this final toolchain is delegated to GitHub CI and is not claimed as locally run. Final remote CI/native result is pending publication of this exact checkpoint.
+
+No assertions were weakened and no new mock-only dependency tests were added. Source/isolated bundle integrations exercise actual SDK Auth/Firestore behavior. This is an integration candidate for Claude to merge, not authorization to deploy. Live Render/Neon/rules/main remain unchanged by these maintenance commits.
+
+### Residual dev-only advisories
+
+The24 package findings derive from five direct advisory causes, with higher-level metavulnerability counts through the CLI/PWA/lint graph:
+- OpenTelemetry baggage allocation (moderate): https://github.com/advisories/GHSA-8988-4f7v-96qf
+- deepmerge prototype poisoning (low): https://github.com/advisories/GHSA-gcqx-w48m-w2h4
+- glob AbortSignal traversal (moderate): https://github.com/advisories/GHSA-3g3m-2fjr-6pw4
+- minimatch globparts amplification (moderate): https://github.com/advisories/GHSA-g3hv-75wg-m249
+- uuid caller-supplied buffer bounds (moderate): https://github.com/advisories/GHSA-w5hq-g745-h8pq
+
+These are not assumed safe merely because they are dev-only. They remain an explicit upstream/tooling follow-up. Current CLI/PWA graphs retain constrained older packages; compatible audit fix has been exhausted. npm suggests unsupported/downgraded tooling or additional cross-major overrides for some resolutions. Those are not applied just to force a zero count. No production HTTP service or new exposed development listener is added by this change.
+
+## Migration decisions
+
+Firebase12/rules5 resolves the SDK-generation mismatch while keeping Node22; the scoped grpc override resolves its remaining pinned Node transport finding. Vitest4 replaces the vulnerable3.x test pool/tool chain; Firebase CLI15 replaces the remaining14.x critical tooling dependencies. Server Admin14/Functions7 removes all9 server moderate findings. These are deliberate direct-version upgrades validated by the checks above, not a blind `--force` resolution. PWA remains1.x/Vite6; no framework or app-source migration was needed.
 
 Upstream references reviewed:
 - https://v4.vitest.dev/guide/migration.html
 - https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9
 - https://firebase.google.com/support/release-notes/admin/node
 
-## Verification gate before READY
+## Verification gate before release
 
 Fresh lockfile installs, client/server tests, frontend/server/Neon builds, lint, Firestore authorization tests, legacy callable compatibility, hosted-source and isolated-bundle SDK integrations, and the existing five real Chromium emulator scenarios. Capture exact commands/results and remaining audit findings. Never use production accounts/data as test fixtures. Request independent review before marking the final checkpoint READY; do not merge main or deploy automatically.

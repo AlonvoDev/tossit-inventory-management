@@ -4,6 +4,14 @@ Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and re
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
 
+## Security maintenance S2/S3 — local verification complete, remote CI pending
+
+Dependency changes are ready for publication on codex/tossit-core; no live/main update. Details and residual inventory: docs/DEPENDENCY_AUDIT.md. Final audits: root omit-dev0, Functions all0; root all24dev-only (22moderate/2low), no high/critical. Firebase12/rules5 + CLI15 + Vitest4 chosen while retaining Node22. Firebase Admin14/Functions7 modular imports compile unchanged. Root floor>=22.13.0 corrected after independent review; recommend current22.x/24.x for optional native CLI deps. One scoped Firestore->grpc1.14.7 override, no source/worker/UI edits or blanket force fixes.
+
+Fresh locked installs PASS. Local final checks: client304, server58 on22 and24, rules42, legacy callable3pass/3host-onlyskips, source6 and isolated bundle6 (Node24), browser5; all builds PASS; lint0errors/7existingwarnings. Independent reviewer found no Critical/Important findings, Node-floor minor fixed. Native Functions worker and final exact-head CI remain pending on GitHub; do not claim remote pass before observing it. S1 published cbf6980 with exact tree; this next checkpoint finishes SDK/toolchain work. No production mutations, secrets, billing, notification activation or deployment.
+
+Claude UI1 READY a8ed3b3 is now published. No merge yet: review it and run combined checks after securing this checkpoint. UI1 handoff says browser4 despite five unchanged browser cases in tree; verify all5 during integration and correct the evidence through Claude's own handoff/request workflow. Nonblocking UI1-1 request proposes changing the current72h expiring window for short-lived products; no business-policy change was made as a dependency side effect. Keep it explicit for a separate reviewed decision. Claude may continue UI2/UI3 on his branch; package changes are Codex-owned.
+
 ## Security maintenance S1 — compatible lockfile checkpoint
 
 Alon started his external Claude session and authorized Codex's security/dependency lane. Plan: docs/superpowers/plans/2026-11-15-tossit-dependency-hardening.md. Audit/evidence: docs/DEPENDENCY_AUDIT.md. Root compatible lockfile refresh reduces all-package70→41 and omit-dev18→4high/0critical. Functions remains9moderate (compatible fix has no file effect). Direct ranges/UI/server code untouched. Fresh Node22 client304/server58/build PASS; lint0errors/7existingwarnings. Baseline Node24/client jsdom Blob test mismatch is not new; Node22 app pin passes. No assertions/source changed to mask it.
