@@ -4,6 +4,12 @@ Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and re
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
 
+## Security maintenance S1 — compatible lockfile checkpoint
+
+Alon started his external Claude session and authorized Codex's security/dependency lane. Plan: docs/superpowers/plans/2026-11-15-tossit-dependency-hardening.md. Audit/evidence: docs/DEPENDENCY_AUDIT.md. Root compatible lockfile refresh reduces all-package70→41 and omit-dev18→4high/0critical. Functions remains9moderate (compatible fix has no file effect). Direct ranges/UI/server code untouched. Fresh Node22 client304/server58/build PASS; lint0errors/7existingwarnings. Baseline Node24/client jsdom Blob test mismatch is not new; Node22 app pin passes. No assertions/source changed to mask it.
+
+S1 NOT RELEASE READY: remaining SDK/CLI/test-runner upgrades and final clean-install/source/bundle/browser/rules checks in S2/S3. Claude branch now fast-forwarded to shared381d7e4, no new requests at last fetch. Do not edit UI or deploy this checkpoint. Next investigate SDK12 + compatible rules-testing rather than latest13/rules6 (rules6 requires Node24.12, beyond current Node22 app). Major server/tools upgrades must be validated on Node22 and Neon24 before readiness. Publish this bounded checkpoint before proceeding.
+
 ## New UI/UX round — plan published 2026-11-15
 
 Alon requested a concrete plan for his separate Claude session. Entry point: docs/CLAUDE_WORK_PLAN.md. Full plan: docs/superpowers/plans/2026-11-15-tossit-ui-ux.md. Starting integrated main/core6addce2; old Claude branch357bf15 must merge the exact new plan-publication SHA before work. Claude owns UI1 inventory hierarchy, UI2 daily actions, UI3 navigation/admin consistency; Codex owns dependency/security/backend and integration. Explicit ownership/contracts include protected worker/offline/auth internals. Each checkpoint requires checks, emulator screenshots, commit/push/remote SHA and own handoff. UI development is authorized; production deployment of the redesigned candidate is not. No implementer agent was started by Codex; Alon will start Claude separately. No application code or live settings changed in this planning checkpoint.
