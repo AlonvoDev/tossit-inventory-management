@@ -4,6 +4,14 @@ Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and re
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
 
+## Security maintenance READY / UI1 review held — 2026-11-15
+
+Exact code checkpoint c916ffb12876e73e31110ddc2ad6ea3fb347044d is READY for integration: push CI43722923684 SUCCESS, all four jobs and native Functions-worker step explicitly inspected PASS. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43722923684 . Local runtime/server audits0; root24dev-only moderate/low; all regression/build/browser checks and independent dependency review recorded in docs/DEPENDENCY_AUDIT.md. PR2 is draft, no main/live deployment. The PR-triggered rerun is separate; do not claim its result unless observed.
+
+Independent UI1 review pinned a8ed3b353a145fe23db773b26a4d3d7128592fa3 found one Important regression (hidden statusFilter applies after switching to discarded mode), plus touch-target/department-label minors. Codex confirmed RED in a detached review worktree and GREEN with a one-line diagnostic guard; no UI fix/source change was committed in core or pushed to Claude's branch. UI1 is held until Claude supplies a corrected READY SHA. Reproduction/acceptance and full-five-browser evidence request are in docs/CODEX_REQUESTS.md; guide points Claude there. Do not edit Claude's in-progress UI2 files or misreport the review as a merge. Product-relative expiry-policy request remains acknowledged/nonblocking, current72h policy retained.
+
+This next commit only publishes verified CI evidence and review feedback. No new package/source/runtime/data/permission change. Alon should relay the review-feedback pointer to the external Claude session; git documentation has been published, no external message was sent. Continue reviewing a corrected UI checkpoint when it is published; keep manual deploy/schedule/billing unchanged.
+
 ## Security maintenance S2/S3 — local verification complete, remote CI pending
 
 Dependency changes are ready for publication on codex/tossit-core; no live/main update. Details and residual inventory: docs/DEPENDENCY_AUDIT.md. Final audits: root omit-dev0, Functions all0; root all24dev-only (22moderate/2low), no high/critical. Firebase12/rules5 + CLI15 + Vitest4 chosen while retaining Node22. Firebase Admin14/Functions7 modular imports compile unchanged. Root floor>=22.13.0 corrected after independent review; recommend current22.x/24.x for optional native CLI deps. One scoped Firestore->grpc1.14.7 override, no source/worker/UI edits or blanket force fixes.

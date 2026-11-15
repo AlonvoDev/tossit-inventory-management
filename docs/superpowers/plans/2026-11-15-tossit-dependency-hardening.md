@@ -14,7 +14,7 @@ Source of truth is the actual npm registry/audit graph plus upstream advisories,
 
 - [x] S1: capture baseline/audit and root/function compatible fixes; fresh locked install, root304/server58 tests, builds/lint, Firebase rules and source/bundle/browser integrations as warranted by changed graph; publish exact SHA and before/after audit.
 - [x] S2: resolve remaining major-toolchain/server findings where supported. Verify migration requirements before changing versions; isolate unavoidable configuration changes from Claude work and document any residual unsupported dependency with precise rationale.
-- [ ] S3: run combined final verification on Node22 and Neon bundle Node24; request focused independent review, publish READY checkpoint and integration instructions. Report CI separately until actually completed.
+- [x] S3: run combined final verification on Node22 and Neon bundle Node24; request focused independent review, publish READY checkpoint and integration instructions. Report CI separately until actually completed.
 
 Baseline on 2026-11-15: root npm audit70 (8critical/34high/20moderate/8low), omit-dev18 (3critical); functions9moderate/0high/0critical. Node22 client304/304 and server58/58 PASS. Host Node24 running client jsdom tests has an existing Blob-clean-copy assertion mismatch; Node22 is the declared app/CI baseline. Do not claim this is an application production regression or weaken the worker test to hide it. Root Node24 full-suite support is not a prerequisite for the separate Node24 server artifact.
 
@@ -22,4 +22,4 @@ Baseline on 2026-11-15: root npm audit70 (8critical/34high/20moderate/8low), omi
 
 Claude continues UI1–UI3 from381d7e4. Codex owns package manifests/lockfiles/config/CI/server; presentation contracts stay stable. Read Claude's published requests and integrate only pinned READY checkpoints. Each bounded task ends with checks, commit, push/remote-SHA verification and docs/handoff/codex.md updates; no completed work is left only local at context limits.
 
-Local S3 verification/review complete; remote native-worker/CI verification is pending publication of the final candidate. See docs/DEPENDENCY_AUDIT.md for exact evidence and residual dev-only findings.
+S3 complete: local suites/review and all four remote CI jobs (including native worker) PASS on c916ffb, run43722923684. See docs/DEPENDENCY_AUDIT.md for exact evidence and residual dev-only findings. No deployment was performed.
