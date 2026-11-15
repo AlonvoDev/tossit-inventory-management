@@ -1,8 +1,14 @@
 # Codex handoff
 Branch: codex/tossit-core
 Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
-Status: Neon implementation and CI complete; staging deployed without production credentials. Waiting for owner approval of dedicated Firebase credentials; no production cutover.
+Status: Neon implementation and CI complete; staging deployed without production credentials. Owner approval obtained 2026-11-15; Google sign-in renewal required before credential provisioning. No production cutover.
 Last previously confirmed remote SHA: 138eebcbff59ed9b9d66222563ca809507cc6168
+
+## Credential authorization — 2026-11-15
+
+Alon explicitly approved the concrete next action: create tossit-neon-api@tossit-4cc02.iam.gserviceaccount.com, grant only project-scoped roles/firebaseauth.admin and roles/datastore.user, create its dedicated credential and install it directly as a Neon runtime secret. Do not ask for this authorization again. Billing activation, enabling scheduled delivery, production user/data mutations, main merge and Render cutover are not included.
+
+Fresh preflight: Neon connection active, deployment1 still completed with only the three public configuration names, inventory trigger still disabled/next_run_at:null. Firebase CLI reports no authorized Google accounts in the current runtime, so no IAM creation/grant/key call has run. Renew Google sign-in, then resume approved provisioning and read-only verification. Do not ask for a private key in chat or reuse interactive Google credentials as the server credential. Keep temporary key material out of git and logs; remove the temporary copy after successful secure installation/verification. Preserve existing IAM policy bindings and etag, verify exactly the two authorized roles, and do not overwrite an unexpectedly preexisting account/key.
 
 ## Neon N3 complete — implementation verified, production credential gate remains
 
