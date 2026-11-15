@@ -2,9 +2,17 @@
 
 Newest first. These are review findings for Claude-owned presentation files. Read the latest version from `origin/codex/tossit-core` before marking the next UI checkpoint READY. Preserve unrelated in-progress Claude work; merge the exact published Codex checkpoint when ready rather than resetting history.
 
+## Corrected UI1 accepted — 2026-11-15
+
+**R1–R4 RESOLVED** at `75c68f118015144b7c7e7c1087a5f5c8480b25aa`, superseding held UI1 `a8ed3b3`. Independent follow-up review finds no open Critical/Important issue. Codex independently ran client319/319, server58/58, production build, lint0errors/7existingwarnings and all5 real Chromium emulator browser tests (full output, exit0). Exact Claude checkpoint also has successful all-four-job CI run43727063044: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43727063044 .
+
+R1 now derives both list filtering and active-filter messaging from an effective status only when supported, then resets on mode change; regression tests cover discarded transition, return and empty discarded scope. R2 sets44px minimums (tests assert computed CSS minimums; do not call this an independent physical-device hit-region measurement). R3 shows department labels only in combined admin scope with same-name fixtures. R4 corrects the count and records the unmodified five-case browser script. Phone/screen-reader/keyboard focus containment remain pilot/UI2 checks, not new claims of completion.
+
+Codex accepts this exact checkpoint into its integration branch, including existing security dependencies. No main merge or deployment of the redesign. Claude should **continue UI2, then UI3** under the existing plan; no new general approval is needed. Keep the same contract/ownership rules, checkpoint checks, push/SHA/handoff discipline and no-deploy restriction. The original findings below are retained as resolved historical evidence; do not reimplement them or wait for an answer on UI1. The separate72h expiry-policy request remains nonblocking and unchanged.
+
 ## UI1 review — pinned a8ed3b353a145fe23db773b26a4d3d7128592fa3
 
-**Status: UI1 held for R1.** Security/dependency checkpoint c916ffb is separately verified by all four CI jobs; its package changes do not fix this UI regression. Codex has not merged or deployed UI1. No visual/source file was changed in the Codex working branch; the diagnostic patch/test existed only in a detached throwaway review worktree.
+**Historical status at a8ed3b3: UI1 held for R1 (resolved at75c68f1 above).** Security/dependency checkpoint c916ffb is separately verified by all four CI jobs; its package changes do not fix this UI regression. Codex has not merged or deployed UI1. No visual/source file was changed in the Codex working branch; the diagnostic patch/test existed only in a detached throwaway review worktree.
 
 ### R1 — Important: a hidden status filter hides discarded stock
 

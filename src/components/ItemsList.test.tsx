@@ -75,7 +75,7 @@ describe('ItemsList', () => {
     api.closeInventoryItem.mockReturnValue(new Promise(r => (resolve = r)));
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByLabelText(/נזרק/));
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'כמות שנזרקה' }), { target: { value: '0.3' } });
@@ -93,7 +93,7 @@ describe('ItemsList', () => {
     as('staff');
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByLabelText(/נזרק/));
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'כמות שנזרקה' }), { target: { value: '0.6' } });
@@ -110,7 +110,7 @@ describe('ItemsList', () => {
       .mockResolvedValueOnce({ operationId: 'x', itemId: '1', state: 'synced' });
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: 'סמן כנגמר' }));
     expect(await within(dialog).findByText(/ניסיון חוזר לא יבצע את הפעולה פעמיים/)).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('ItemsList', () => {
     api.closeInventoryItem.mockRejectedValue(Object.assign(new Error('x'), { code: 'already-closed' }));
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: 'סמן כנגמר' }));
     expect(await within(dialog).findByText(/כבר סומן כנגמר או כנזרק על ידי פעולה אחרת/)).toBeInTheDocument();
@@ -152,16 +152,128 @@ describe('ItemsList', () => {
     api.closeInventoryItem.mockResolvedValue({ operationId: 'x', itemId: '1', state: 'pending' });
     render(<ItemsList areaFilter="bar" isOffline />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'סמן כנגמר' }));
     expect(await screen.findByText('העדכון של "לימון" ממתין לשליחה לשרת ועדיין לא נשמר')).toBeInTheDocument();
+  });
+
+  it('keeps expiry and failed-sync labels visible together', async () => {
+    as('staff');
+    offline.operations = [{ operationId: 'o1', itemId: '1', state: 'failed' }];
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'שמנת', 'bar', { expiryTime: ts(Date.now() - 3600e3) })]);
+    const card = (await screen.findByText('שמנת')).closest('article') as HTMLElement;
+    expect(within(card).getByText('פג תוקף')).toBeInTheDocument();
+    expect(within(card).getByText('הפעולה נכשלה')).toBeInTheDocument();
+    expect(within(card).getByText('0.5 ק״ג')).toBeInTheDocument();
+  });
+
+  it('distinguishes empty scope from no search matches', async () => {
+    as('staff');
+    const { unmount } = render(<ItemsList areaFilter="bar" />);
+    push([]);
+    expect(await screen.findByText('אין פריטים פתוחים כרגע')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'נקה חיפוש וסינון' })).not.toBeInTheDocument();
+    unmount();
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar')]);
+    await screen.findByText('לימון');
+    fireEvent.change(screen.getByRole('textbox', { name: 'חיפוש פריט' }), { target: { value: 'אין כזה' } });
+    expect(await screen.findByText('אין פריטים שתואמים לחיפוש או לסינון')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'נקה חיפוש וסינון' }));
+    expect(await screen.findByText('לימון')).toBeInTheDocument();
+  });
+
+  it('keeps permission errors visible instead of an empty list', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    act(() => api.onError!(Object.assign(new Error('x'), { code: 'permission-denied' })));
+    expect(await screen.findByRole('alert')).toHaveTextContent('אין לך הרשאה לבצע פעולה זו.');
+    expect(screen.queryByText('אין פריטים פתוחים כרגע')).not.toBeInTheDocument();
+  });
+
+  it('filters by status with counts that match the list', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'שמנת', 'bar', { expiryTime: ts(Date.now() - 3600e3) }), mk('2', 'נענע', 'bar', { expiryTime: ts(Date.now() + 5 * 3600e3) }), mk('3', 'לימון', 'bar')]);
+    await screen.findByText('לימון');
+    await userEvent.click(screen.getByRole('button', { name: 'פג תוקף (1)' }));
+    expect(screen.getByText('שמנת')).toBeInTheDocument();
+    expect(screen.queryByText('לימון')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'הכל (3)' }));
+    expect(screen.getByText('לימון')).toBeInTheDocument();
+  });
+
+  it('R1: a status filter chosen in inventory does not hide discarded items after switching mode', async () => {
+    as('admin');
+    const { rerender } = render(<ItemsList areaFilter="bar" />);
+    const records = [
+      mk('review-open', 'פתוח לבדיקה', 'bar', { expiryTime: ts(Date.now() - 3600e3) }),
+      mk('review-discarded', 'נזרק לבדיקה', 'bar', { discarded: true, isThrown: true }),
+    ];
+    push(records);
+    await userEvent.click(await screen.findByRole('button', { name: 'פג תוקף (1)' }));
+    rerender(<ItemsList showDiscardedOnly />);
+    push(records);
+    expect(await screen.findByText('נזרק לבדיקה')).toBeInTheDocument();
+    expect(screen.queryByText('אין פריטים שתואמים לחיפוש או לסינון')).not.toBeInTheDocument();
+    // Back to inventory: no stale hidden filter; all open items shown and "הכל" selected.
+    rerender(<ItemsList areaFilter="bar" />);
+    push(records);
+    expect(await screen.findByText('פתוח לבדיקה')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'הכל (1)' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('R1: a genuinely empty discarded scope says so, without a false active-filter message', async () => {
+    as('admin');
+    const { rerender } = render(<ItemsList areaFilter="bar" />);
+    push([mk('o', 'פתוח', 'bar', { expiryTime: ts(Date.now() - 3600e3) })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'פג תוקף (1)' }));
+    rerender(<ItemsList showDiscardedOnly />);
+    push([mk('o', 'פתוח', 'bar', { expiryTime: ts(Date.now() - 3600e3) })]);
+    expect(await screen.findByText('אין פריטים שנזרקו')).toBeInTheDocument();
+    expect(screen.queryByText('אין פריטים שתואמים לחיפוש או לסינון')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'נקה חיפוש וסינון' })).not.toBeInTheDocument();
+  });
+
+  it('R3: combined admin scope labels the department of same-name items', async () => {
+    as('admin');
+    render(<ItemsList showDiscardedOnly />);
+    push([
+      mk('b', 'לימון', 'bar', { discarded: true, isThrown: true }),
+      mk('k', 'לימון', 'kitchen', { discarded: true, isThrown: true }),
+    ]);
+    const cards = await screen.findAllByRole('article', { name: /לימון/ });
+    expect(cards).toHaveLength(2);
+    expect(cards.map(c => within(c).getByTestId('department').textContent).sort()).toEqual(['בר', 'מטבח']);
+  });
+
+  it('R3: a single-department tab does not repeat the department on every card', async () => {
+    as('admin');
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('b', 'לימון', 'bar')]);
+    const card = await screen.findByRole('article', { name: /לימון/ });
+    expect(within(card).queryByTestId('department')).not.toBeInTheDocument();
+  });
+
+  it('R2: search, fridge and status controls have at least 44px targets', async () => {
+    as('staff');
+    api.getBusinessFridges.mockResolvedValue([{ id: 'f1', name: 'מקרר', department: 'bar', businessId: 'b1' }]);
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar')]);
+    const chip = await screen.findByRole('button', { name: 'הכל (1)' });
+    expect(getComputedStyle(chip).minHeight).toBe('44px');
+    const search = screen.getByRole('textbox', { name: 'חיפוש פריט' }).closest('.MuiInputBase-root') as HTMLElement;
+    expect(getComputedStyle(search).minHeight).toBe('44px');
+    const fridge = (await screen.findByRole('combobox', { name: 'מקרר' })).closest('.MuiInputBase-root') as HTMLElement;
+    expect(getComputedStyle(fridge).minHeight).toBe('44px');
   });
 
   it('off-shift staff cannot open the action dialog', async () => {
     as('staff', false);
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    expect(await screen.findByRole('button', { name: /עדכן סטטוס/ })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: /נגמר \/ נזרק/ })).toBeDisabled();
     expect(screen.getByText(/יש להתחיל משמרת/)).toBeInTheDocument();
   });
 

@@ -12,7 +12,7 @@ vi.mock('../components/ItemsList', () => ({
 vi.mock('../components/DashboardKPIs', () => ({ default: () => null }));
 vi.mock('../components/ShiftButton', () => ({ default: () => null }));
 vi.mock('../components/FloatingActionButton', () => ({
-  default: (p: { department: string }) => <div>FAB:{p.department}</div>,
+  default: (p: { department: string; variant?: string }) => <button>פתיחת פריט:{p.department}:{p.variant ?? 'fab'}</button>,
 }));
 vi.mock('../services/discardScheduler', () => ({ startDiscardScheduler: vi.fn(), stopDiscardScheduler: vi.fn() }));
 
@@ -50,8 +50,18 @@ describe('Dashboard', () => {
     expect(screen.getByRole('tab', { name: /מטבח/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /^בר$/ })).not.toBeInTheDocument();
     expect(screen.getByText('ITEMS:kitchen')).toBeInTheDocument();
-    expect(screen.getByText('FAB:kitchen')).toBeInTheDocument();
+    expect(screen.getByText('פתיחת פריט:kitchen:inline')).toBeInTheDocument();
     expect(screen.getByText('מטבח', { selector: '.MuiChip-label' })).toBeInTheDocument();
+  });
+
+  it('preserves staff department restrictions and puts the open action before the list', () => {
+    as('staff', 'bar');
+    renderDashboard();
+    expect(screen.queryByRole('tab', { name: /מטבח/ })).not.toBeInTheDocument();
+    const open = screen.getByText('פתיחת פריט:bar:inline');
+    const list = screen.getByText('ITEMS:bar');
+    expect(open.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/פריטים פעילים|נזרק היום/)).not.toBeInTheDocument();
   });
 
   it('admins see both departments', () => {

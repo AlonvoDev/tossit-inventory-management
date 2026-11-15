@@ -4,6 +4,14 @@ Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and re
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
 
+## Corrected UI1 accepted/integrated — 2026-11-15
+
+Pinned Claude checkpoint75c68f118015144b7c7e7c1087a5f5c8480b25aa contains the normal merge of Codexf5ce297 plus corrected UI1. Verified f5ce297 is an ancestor; all package/lockfiles exactly match the reviewed security graph. Follow-up independent review finds R1–R4 resolved and no open Critical/Important findings. The nonblocking72h business-policy request remains unchanged.
+
+Before committing integration, Codex checked the exact source in an isolated detached worktree using the already verified identical dependencies: client319/319, server58/58, production build PASS, lint0errors/7existingwarnings, full existing Chromium153/emulator browser5/5 PASS (exit0,18.2s). Includes durable queue/reload, account privacy, role guard, one worker/no initial prompt and actual employee creation via external callable host. Also inspected all four CI jobs SUCCESS at exact75c68f1, run43727063044. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43727063044 . Backend/domain/worker source is unchanged; no redundant rules/source/bundle reruns locally beyond exact-head CI coverage.
+
+Normal no-ff merge into codex/tossit-core, with acceptance docs only on top of the tested75c68f1 tree. UI1 is now accepted; docs/CODEX_REQUESTS.md closes R1–R4. Claude can continue UI2→UI3 independently with existing contracts and commit/push/SHA evidence per task. Do not edit Claude's handoff. Original held findings below are historical. Physical phones/screen readers, UI2 dialog focus containment and live pilot remain NOT RUN. Main/live/settings/schedule/billing unchanged; PR2 stays draft for remaining UI checkpoints. Integration commit's own CI will be separate from the verified75c68f1 run.
+
 ## Security maintenance READY / UI1 review held — 2026-11-15
 
 Exact code checkpoint c916ffb12876e73e31110ddc2ad6ea3fb347044d is READY for integration: push CI43722923684 SUCCESS, all four jobs and native Functions-worker step explicitly inspected PASS. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43722923684 . Local runtime/server audits0; root24dev-only moderate/low; all regression/build/browser checks and independent dependency review recorded in docs/DEPENDENCY_AUDIT.md. PR2 is draft, no main/live deployment. The PR-triggered rerun is separate; do not claim its result unless observed.
