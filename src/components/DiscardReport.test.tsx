@@ -48,8 +48,10 @@ describe('DiscardReport', () => {
     expect(screen.getByText('פג תוקף: 1')).toBeInTheDocument();
     expect(screen.getByText('נפגם: 1')).toBeInTheDocument();
     expect(screen.getByText('אחר: 1')).toBeInTheDocument();
-    // decimal kg preserved, units shown as integers
-    expect(screen.getByText('2.5')).toBeInTheDocument();
+    // decimal kg preserved in the product row; the kg total is shown separately from units
+    expect(within(screen.getByText('חלב').closest('tr') as HTMLElement).getByText('2.5')).toBeInTheDocument();
+    expect(screen.getByText('נזרק בק״ג').parentElement).toHaveTextContent('2.5');
+    expect(screen.getByText('נזרק ביחידות').parentElement).toHaveTextContent('4');
   });
 
   it('applies a typed date range as inclusive whole local days', async () => {

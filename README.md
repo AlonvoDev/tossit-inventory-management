@@ -9,6 +9,10 @@ kitchen: who opened what and when, when it expires, and whether it was finished 
 > and offline app-shell reload. Real signed-in user workflows and phone/staff pilot remain unverified.
 > Push is not configured and its schedule remains disabled. See [What is not verified yet](#what-is-not-verified-yet).
 
+> **Next release:** the UI1–UI3 refresh and dependency hardening are accepted on the integration branch,
+> with354 client/58 server/5 browser checks passing locally. This refresh is **not deployed yet**;
+> final CI/rollout and real-device/staff pilot remain separate. See [release status](docs/RELEASE.md).
+
 ## What it does
 
 **Accounts and permissions**
@@ -77,7 +81,7 @@ docs/            release gates, pilot checklist, delivery handoffs
 
 ## Running locally
 
-Requirements: **Node 22** (`.node-version`) for the frontend, **Node 24** for the Neon server artifact, and **Java 21** for Firebase emulators. The Neon ZIP build also uses the Python 3 standard library.
+Requirements: **current Node 22.x, at least22.13** (`.node-version`) for the frontend, **current Node 24.x** for the Neon server artifact, and **Java 21** for Firebase emulators. The Neon ZIP build also uses the Python 3 standard library.
 
 ```bash
 npm ci
@@ -132,7 +136,7 @@ in **[docs/RELEASE.md](docs/RELEASE.md)**. The Neon path does not deploy Firebas
 - Real signed-in production workflows: login, inventory changes and employee administration still need owner verification. Client/rules are deployed; Neon has its dedicated Firebase credential. VAPID keys remain absent and the schedule is disabled.
 - Real phones: iPhone/Android install, offline use, update flow — **NOT RUN**.
 - Real push delivery with the app closed — **NOT RUN** (needs matching VAPID configuration and an authorized push pilot).
-- Dependency maintenance: npm audit reports outstanding advisories; exposure/fixes require a separate reviewed update (see RELEASE.md).
+- Dependency maintenance candidate: root runtime/server audits are clean;24 dev-only moderate/low findings remain. These updates are not deployed yet. See [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md).
 - A pilot with real staff — **NOT RUN**. Checklist: [docs/PILOT.md](docs/PILOT.md).
 
 ## Documentation

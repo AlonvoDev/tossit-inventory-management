@@ -15,29 +15,33 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
-  Card,
-  CardContent,
-  Grid,
   Chip,
   CircularProgress,
   Alert,
   Button,
   useTheme,
+  useMediaQuery,
   alpha,
   TextField,
   InputAdornment,
   MenuItem,
 } from '@mui/material';
 import {
+  ArrowDownward as ArrowDownwardIcon,
+  ArrowUpward as ArrowUpwardIcon,
   Search as SearchIcon,
-  TrendingUp as TrendingUpIcon,
-  Delete as DeleteIcon,
-  Assessment as AssessmentIcon,
-  DateRange as DateIcon,
-  FilterList as FilterIcon,
 } from '@mui/icons-material';
 
 type SortKey = 'productName' | 'totalQuantity' | 'discardCount' | 'averageQuantity' | 'lastDiscarded';
+
+/** Same keys and labels as the desktop table headers (phone sort control, UI3-R2). */
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'productName', label: 'שם המוצר' },
+  { key: 'totalQuantity', label: 'כמות כוללת נזרקת' },
+  { key: 'discardCount', label: 'מספר זריקות' },
+  { key: 'averageQuantity', label: 'ממוצע לזריקה' },
+  { key: 'lastDiscarded', label: 'זריקה אחרונה' },
+];
 type SortOrder = 'asc' | 'desc';
 
 interface DiscardReportProps {
@@ -48,6 +52,7 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
   const { businessId: authBusinessId } = useAuth();
   const businessId = propBusinessId || authBusinessId;
   const theme = useTheme();
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
   const [reportData, setReportData] = useState<DiscardReportItem[]>([]);
   const [filteredData, setFilteredData] = useState<DiscardReportItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,10 +134,8 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
   };
 
   // Calculate summary statistics
-  const totalQuantityDiscarded = reportData.reduce((sum, item) => sum + item.totalQuantity, 0);
   const totalDiscardEvents = reportData.reduce((sum, item) => sum + item.discardCount, 0);
   const totalProducts = reportData.length;
-  const avgQuantityPerEvent = totalDiscardEvents > 0 ? totalQuantityDiscarded / totalDiscardEvents : 0;
 
   const getReasonColor = (reason: string) => {
     switch (reason) {
@@ -193,151 +196,128 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
     );
   }
 
+  const kgTotal = reportData.filter(i => i.type === 'kg').reduce((sum, i) => sum + i.totalQuantity, 0);
+  const unitsTotal = reportData.filter(i => i.type !== 'kg').reduce((sum, i) => sum + i.totalQuantity, 0);
+  const round = (n: number) => Math.round(n * 1000) / 1000;
+  const reasonChips = (item: DiscardReportItem) => (
+    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+      {item.reasons.expired > 0 && <Chip size="small" label={`פג תוקף: ${item.reasons.expired}`} sx={{ bgcolor: '#FFEDD5', color: '#7C2D12', fontWeight: 600 }} />}
+      {item.reasons.damaged > 0 && <Chip size="small" label={`נפגם: ${item.reasons.damaged}`} sx={{ bgcolor: '#FFE4E6', color: '#9F1239', fontWeight: 600 }} />}
+      {item.reasons.other > 0 && <Chip size="small" label={`אחר: ${item.reasons.other}`} sx={{ bgcolor: '#E5E7EB', color: '#374151', fontWeight: 600 }} />}
+    </Box>
+  );
+  const stats: { label: string; value: string }[] = [
+    { label: 'אירועי זריקה', value: String(totalDiscardEvents) },
+    { label: 'מוצרים', value: String(totalProducts) },
+    { label: 'נזרק בק״ג', value: round(kgTotal).toString() },
+    { label: 'נזרק ביחידות', value: round(unitsTotal).toString() },
+  ];
+
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
-          📊 דוח זריקות מסוכם
+    <Box>
+      <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+        דוח זריקות
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 2 }}>
+        כמויות שנזרקו לפי מוצר. ק״ג ויחידות מוצגים בנפרד.
+      </Typography>
+
+      {/* Filters */}
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+        <DateRangePicker startDate={startDate} endDate={endDate} onDateChange={handleDateRangeChange} onClear={handleClearDateFilter} />
+        <TextField
+          select
+          size="small"
+          label="סיבת זריקה"
+          value={reason}
+          onChange={(e) => setReason(e.target.value as DiscardReason | '')}
+          sx={{ minWidth: 150, '& .MuiInputBase-root': { minHeight: 44 } }}
+        >
+          <MenuItem value="">כל הסיבות</MenuItem>
+          <MenuItem value="expired">פג תוקף</MenuItem>
+          <MenuItem value="damaged">נפגם</MenuItem>
+          <MenuItem value="other">אחר</MenuItem>
+        </TextField>
+        <TextField
+          size="small"
+          label="חיפוש מוצר"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+          sx={{ flex: '1 1 180px', minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}
+        />
+      </Box>
+      {dateFilterActive && (startDate || endDate) && (
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          מציג זריקות מ־{startDate ? startDate.toLocaleDateString('he-IL') : 'ההתחלה'} עד {endDate ? endDate.toLocaleDateString('he-IL') : 'היום'}
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          סיכום מלא של כל הזריקות במערכת לפי מוצרים
-        </Typography>
+      )}
+
+      {/* Summary: plain counts, units never mixed */}
+      <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' }, my: 2 }}>
+        {stats.map(stat => (
+          <Paper key={stat.label} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+            <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+              {stat.label}
+            </Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.25rem' }}>{stat.value}</Typography>
+          </Paper>
+        ))}
       </Box>
 
-      {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-            color: 'white'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <AssessmentIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {totalProducts}
-              </Typography>
-              <Typography variant="body2">
-                סוגי מוצרים שנזרקו
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: `linear-gradient(135deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
-            color: 'white'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <DeleteIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {totalQuantityDiscarded.toFixed(1)}
-              </Typography>
-              <Typography variant="body2">
-                כמות כוללת נזרקת
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
-            color: 'white'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <TrendingUpIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {totalDiscardEvents}
-              </Typography>
-              <Typography variant="body2">
-                אירועי זריקה
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ 
-            background: `linear-gradient(135deg, ${theme.palette.info.main}, ${theme.palette.info.dark})`,
-            color: 'white'
-          }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <DateIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {avgQuantityPerEvent.toFixed(1)}
-              </Typography>
-              <Typography variant="body2">
-                ממוצע לאירוע
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Search and Filters */}
-      <Box sx={{ mb: 4 }}>
-        {/* Date Range Filter */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <FilterIcon sx={{ mr: 1 }} />
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              סינון לפי תאריכים
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              onDateChange={handleDateRangeChange}
-              onClear={handleClearDateFilter}
-            />
-          </Box>
-            
-          {dateFilterActive && (startDate || endDate) && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.info.main, 0.1), borderRadius: 1 }}>
-              <Typography variant="body2" color="info.main" sx={{ textAlign: 'center' }}>
-                📅 מציג נתונים מ-{startDate ? startDate.toLocaleDateString('he-IL') : 'ההתחלה'} 
-                עד {endDate ? endDate.toLocaleDateString('he-IL') : 'עכשיו'}
-              </Typography>
-            </Box>
-          )}
-        </Paper>
-
-        {/* Reason filter and search */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+      {/* UI3-R2: phones have no table headers, so expose the same sort keys/directions here. */}
+      {isPhone && reportData.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5 }}>
           <TextField
             select
-            label="סיבת זריקה"
-            value={reason}
-            onChange={(e) => setReason(e.target.value as DiscardReason | '')}
-            sx={{ minWidth: 180 }}
+            size="small"
+            label="מיון לפי"
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value as SortKey)}
+            sx={{ flex: 1, minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}
           >
-            <MenuItem value="">כל הסיבות</MenuItem>
-            <MenuItem value="expired">פג תוקף</MenuItem>
-            <MenuItem value="damaged">נפגם</MenuItem>
-            <MenuItem value="other">אחר</MenuItem>
+            {SORT_OPTIONS.map(option => (
+              <MenuItem key={option.key} value={option.key} sx={{ minHeight: 44 }}>
+                {option.label}
+              </MenuItem>
+            ))}
           </TextField>
-          <TextField
-            placeholder="חיפוש מוצרים..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ maxWidth: 400, width: '100%' }}
-          />
+          <Button
+            variant="outlined"
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            aria-label={`כיוון מיון: ${sortOrder === 'asc' ? 'עולה' : 'יורד'}`}
+            startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
+            sx={{ minHeight: 44, flexShrink: 0 }}
+          >
+            {sortOrder === 'asc' ? 'עולה' : 'יורד'}
+          </Button>
         </Box>
-      </Box>
+      )}
 
-      {/* Report Table */}
-      <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      {isPhone && filteredData.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {filteredData.map(item => (
+            <Paper key={`${item.productName}|${item.type}`} component="article" variant="outlined" aria-label={item.productName} sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>{item.productName}</Typography>
+                <Chip size="small" variant="outlined" label={item.type === 'kg' ? 'ק״ג' : 'יחידות'} />
+              </Box>
+              <Typography sx={{ fontWeight: 600 }}>
+                נזרק: {item.totalQuantity.toFixed(item.type === 'kg' ? 1 : 0)} {item.type === 'kg' ? 'ק״ג' : 'יח׳'} · {item.discardCount} פעמים
+              </Typography>
+              <Typography variant="body2">
+                ממוצע לזריקה: {Math.round(item.averageQuantity * 100) / 100} {item.type === 'kg' ? 'ק״ג' : 'יח׳'}
+              </Typography>
+              {reasonChips(item)}
+              <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>זריקה אחרונה: {formatDate(item.lastDiscarded)}</Typography>
+            </Paper>
+          ))}
+        </Box>
+      )}
+
+      {/* Report table (tablet/desktop) */}
+      {!isPhone && (
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
         <TableContainer>
           <Table>
             <TableHead sx={{ background: alpha(theme.palette.primary.main, 0.1) }}>
@@ -488,6 +468,7 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
           </Table>
         </TableContainer>
       </Paper>
+      )}
 
       {filteredData.length === 0 && !loading && (
         <Box sx={{ textAlign: 'center', py: 8 }}>

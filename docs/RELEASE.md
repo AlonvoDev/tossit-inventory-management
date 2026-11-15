@@ -1,5 +1,17 @@
 # TossIt release gates
 
+## UI/security refresh candidate — accepted, not yet deployed (2026-11-15)
+
+All UI1–UI3 review blockers are resolved at Claude2810835 plus Codex's synchronized Hebrew menu/test-selector change and full five-field/two-direction sorting assertions. Local final354client/58server/full5browser, frontend build and lint0errors/7existingwarnings PASS; original2810835 all4 CI jobs PASS. The integrated candidate's new exact-head CI must also pass before release readiness is claimed. Its SHA is recorded in the latest Codex handoff/PR2 after publication.
+
+This candidate includes dependency hardening (runtime/server audit0,24dev-only low/moderate findings recorded in DEPENDENCY_AUDIT.md). Live application remains8ac72aa/Render dep-dbsnvcm1egvs73ecrql0; live Neon remains deployment2 with its previous SDK bundle. UI acceptance is not authorization to deploy this new round.
+
+For the authorized next rollout: review/pin PR2 head and successful CI; merge normally, retain Render manual-deploy/Free/Node22 and existing public Neon URL/emulators:false/VAPID-empty configuration. Rebuild/deploy the same reviewed Neon Node24 artifact with the new server dependencies while **omitting environment updates to preserve existing runtime secrets/public config**; do not regenerate/recreate the service account or expose its key. Capture previous/new provider deployment IDs. No Firestore schema/rule/index change is needed for this UI/dependency-only round: the current strict rules already match the unchanged contracts. Do not redeploy historical Blaze instructions or enable billing.
+
+Keep VAPID absent/notification controls unavailable and trigger disabled until the separately authorized push pilot. Verify live assets, exact worker/scope/no permission prompt, guarded deep links and Neon health; actual owner sign-in/inventory/employee workflows and real-device keyboard/offline/update/staff tests still need a pilot. Preserve data and durable local queue on updates/rollback. The current production baseline8ac72aa and Neon deployment2 are the rollback references for this refresh; historical9948d34 is an older client incompatible with the current strict rules and should not be selected casually.
+
+Known nonblocking follow-ups:72h expiring policy on short-lived products; report same-name products without department identification. No new report scope/expiry policy was introduced during visual work. Real phone evidence remains NOT RUN; reduced desktop viewports are not proof of mobile keyboard behavior.
+
 ## Live rollout — 2026-11-15
 
 Alon explicitly authorized the coordinated client/rules rollout after the approved admin profile repair. PR1 was marked ready and merged normally into main at8ac72aa2c81e91e77550f0b3f936b909d26d67ea, with the expected head pinned to d73752b. All four main-merge CI jobs passed (build-and-unit, firebase-emulators, neon-host, browser).

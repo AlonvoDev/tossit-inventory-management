@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useId, useState } from 'react';
 import {
   Fab,
+  Button,
   useTheme,
-  alpha,
-  Modal,
-  Box,
   IconButton,
-  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -21,6 +22,8 @@ interface FloatingActionButtonProps {
   department: Department;
   onItemAdded: () => void;
   disabled?: boolean;
+  /** 'inline' renders a labelled button in the page header (UI1); default keeps the floating button. */
+  variant?: 'fab' | 'inline';
 }
 
 /**
@@ -30,9 +33,11 @@ interface FloatingActionButtonProps {
 const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   department,
   onItemAdded,
-  disabled = false
+  disabled = false,
+  variant = 'fab',
 }) => {
   const [showModal, setShowModal] = useState(false);
+  const titleId = useId();
   const { profile, user, isOffline } = useAuth();
 
   // Offline opening is allowed: C3 saves the intent on the device before sending.
@@ -44,7 +49,12 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     }
   };
 
+  // UI2-R1: while an opening request is unresolved the dialog cannot be dismissed (Escape, backdrop or
+  // header button), so the form, its values and its retry intent stay mounted until success or failure.
+  const [busy, setBusy] = useState(false);
+  const handleBusyChange = useCallback((value: boolean) => setBusy(value), []);
   const handleCloseModal = () => {
+    if (busy) return;
     setShowModal(false);
   };
 
@@ -56,10 +66,21 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 
 
   const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <>
-      {/* Modern Floating Action Button */}
+      {variant === 'inline' ? (
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleOpenModal}
+          disabled={isDisabled}
+          sx={{ minHeight: 44, px: 2, flexShrink: 0, fontWeight: 700 }}
+        >
+          פתיחת פריט
+        </Button>
+      ) : (
       <Fab
         color="primary"
         aria-label="פתיחת פריט"
@@ -92,77 +113,40 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       >
         <AddIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
       </Fab>
+      )}
 
-      {/* Modern Modal with OpenItemForm */}
-      <Modal
+      {/* Open-item dialog: full screen on phones so the form and its sticky footer use the whole viewport;
+          MUI traps focus inside and returns it to the opener on close. */}
+      <Dialog
         open={showModal}
         onClose={handleCloseModal}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 1, sm: 2 },
-        }}
+        disableEscapeKeyDown={busy}
+        fullScreen={fullScreen}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby={titleId}
+        dir="rtl"
+        PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
-        <Box
-          sx={{
-            background: alpha(theme.palette.background.paper, 0.95),
-            backdropFilter: 'blur(20px)',
-            borderRadius: 4,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
-            maxWidth: { xs: '95vw', sm: 600 },
-            width: '100%',
-            maxHeight: { xs: '95vh', sm: '90vh' },
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-          onClick={e => e.stopPropagation()}
+        <DialogTitle
+          id={titleId}
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 1, px: 2, borderBottom: 1, borderColor: 'divider', fontSize: '1.1rem', fontWeight: 700 }}
         >
-          {/* Modal Header */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              p: { xs: 2, sm: 3 },
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              background: alpha(theme.palette.primary.main, 0.05),
-            }}
+          {`פתיחת פריט — ${departmentLabel(department)}`}
+          <IconButton
+            aria-label="סגירה"
+            aria-disabled={busy || undefined}
+            title={busy ? 'ממתין לתשובה מהשרת; אפשר לסגור כשהשליחה תסתיים' : undefined}
+            onClick={handleCloseModal}
+            sx={{ width: 44, height: 44, opacity: busy ? 0.4 : 1 }}
           >
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              פתיחת פריט - {departmentLabel(department)}
-            </Typography>
-            <IconButton
-              aria-label="סגירה"
-              onClick={handleCloseModal}
-              sx={{
-                background: alpha(theme.palette.grey[500], 0.1),
-                '&:hover': {
-                  background: alpha(theme.palette.grey[500], 0.2),
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-
-          {/* Modal Body */}
-          <Box sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto', flexGrow: 1 }}>
-            <OpenItemForm department={department} onItemAdded={handleItemAdded} disabled={isDisabled} />
-          </Box>
-        </Box>
-      </Modal>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', pt: '16px !important', pb: 0 }}>
+          <OpenItemForm department={department} onItemAdded={handleItemAdded} disabled={isDisabled} onBusyChange={handleBusyChange} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

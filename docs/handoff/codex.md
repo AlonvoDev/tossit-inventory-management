@@ -1,8 +1,68 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
-Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
+Task / bounded subtask: final UI1–UI3/security candidate integration
+Status: UI1–UI3 accepted and locally verified; final integration CI pending publication; no new main/live deployment.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
+
+## Final UI candidate accepted/integrated — 2026-11-15
+
+Pinned Claude281083572e7e3272cdc7ce970ebdb8f4b36ca508 contains all previous core/security docs and corrected UI1/UI2/UI3. Follow-up independent reviewer clears both UI3 blockers; no new Critical/Important issue. Handler/button/query offline behavior and mobile report feature preservation now match requirements. Source manifests/locks unchanged. Exact Claude CI43742832942 succeeds all4 jobs; https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43742832942 .
+
+Codex closes known UI3-R3 with a single Hebrew menu label (`פתיחת תפריט`) and synchronized unit/browser selectors, observed RED→GREEN on existing focus-return test. Also expands mobile sorting assertion to every field in both directions, resolving a minor evidence overclaim without changing production sorting. Final patched source tested in detached worktree:354/354client,58/58server, frontend build PASS, lint0errors/7existingwarnings, full5Chromium153/emulator browser cases PASS(exit0,18.0s), including actual employee create through external host. Independent reviewer checks the four-file integration patch and reports no findings. Source tree is this tested patched candidate plus acceptance/release docs only.
+
+Normal no-ff integration into codex/tossit-core; all review blockers closed in docs/CODEX_REQUESTS.md. Integration commit's exact-head CI pending after push; inspect all4 jobs/native step before claiming final remote readiness. PR2 can become ready for owner release review after green CI, but no main merge/deploy is authorized by UI acceptance. Main remains6addce2/released application8ac72aa; live Neon deployment2 remains prior SDK bundle. No production users/data, secrets, rules/indexes, billing, schedule or service settings changed. Push unavailable, schedule disabled. Real phones/keyboards/screen readers and live owner workflow/staff pilot remain NOT RUN. Current72h policy/report department-label limitation remain explicitly nonblocking.
+
+Claude can stop implementing this round; only concrete review/pilot fixes remain. Do not edit Claude's handoff or invent further features. Next owner gate is reviewed candidate rollout (client and rebuilt Neon artifact while preserving existing secrets, no rules change required), then pilot. Release docs capture this sequence.
+
+## Corrected UI2 resolved / UI3 HELD — 2026-11-15
+
+User supplied corrected READY71a81eef26c4dd7c5ef08f86cd06812654f4fd3e containing UI3commit741333a. Verified c4df88e ancestor and unchanged dependency manifests/locks. Separate independent reviews: UI2 busy-callback/dismissal/retry/evidence fixes resolve all findings; UI3 has two Important issues (offline open/linked user forms submit, phone report drops sorting/average). No candidate merge performed because71a81ee bundles UI3.
+
+Independently tested exact source in detached worktree with verified same dependencies: client344/344, server58/58, build PASS, lint0errors/7existingwarnings, full Chromium153/emulator browser5/5 PASS(exit0,19.1s). All four exact-head GitHub check jobs SUCCESS. Additional scoped synthetic tests reproduce5 failures: offline query create enabled, open edit submit enabled after disconnect, direct offline submit calls mocked update API, phone report lacks sorting, phone card lacks average. Existing suites miss these branches. No real account/data writes occurred. Detailed requirements/reproduction in docs/CODEX_REQUESTS.md as UI3-R1/R2; UI2-R1/R2 explicitly closed. English menu accessible-name/browser-selector change is acknowledged minor, coordinated by Codex at integration. No protected API/domain/server/worker code changed.
+
+This checkpoint publishes only feedback/acceptance docs. Keep core at accepted UI1/security plus docs; do not claim corrected UI2/UI3 integrated or deployed. Claude should fix UI3 while preserving corrected UI2, publish exact READY SHA and full untruncated evidence. No repeated general approval is needed for those authorized fixes. Main/live/settings/schedule/billing unchanged. Actual phones/screen readers NOT RUN;72h expiry policy unchanged/nonblocking.
+
+## UI2 reviewed — HELD, 2026-11-15
+
+User requested an interim UI2 review. Fetched exact published READYab52a6c0cb511013909ed67816c393408f2eaa59 (includes core4aae9eb); manifests/lockfiles unchanged. In detached worktree using the verified identical dependencies, independently ran client330/330, build PASS, lint0errors/7existingwarnings and complete Chromium153/emulator browser5/5 (exit0,18.4s). Exact source CI push43729780784 SUCCESS. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43729780784 . No code integration/merge/deployment was done.
+
+Independent review found one Important UI2 requirement gap: opening wrapper can dismiss while child submission awaits, unmounting values and retry-intent ref; close-item modal already guards loading. Codex reproduced all3 paths (header, backdrop, focused Escape) using actual wrapper+form and a deferred API promise in a disposable isolated test: all3 expected-stay-open assertions FAIL. This is a UI lifecycle gap, not proof of broken server/queue idempotency. Existing suites pass because wrapper tests mock the form. UI2-R1 acceptance asks for preserved/mounted intent or guarded dismissal, recovery after failure/success, same-ID retry, no duplicate submit. UI2-R2 minor asks for missing1280px visual evidence. Full synthetic reproduction is in docs/CODEX_REQUESTS.md.
+
+Core source is unchanged and remains4aae9eb plus these review docs. Claude owns the UI fix; do not edit his in-progress files or claim feedback was sent externally. Alon can relay the published feedback pointer. UI3 can proceed independently, but UI2 is not accepted and must not be merged/deployed until corrected READY SHA passes review. Actual mobile keyboards/screens readers remain NOT RUN. Prior UI1 acceptance remains valid.
+
+## Corrected UI1 accepted/integrated — 2026-11-15
+
+Pinned Claude checkpoint75c68f118015144b7c7e7c1087a5f5c8480b25aa contains the normal merge of Codexf5ce297 plus corrected UI1. Verified f5ce297 is an ancestor; all package/lockfiles exactly match the reviewed security graph. Follow-up independent review finds R1–R4 resolved and no open Critical/Important findings. The nonblocking72h business-policy request remains unchanged.
+
+Before committing integration, Codex checked the exact source in an isolated detached worktree using the already verified identical dependencies: client319/319, server58/58, production build PASS, lint0errors/7existingwarnings, full existing Chromium153/emulator browser5/5 PASS (exit0,18.2s). Includes durable queue/reload, account privacy, role guard, one worker/no initial prompt and actual employee creation via external callable host. Also inspected all four CI jobs SUCCESS at exact75c68f1, run43727063044. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43727063044 . Backend/domain/worker source is unchanged; no redundant rules/source/bundle reruns locally beyond exact-head CI coverage.
+
+Normal no-ff merge into codex/tossit-core, with acceptance docs only on top of the tested75c68f1 tree. UI1 is now accepted; docs/CODEX_REQUESTS.md closes R1–R4. Claude can continue UI2→UI3 independently with existing contracts and commit/push/SHA evidence per task. Do not edit Claude's handoff. Original held findings below are historical. Physical phones/screen readers, UI2 dialog focus containment and live pilot remain NOT RUN. Main/live/settings/schedule/billing unchanged; PR2 stays draft for remaining UI checkpoints. Integration commit's own CI will be separate from the verified75c68f1 run.
+
+## Security maintenance READY / UI1 review held — 2026-11-15
+
+Exact code checkpoint c916ffb12876e73e31110ddc2ad6ea3fb347044d is READY for integration: push CI43722923684 SUCCESS, all four jobs and native Functions-worker step explicitly inspected PASS. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43722923684 . Local runtime/server audits0; root24dev-only moderate/low; all regression/build/browser checks and independent dependency review recorded in docs/DEPENDENCY_AUDIT.md. PR2 is draft, no main/live deployment. The PR-triggered rerun is separate; do not claim its result unless observed.
+
+Independent UI1 review pinned a8ed3b353a145fe23db773b26a4d3d7128592fa3 found one Important regression (hidden statusFilter applies after switching to discarded mode), plus touch-target/department-label minors. Codex confirmed RED in a detached review worktree and GREEN with a one-line diagnostic guard; no UI fix/source change was committed in core or pushed to Claude's branch. UI1 is held until Claude supplies a corrected READY SHA. Reproduction/acceptance and full-five-browser evidence request are in docs/CODEX_REQUESTS.md; guide points Claude there. Do not edit Claude's in-progress UI2 files or misreport the review as a merge. Product-relative expiry-policy request remains acknowledged/nonblocking, current72h policy retained.
+
+This next commit only publishes verified CI evidence and review feedback. No new package/source/runtime/data/permission change. Alon should relay the review-feedback pointer to the external Claude session; git documentation has been published, no external message was sent. Continue reviewing a corrected UI checkpoint when it is published; keep manual deploy/schedule/billing unchanged.
+
+## Security maintenance S2/S3 — local verification complete, remote CI pending
+
+Dependency changes are ready for publication on codex/tossit-core; no live/main update. Details and residual inventory: docs/DEPENDENCY_AUDIT.md. Final audits: root omit-dev0, Functions all0; root all24dev-only (22moderate/2low), no high/critical. Firebase12/rules5 + CLI15 + Vitest4 chosen while retaining Node22. Firebase Admin14/Functions7 modular imports compile unchanged. Root floor>=22.13.0 corrected after independent review; recommend current22.x/24.x for optional native CLI deps. One scoped Firestore->grpc1.14.7 override, no source/worker/UI edits or blanket force fixes.
+
+Fresh locked installs PASS. Local final checks: client304, server58 on22 and24, rules42, legacy callable3pass/3host-onlyskips, source6 and isolated bundle6 (Node24), browser5; all builds PASS; lint0errors/7existingwarnings. Independent reviewer found no Critical/Important findings, Node-floor minor fixed. Native Functions worker and final exact-head CI remain pending on GitHub; do not claim remote pass before observing it. S1 published cbf6980 with exact tree; this next checkpoint finishes SDK/toolchain work. No production mutations, secrets, billing, notification activation or deployment.
+
+Claude UI1 READY a8ed3b3 is now published. No merge yet: review it and run combined checks after securing this checkpoint. UI1 handoff says browser4 despite five unchanged browser cases in tree; verify all5 during integration and correct the evidence through Claude's own handoff/request workflow. Nonblocking UI1-1 request proposes changing the current72h expiring window for short-lived products; no business-policy change was made as a dependency side effect. Keep it explicit for a separate reviewed decision. Claude may continue UI2/UI3 on his branch; package changes are Codex-owned.
+
+## Security maintenance S1 — compatible lockfile checkpoint
+
+Alon started his external Claude session and authorized Codex's security/dependency lane. Plan: docs/superpowers/plans/2026-11-15-tossit-dependency-hardening.md. Audit/evidence: docs/DEPENDENCY_AUDIT.md. Root compatible lockfile refresh reduces all-package70→41 and omit-dev18→4high/0critical. Functions remains9moderate (compatible fix has no file effect). Direct ranges/UI/server code untouched. Fresh Node22 client304/server58/build PASS; lint0errors/7existingwarnings. Baseline Node24/client jsdom Blob test mismatch is not new; Node22 app pin passes. No assertions/source changed to mask it.
+
+S1 NOT RELEASE READY: remaining SDK/CLI/test-runner upgrades and final clean-install/source/bundle/browser/rules checks in S2/S3. Claude branch now fast-forwarded to shared381d7e4, no new requests at last fetch. Do not edit UI or deploy this checkpoint. Next investigate SDK12 + compatible rules-testing rather than latest13/rules6 (rules6 requires Node24.12, beyond current Node22 app). Major server/tools upgrades must be validated on Node22 and Neon24 before readiness. Publish this bounded checkpoint before proceeding.
+
+## New UI/UX round — plan published 2026-11-15
+
+Alon requested a concrete plan for his separate Claude session. Entry point: docs/CLAUDE_WORK_PLAN.md. Full plan: docs/superpowers/plans/2026-11-15-tossit-ui-ux.md. Starting integrated main/core6addce2; old Claude branch357bf15 must merge the exact new plan-publication SHA before work. Claude owns UI1 inventory hierarchy, UI2 daily actions, UI3 navigation/admin consistency; Codex owns dependency/security/backend and integration. Explicit ownership/contracts include protected worker/offline/auth internals. Each checkpoint requires checks, emulator screenshots, commit/push/remote SHA and own handoff. UI development is authorized; production deployment of the redesigned candidate is not. No implementer agent was started by Codex; Alon will start Claude separately. No application code or live settings changed in this planning checkpoint.
 
 ## Live rollout complete — 2026-11-15
 
