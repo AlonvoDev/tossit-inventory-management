@@ -1,8 +1,16 @@
 # Codex handoff
 Branch: codex/tossit-core
 Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
-Status: Neon credential connection complete and read-only verified; no production client cutover.
+Status: Neon credential connected; Render/Firebase preflight complete. Existing admin profile repair is the next concrete owner gate; no production cutover.
 Last previously confirmed remote SHA: 0de379a061c8d6d16b2e02fda1bafe7a3cbdcdc4
+
+## Rollout preflight — 2026-11-15
+
+Alon confirmed Render My Workspace/tea-d27125ndiees73b9418g. Service srv-d27ml68gjchc738duh3g matches TossIt; main, manual deployment only, last live9948d34. Actual commands npm install; npm run build / npm run preview; no settings changed. NODE_VERSION/env cannot be read using current MCP capabilities. Public Neon URL production build PASS with emulators:false and VAPID absent; URL bundled, private-key/service-account markers absent.
+
+Complete read-only Firebase audit: users1/products9/items11/fridges4/settings0, no composite indexes. Sole admin profile is missing email and department (also no area fallback), while matching Auth account exists/enabled and provides email. New client would reject this profile. Concrete next approval: update only that existing profile's email from its matching Auth account and department:bar (canonical admin value), with original updateTime precondition; preserve UID/role/business/all other fields. Do not apply until explicitly approved. No production data write was executed. Legacy11 items without productId remain supported; never infer IDs from names/codes.
+
+Deployed rules are the old admin-only global policy, not candidate scoped rules. Render host absent from Auth authorizedDomains (popup/redirect gap, not proof email/password fails). Release docs record exact IDs/checks and coordinated repair/rules/client/VAPID/pilot sequence. Main/live/rules/domains/schedule unchanged. Push this docs checkpoint before stopping; no need rerun unchanged code suite (fresh environment-specific production build passed).
 
 ## Credential connection complete — 2026-11-15
 

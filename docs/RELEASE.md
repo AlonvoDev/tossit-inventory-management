@@ -20,6 +20,20 @@ Dedicated account tossit-neon-api@tossit-4cc02.iam.gserviceaccount.com has exact
 
 Read-only live verification passed: Firebase Auth listUsers(1), Firestore reads, health200/configured:true, and a remote anonymous revoke against a random absent device returned400/FAILED_PRECONDITION after the real Firestore transaction read. Device/revocation paths were absent before and after. Unsigned and invalid-token employee calls and forged scheduled delivery return401. No employee, inventory or device mutation was performed; signed-in production employee management, genuine trigger delivery, push and mobile pilot remain untested. Main/Render/rules remain unchanged.
 
+### Read-only production preflight — 2026-11-15
+
+Confirmed Render workspace My Workspace (tea-d27125ndiees73b9418g) with Alon. Existing service srv-d27ml68gjchc738duh3g is the intended TossIt URL/repository, on main, autoDeploy:no/trigger:off, Free Node web service in Oregon. Last live deploy dep-d304odali9vc738krajg is commit9948d34bc9785b4aeed8eb6ffe9311621a727c9f. Current commands: `npm install; npm run build` and `npm run preview`. Candidate preview script serves the built SPA on PORT. Actual NODE_VERSION/env values are not exposed by the connected read tools and remain unverified; no Render settings were changed.
+
+Firebase audit was read-only and complete for the inspected collections (no pagination remaining): users1, products9, items11, fridges4, businessSettings0; no composite indexes. All inspected products/items/fridges have business scope. All11 legacy items lack productId; this is explicitly supported for existing records and must not be guessed or rewritten. Missing settings use documented defaults.
+
+**Blocking profile repair:** the sole existing admin profile has businessId and an enabled matching Firebase Auth account, but lacks both email and department/area. parseUserProfile rejects it; deploying the new client now would block that admin's application access. Proposed owner-reviewed repair is limited to that existing profile: copy email from its matching Firebase Auth account and set department:`bar`, consistent with the server's canonical admin provisioning value. Preserve document ID, existing role/admin authority, businessId, all other fields and Auth account. Re-read before applying; use the original updateTime as a write precondition and abort if profile/identity/role/business changed. No repair has been executed. Obtain explicit approval for this concrete production-profile write, then verify parsing/readiness.
+
+The current Firestore release is projects/tossit-4cc02/rulesets/f4e3e5d5-8dde-43ef-a6df-3d7192cc46f4, SHA2561f7bdc93793d4d87958935fc27fb6399b08d60b3c8309149a4229b49db8f4fab. Its22-line policy permits an existing admin read/write across all collections and denies everyone else; it differs from the reviewed scoped candidate. Rules/client rollout must be coordinated after profile repair. No rules/indexes were deployed.
+
+The Render hostname is absent from Firebase Auth authorizedDomains. This is a popup/redirect-flow configuration gap; do not claim that it independently blocks email/password login. Review adding the exact hostname before enabling those flows. No domain settings were changed.
+
+Candidate frontend production build with the exact Neon URL, emulators:false and no VAPID key PASS. Built JavaScript contains the Neon URL and no private-key/service-account markers. Notifications remain unavailable until matching VAPID configuration/pilot; no placeholder key was installed. This local build is not a deployment. Do not enable auto-deploy, deploy the old client with new rules, or merge main before the coordinated rollout decision.
+
 ### Reproduce the Neon checks
 
 Install both lockfiles (`npm ci`, `npm ci --prefix functions`). Use Node24, Java21 and Python3 (standard ZIP module), then:
