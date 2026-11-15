@@ -1,8 +1,16 @@
 # Codex handoff
 Branch: codex/tossit-core
 Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
-Status: Neon credential connected; Render/Firebase preflight complete. Existing admin profile repair is the next concrete owner gate; no production cutover.
-Last previously confirmed remote SHA: 0de379a061c8d6d16b2e02fda1bafe7a3cbdcdc4
+Status: Neon credential connected and approved existing admin profile repair complete/verified; coordinated production cutover remains pending.
+Last previously confirmed remote SHA: 21181ade7b94aa7d0659c87672caff7a748be95c
+
+## Approved admin profile repair complete — 2026-11-15
+
+Alon explicitly approved completing only email and department:bar on the existing admin profile. Fresh preflight confirmed exactly one profile, existing admin/business scope, no email/department/area, and a matching enabled Firebase Auth identity with email. The real candidate parseUserProfile rejected the original profile and accepted the proposed two-field repair before the write.
+
+Applied one Firestore commit with an updateMask containing only email/department and a currentDocument.updateTime precondition. Commit time: 2026-11-15T09:41:53.824240Z. Copied email directly from the matching Auth identity and used department:bar, consistent with canonical admin provisioning. A fresh read exactly matched the original fields plus those two approved additions; UID/role/business/all other fields preserved. Re-read Auth identity confirms unchanged UID/email/disabled state. The actual candidate parseUserProfile now accepts the repaired profile. No private values or profile identifiers are included in this checkpoint.
+
+This was the authorized production-profile write only; no inventory/product/device or Auth mutation. Main, live Render deployment/settings, deployed rules/indexes/domains, billing and disabled schedule remain unchanged. A real signed-in browser flow against the new deployed client is still NOT RUN. Remaining release work is coordinated rules/client configuration and cutover, matching VAPID configuration and genuine scheduled/push/mobile pilot. Do not ask again for the completed profile repair. Preflight notes below describe the state before the repair and are superseded for that profile.
 
 ## Rollout preflight — 2026-11-15
 
