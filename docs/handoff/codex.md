@@ -1,8 +1,20 @@
 # Codex handoff
 Branch: codex/tossit-core
 Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
-Status: Neon credential connected and approved existing admin profile repair complete/verified; coordinated production cutover remains pending.
-Last previously confirmed remote SHA: 21181ade7b94aa7d0659c87672caff7a748be95c
+Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
+Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
+
+## Live rollout complete — 2026-11-15
+
+Alon's next explicit yes authorized the coordinated main/client/rules deployment. PR1 marked ready and merged normally at8ac72aa, expected head d73752b. All four merge CI jobs pass. Render deploy dep-dbsnvcm1egvs73ecrql0 is LIVE, Node22.23.5 confirmed; env patch preserved other keys and set Node22/NeonURL/emulators:false/VAPID empty. The patch triggered one deployment itself, so no duplicate deploy was requested. Free plan, main branch and autoDeploy:no preserved.
+
+After client live, exact candidate rules released as0f1666e5-d14c-4050-91d7-088f20690648 with post-read equality verification. Compilation no issues. Previous client9948d34/deploy dep-d304odali9vc738krajg and rules f4e3e5d5-8dde-43ef-a6df-3d7192cc46f4 recorded for coordinated rollback; do not claim old build artifact retention. No index changes.
+
+Real production Chromium153 smoke PASS: login form, bundle contains NeonURL, one root worker, zero permission requests, guarded admin deep link, offline shell reload, zero page errors. Workspace proxy/test certificate configuration required; separate HTTP checks PASS. Unauthenticated Firestore403; Neonhealth200/configured:true. Billing remains false; trigger remains disabled/no next run; VAPID absent. No inventory/employee/device writes or Auth/domain changes during rollout. Previously approved two-field profile repair remains the only production data write.
+
+Actual candidate parsers accept all current-admin business data. Five products/two items belong to other scopes. Those two other-business legacy items are malformed; do not reassign or infer fields. See RELEASE.md. npm audit --omit=dev additionally reports18 unresolved advisories including3critical transitive packages; review reachability/updates separately with tests, no blind audit fix in rollout. README/PILOT/RELEASE now reflect deployed status and honest remaining limits.
+
+Real owner sign-in and production inventory/employee workflows, phone/staff pilot and actual push/provider schedule remain NOT RUN. Next step is owner sign-in on live site; do not impersonate an existing identity or create production test employees for smoke tests. Earlier nonproduction/no-cutover records below are historical and superseded by this entry. Publish this docs-only checkpoint to own branch and main; Render autoDeploy is off, so docs publishing should not rebuild the live app.
 
 ## Approved admin profile repair complete — 2026-11-15
 

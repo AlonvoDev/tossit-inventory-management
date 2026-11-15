@@ -1,5 +1,23 @@
 # TossIt release gates
 
+## Live rollout — 2026-11-15
+
+Alon explicitly authorized the coordinated client/rules rollout after the approved admin profile repair. PR1 was marked ready and merged normally into main at8ac72aa2c81e91e77550f0b3f936b909d26d67ea, with the expected head pinned to d73752b. All four main-merge CI jobs passed (build-and-unit, firebase-emulators, neon-host, browser).
+
+Render service srv-d27ml68gjchc738duh3g is LIVE on deploy dep-dbsnvcm1egvs73ecrql0 (finished2026-11-15T09:49:04Z), commit8ac72aa. Merged only four env keys: NODE_VERSION=22, VITE_SERVER_API_URL pointing to the configured Neon URL, VITE_USE_FIREBASE_EMULATORS=false, VITE_VAPID_PUBLIC_KEY empty. Existing other env values were preserved. The env operation itself started one deploy; no duplicate deploy was triggered. Build logs confirm Node22.23.5. Service remains Free, main-tracked, autoDeploy:no; build/start commands unchanged.
+
+After the new client was live, released and verified the exact candidate Firestore rules: projects/tossit-4cc02/rulesets/0f1666e5-d14c-4050-91d7-088f20690648, source SHA256d08d742d7869218da81810dc289be76616f926166a456d432b065c28cbcea422. Google compilation returned no issues. No indexes were changed (none existed; candidate index file remains empty). Previous ruleset f4e3e5d5-8dde-43ef-a6df-3d7192cc46f4 and previous client commit9948d34/deploy dep-d304odali9vc738krajg are recorded for coordinated rollback; restoring only the old client against new rules is not a safe rollback. Do not assume the old Render build artifact is still retained.
+
+Live verification PASS: root/login and actual built asset/worker HTTP200; live bundle contains intended Neon URL; real Chromium153 loads the login form with zero page errors, exactly one root /service-worker.js, zero notification permission requests, unauthenticated /admin/users redirects to /login, and offline reload displays the login app shell. The browser test used the workspace's required HTTPS proxy and its test certificate configuration; independent HTTP checks also passed. Analytics requests naturally failed while explicitly offline; this did not prevent shell loading. Neon /health200/configured:true, unauthenticated Firestore read403/PERMISSION_DENIED. The main CI suite additionally verifies authenticated scenarios with demo emulators, not production credentials.
+
+Final data compatibility audit uses the actual candidate profile/item parsers: sole admin valid after repair; all records in that admin's business pass. Five products and two items belong to different business scopes and remain untouched/invisible to this profile. Those two out-of-scope legacy items fail normalization (Invalid inventory item); investigate their source/ownership before enrolling users for that business. Do not move them into the current business or manufacture missing values.
+
+Remaining NOT RUN: real signed-in production login/inventory/employee workflows, device install/update/offline pilot, genuine scheduled delivery and real push. VAPID is absent and the inventory trigger remains disabled with next_run_at:null and the non-working probe ID. Google billingEnabled:false reconfirmed after rollout. Auth authorizedDomains remains unchanged; the missing Render host is a popup/redirect configuration follow-up.
+
+Dependency follow-up: Render npm install reported70 advisories across all installed packages; separate local npm audit --omit=dev reports18 (1low/4moderate/10high/3critical), including transitive protobufjs, proxy-addr and websocket-driver. These are scanner findings, not a demonstrated exploit or a browser-smoke failure. No npm audit fix/force or untested dependency update was introduced during deployment. Review reachable runtime exposure and lockfile updates separately, test and redeploy; keep this outstanding finding visible.
+
+The earlier staging/preflight sections below are historical evidence and do not override this live status.
+
 ## Current hosting direction — Neon replaces Firebase Functions
 
 This section supersedes historical Firebase Functions/Blaze/Secret Manager deployment instructions below. Firebase Auth and Firestore remain in tossit-4cc02. Employee/device services and scheduling now have a Neon Node24 host. Do not enable Google billing or deploy Firebase Functions for this path.

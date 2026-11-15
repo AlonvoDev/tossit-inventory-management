@@ -4,13 +4,13 @@ Record every manual check as **PASS / FAIL / NOT RUN** with date, device, OS/bro
 build SHA. Desktop Chromium results do not prove iPhone behaviour. Do not report a pilot result that
 was not actually observed.
 
-Candidate under test: Codex C5 `3be1d67` (tested code) / `1294636`, plus Claude U5 checkpoints on
-`claude/tossit-ui`. Not deployed; `main` unchanged.
+Live code: `8ac72aa2c81e91e77550f0b3f936b909d26d67ea`, Render deploy `dep-dbsnvcm1egvs73ecrql0`, released 2026-11-15 with matching scoped Firestore rules and credential-connected Neon server.
+
+Production desktop smoke — **PASS**, 2026-11-15, Linux/Chromium153: login form loads, unauthenticated admin deep link redirects to login, one root service worker, no permission prompt on load, offline shell reload, no page errors. This used a fresh unsigned browser context. Actual owner sign-in/inventory/employee actions — **NOT RUN**. These are the next owner checks; do not use real writes to replace emulator demo steps casually. Push remains unconfigured/schedule disabled. Device checklists below are unchanged and remain NOT RUN.
 
 ## Demo script (about 10 minutes)
 
-Runs entirely on the local emulators (see README → "Local demo with emulators"). Use two browser
-windows (or a desktop window and a phone-sized window): **A = admin**, **B = staff**.
+Runs entirely on the local emulators (see README → "Local demo with emulators"). Use separate browser profiles (or normal plus incognito), each optionally resized for a phone: **A = admin**, **B = staff**. Ordinary windows in one profile share Firebase Auth.
 
 1. **Admin setup (A).** Sign in as the emulator admin.
    - Menu → "ניהול מקררים" → "הוסף מקרר": `מקרר בר 1`, department בר.

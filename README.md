@@ -3,10 +3,11 @@
 TossIt is a Hebrew, mobile-first Progressive Web App for tracking opened inventory in a bar or
 kitchen: who opened what and when, when it expires, and whether it was finished or thrown away.
 
-> **Status: release candidate, not deployed.** All of the behaviour below is implemented and covered
-> by automated tests against Firebase emulators and a real Chromium browser. The Neon server has only an unconfigured staging deployment (health/security checks pass; no production credentials). It has **not** yet been
-> deployed to the live Firebase project, and real-phone checks (install, offline use, closed-app push)
-> have **not** been run. See [What is not verified yet](#what-is-not-verified-yet).
+> **Status: deployed on 2026-11-15; pilot pending.** The [live site](https://tossit-inventory-management.onrender.com/)
+> runs the integrated client with the scoped Firebase rules and a credential-connected Neon server.
+> Production Chromium smoke checks pass, including the login screen, route guard, one service worker
+> and offline app-shell reload. Real signed-in user workflows and phone/staff pilot remain unverified.
+> Push is not configured and its schedule remains disabled. See [What is not verified yet](#what-is-not-verified-yet).
 
 ## What it does
 
@@ -128,9 +129,10 @@ in **[docs/RELEASE.md](docs/RELEASE.md)**. The Neon path does not deploy Firebas
 
 ## What is not verified yet
 
-- Production cutover: new rules/indexes/client are **not deployed**. The Neon staging server has no Firebase credential, no VAPID keys, and no enabled schedule.
+- Real signed-in production workflows: login, inventory changes and employee administration still need owner verification. Client/rules are deployed; Neon has its dedicated Firebase credential. VAPID keys remain absent and the schedule is disabled.
 - Real phones: iPhone/Android install, offline use, update flow — **NOT RUN**.
-- Real push delivery with the app closed — **NOT RUN** (needs deployment).
+- Real push delivery with the app closed — **NOT RUN** (needs matching VAPID configuration and an authorized push pilot).
+- Dependency maintenance: npm audit reports outstanding advisories; exposure/fixes require a separate reviewed update (see RELEASE.md).
 - A pilot with real staff — **NOT RUN**. Checklist: [docs/PILOT.md](docs/PILOT.md).
 
 ## Documentation
