@@ -4,6 +4,14 @@ Task / bounded subtask: UI2 checkpoint review — pending opening-dialog lifecyc
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
 
+## Corrected UI2 resolved / UI3 HELD — 2026-11-15
+
+User supplied corrected READY71a81eef26c4dd7c5ef08f86cd06812654f4fd3e containing UI3commit741333a. Verified c4df88e ancestor and unchanged dependency manifests/locks. Separate independent reviews: UI2 busy-callback/dismissal/retry/evidence fixes resolve all findings; UI3 has two Important issues (offline open/linked user forms submit, phone report drops sorting/average). No candidate merge performed because71a81ee bundles UI3.
+
+Independently tested exact source in detached worktree with verified same dependencies: client344/344, server58/58, build PASS, lint0errors/7existingwarnings, full Chromium153/emulator browser5/5 PASS(exit0,19.1s). All four exact-head GitHub check jobs SUCCESS. Additional scoped synthetic tests reproduce5 failures: offline query create enabled, open edit submit enabled after disconnect, direct offline submit calls mocked update API, phone report lacks sorting, phone card lacks average. Existing suites miss these branches. No real account/data writes occurred. Detailed requirements/reproduction in docs/CODEX_REQUESTS.md as UI3-R1/R2; UI2-R1/R2 explicitly closed. English menu accessible-name/browser-selector change is acknowledged minor, coordinated by Codex at integration. No protected API/domain/server/worker code changed.
+
+This checkpoint publishes only feedback/acceptance docs. Keep core at accepted UI1/security plus docs; do not claim corrected UI2/UI3 integrated or deployed. Claude should fix UI3 while preserving corrected UI2, publish exact READY SHA and full untruncated evidence. No repeated general approval is needed for those authorized fixes. Main/live/settings/schedule/billing unchanged. Actual phones/screen readers NOT RUN;72h expiry policy unchanged/nonblocking.
+
 ## UI2 reviewed — HELD, 2026-11-15
 
 User requested an interim UI2 review. Fetched exact published READYab52a6c0cb511013909ed67816c393408f2eaa59 (includes core4aae9eb); manifests/lockfiles unchanged. In detached worktree using the verified identical dependencies, independently ran client330/330, build PASS, lint0errors/7existingwarnings and complete Chromium153/emulator browser5/5 (exit0,18.4s). Exact source CI push43729780784 SUCCESS. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43729780784 . No code integration/merge/deployment was done.
