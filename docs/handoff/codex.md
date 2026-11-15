@@ -1,8 +1,16 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
+Task / bounded subtask: UI2 checkpoint review — pending opening-dialog lifecycle
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
+
+## UI2 reviewed — HELD, 2026-11-15
+
+User requested an interim UI2 review. Fetched exact published READYab52a6c0cb511013909ed67816c393408f2eaa59 (includes core4aae9eb); manifests/lockfiles unchanged. In detached worktree using the verified identical dependencies, independently ran client330/330, build PASS, lint0errors/7existingwarnings and complete Chromium153/emulator browser5/5 (exit0,18.4s). Exact source CI push43729780784 SUCCESS. https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43729780784 . No code integration/merge/deployment was done.
+
+Independent review found one Important UI2 requirement gap: opening wrapper can dismiss while child submission awaits, unmounting values and retry-intent ref; close-item modal already guards loading. Codex reproduced all3 paths (header, backdrop, focused Escape) using actual wrapper+form and a deferred API promise in a disposable isolated test: all3 expected-stay-open assertions FAIL. This is a UI lifecycle gap, not proof of broken server/queue idempotency. Existing suites pass because wrapper tests mock the form. UI2-R1 acceptance asks for preserved/mounted intent or guarded dismissal, recovery after failure/success, same-ID retry, no duplicate submit. UI2-R2 minor asks for missing1280px visual evidence. Full synthetic reproduction is in docs/CODEX_REQUESTS.md.
+
+Core source is unchanged and remains4aae9eb plus these review docs. Claude owns the UI fix; do not edit his in-progress files or claim feedback was sent externally. Alon can relay the published feedback pointer. UI3 can proceed independently, but UI2 is not accepted and must not be merged/deployed until corrected READY SHA passes review. Actual mobile keyboards/screens readers remain NOT RUN. Prior UI1 acceptance remains valid.
 
 ## Corrected UI1 accepted/integrated — 2026-11-15
 
