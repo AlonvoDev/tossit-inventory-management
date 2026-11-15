@@ -1,6 +1,48 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: UI/UX round — **UI3 navigation, admin screens and final visual review**
+Task / bounded subtask: **UI2 follow-up — Codex review UI2-R1 / UI2-R2** (`docs/CODEX_REQUESTS.md` at `c4df88e`)
+Status: **UI2 READY (corrected)** — supersedes UI2 at `ab52a6c`. UI3 (`741333a`) remains READY FOR CODEX REVIEW and is
+contained in this checkpoint. Not deployed; `main` not touched.
+Integrated Codex SHA: `c4df88e` (UI2 review, docs only), normal merge.
+Last previously confirmed remote SHA: 741333a6e1b80cb59e45fab9f4909ed123d4ec0d
+
+## UI2-R1 (Important) — pending opening dialog could be dismissed
+- Cause (as reported): `FloatingActionButton` closed the dialog unconditionally (header "סגירה", backdrop, Escape) while
+  `OpenItemForm` awaited `openInventoryItem`; closing unmounted the form, its values and its intent ref.
+- Fix (presentation only; payloads, operation IDs, queue, server untouched):
+  - `OpenItemForm`: new **optional** `onBusyChange?(busy)` prop, reported from the existing `submitting` state and
+    reset to false on unmount. Existing props unchanged.
+  - `FloatingActionButton`: while busy, `handleCloseModal` is a no-op (header button and backdrop), `disableEscapeKeyDown`
+    is set, and the header button stays focusable with `aria-disabled="true"` and an explanatory title. Close works
+    again as soon as the request succeeds, returns a local (pending) receipt, or fails.
+- Tests — new `src/components/OpenItemDialog.integration.test.tsx` with the **real wrapper + real form** (API boundaries
+  mocked, synthetic fixtures), Codex's reproduction adopted unweakened:
+  1. pending submission + Escape (focus on the header close button) / header click / backdrop → dialog, amount value and
+     "שולח..." remain; exactly one API call (×3) — **RED before, GREEN after**;
+  2. pending → rejected (`unavailable`): error shown, values kept, submit re-enabled, retry sends an **identical** input
+     (same `operationId` and `openedAtMs`) — **RED before, GREEN after**;
+  3. pending → `synced` and → `pending` (local) receipts: truthful message, normal close restored, focus returns to the
+     opener (guards); idle Escape close still works (guard).
+## UI2-R2 (Minor) — desktop evidence
+- 1280 px before (pre-UI2 tree `75c68f1`, built in a temporary worktree, removed afterwards) and after, synthetic data:
+  `docs/ui-review/ui2/before-1280-open-dialog.png`, `before-1280-open-dialog-short-460.png`, `before-1280-close-dialog.png`,
+  `after-1280-open-dialog.png`, `after-1280-open-dialog-short-460.png`, `after-1280-close-dialog.png`; 390 px re-captured
+  on this tree: `after-r1-390-open-dialog*.png`.
+- Short-height measurement (viewport 1280×460, amount focused, invalid value): before — submit 475–519 px, **off-screen**;
+  after — submit 362–410 px, visible; amount visible in both. 390×460 after: amount 219–272, submit 404–452, visible.
+  Action dialog targets after: finished 56 / discarded 56 / ביטול 44 / confirm 44 px (before 42/42 choices).
+- This is a reduced headless viewport, **not** a real phone keyboard. Real iPhone/Android keyboards and screen readers:
+  **NOT RUN**.
+
+## Checks (this checkpoint)
+- `npm run test:run`: 40 files, **344/344 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified, full output): exit 0, **Running 5 tests
+  … 5 passed (22.6 s)**.
+- Changed files: `src/components/OpenItemForm.tsx`, `src/components/FloatingActionButton.tsx`,
+  `src/components/OpenItemDialog.integration.test.tsx` (new), screenshots above, this handoff.
+
+Task / bounded subtask (READY FOR CODEX REVIEW at `741333a`): UI/UX round — **UI3 navigation, admin screens and final visual review**
 Status: **UI3 READY FOR CODEX REVIEW**. UI1 (accepted at `4aae9eb`), UI2 (`ab52a6c`) and UI3 together form the UI
 candidate. Not deployed; `main` not touched.
 Last previously confirmed remote SHA: ab52a6c0cb511013909ed67816c393408f2eaa59

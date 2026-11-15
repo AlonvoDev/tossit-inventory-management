@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useCallback, useId, useState } from 'react';
 import {
   Fab,
   Button,
@@ -49,7 +49,12 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     }
   };
 
+  // UI2-R1: while an opening request is unresolved the dialog cannot be dismissed (Escape, backdrop or
+  // header button), so the form, its values and its retry intent stay mounted until success or failure.
+  const [busy, setBusy] = useState(false);
+  const handleBusyChange = useCallback((value: boolean) => setBusy(value), []);
   const handleCloseModal = () => {
+    if (busy) return;
     setShowModal(false);
   };
 
@@ -115,6 +120,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       <Dialog
         open={showModal}
         onClose={handleCloseModal}
+        disableEscapeKeyDown={busy}
         fullScreen={fullScreen}
         fullWidth
         maxWidth="sm"
@@ -127,12 +133,18 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 1, px: 2, borderBottom: 1, borderColor: 'divider', fontSize: '1.1rem', fontWeight: 700 }}
         >
           {`פתיחת פריט — ${departmentLabel(department)}`}
-          <IconButton aria-label="סגירה" onClick={handleCloseModal} sx={{ width: 44, height: 44 }}>
+          <IconButton
+            aria-label="סגירה"
+            aria-disabled={busy || undefined}
+            title={busy ? 'ממתין לתשובה מהשרת; אפשר לסגור כשהשליחה תסתיים' : undefined}
+            onClick={handleCloseModal}
+            sx={{ width: 44, height: 44, opacity: busy ? 0.4 : 1 }}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', pt: '16px !important', pb: 0 }}>
-          <OpenItemForm department={department} onItemAdded={handleItemAdded} disabled={isDisabled} />
+          <OpenItemForm department={department} onItemAdded={handleItemAdded} disabled={isDisabled} onBusyChange={handleBusyChange} />
         </DialogContent>
       </Dialog>
     </>

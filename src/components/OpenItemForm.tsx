@@ -27,6 +27,11 @@ interface OpenItemFormProps {
   department: Department;
   onItemAdded?: (receipt: WriteReceipt) => void;
   disabled?: boolean;
+  /**
+   * Optional, presentation-only (UI2-R1): reports while an opening request is unresolved so the
+   * surrounding dialog can refuse dismissal and keep this form, its values and its intent mounted.
+   */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 const formatExpiry = (ms: number) =>
@@ -37,7 +42,7 @@ const formatExpiry = (ms: number) =>
  * sends only product, fridge, amount and the opening instant. Success is shown only for a
  * receipt; a failed send keeps the same operation ID so a retry cannot create a duplicate.
  */
-const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, disabled = false }) => {
+const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, disabled = false, onBusyChange }) => {
   const { businessId, role, isOnShift, isOffline } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [fridges, setFridges] = useState<Fridge[]>([]);
@@ -52,6 +57,11 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ severity: 'success' | 'info'; text: string } | null>(null);
   const intent = useRef<Intent | null>(null);
+  useEffect(() => {
+    onBusyChange?.(submitting);
+  }, [submitting, onBusyChange]);
+  // Never leave a wrapper locked if the form unmounts.
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
   const amountRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
