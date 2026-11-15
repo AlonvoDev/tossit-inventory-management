@@ -1,5 +1,21 @@
 # TossIt release gates
 
+## UI/security refresh deployed — 2026-11-15
+
+Alon explicitly approved merge and deployment. PR2 merged normally with pinned head f29a276d93b228ffb9d94aa0d9264700db5e4b5d into main at **15788028fffb90d4e057259a7169ab51a2c4b52e**. Both trees are 485b4551321e0122af786393753dc20e7f336f0b. All four checks passed on the candidate (run43744197762) and on the actual main merge (run43753239977), including the native Functions worker. Local final evidence remains 354 client / 58 server / 5 browser tests, build PASS, lint 0 errors / 7 existing warnings.
+
+- Render **dep-dbt0kpff3r2c73bjda4g** is LIVE on commit1578802, finished 2026-11-15T19:41:41Z (21:41 Israel time). Build logs confirm Node22.23.5. Existing Free plan, main tracking, autoDeploy:no, commands and environment were preserved. Exactly one manual API deployment was triggered.
+- Neon tossitapi **deployment3** is completed and active on Node24, replacing deployment2. ZIP SHA256: 24c5743ae046d997527face8e166b4bf34c38a9563e6474c594e427198dd3b48; index.mjs SHA256: c6042dc3f6d2efa1c4b43811b7e2bfcc13aa2273c059e2764e3b580a3a55a5f8. Deployment supplied only the rebuilt ZIP; existing credential and three public configuration variables carried over without reading or exposing their values.
+- Neon health returns200/configured:true. Unsigned employee creation and forged scheduled invocation return401. The inventory trigger remains disabled with next_run_at:null; no VAPID configuration was added.
+- Independent HTTP checks: root, login, admin SPA route, worker and actual /assets/index-Dfq8cKDz.js all200. The new bundle contains the intended Neon URL and Hebrew menu label.
+- Fresh unsigned Chromium153 at390x844: login loads, exactly one root /service-worker.js, zero notification permission requests, unauthenticated /admin/users redirects to /login, offline app-shell reload succeeds, zero page errors. External analytics/config requests fail as expected during the explicit offline phase; that is not an online service failure. The test used the workspace HTTPS proxy/test certificate configuration.
+
+No production users, inventory, device records, rules, indexes, billing or service settings were changed. Real owner sign-in, employee/inventory operations, phone keyboard/install/update/offline behavior and staff pilot remain **NOT RUN**. Push delivery is not enabled. The72h expiry policy and same-name report department labels remain nonblocking follow-ups.
+
+Rollback references: previous Render dep-dbsnvcm1egvs73ecrql0 / application8ac72aa2c81e91e77550f0b3f936b909d26d67ea, previous Neon deployment2. Current strict rules are unchanged; do not select the older incompatible9948d34 client. Historical candidate/pending statements below are superseded by this release entry.
+
+CI: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43753239977
+
 ## UI/security refresh candidate — accepted, not yet deployed (2026-11-15)
 
 All UI1–UI3 review blockers are resolved at Claude2810835 plus Codex's synchronized Hebrew menu/test-selector change and full five-field/two-direction sorting assertions. Local final354client/58server/full5browser, frontend build and lint0errors/7existingwarnings PASS; original2810835 all4 CI jobs PASS. The integrated candidate's new exact-head CI must also pass before release readiness is claimed. Its SHA is recorded in the latest Codex handoff/PR2 after publication.

@@ -4,11 +4,13 @@ Record every manual check as **PASS / FAIL / NOT RUN** with date, device, OS/bro
 build SHA. Desktop Chromium results do not prove iPhone behaviour. Do not report a pilot result that
 was not actually observed.
 
-UI/security refresh candidate: UI1–UI3 accepted at Claude2810835 plus Codex integration refinements (Hebrew menu/selectors, explicit all-field sorting assertions). Not deployed yet. Local final354unit/58server/full5Chromium emulator browser cases pass. Existing manual device checklists below are still NOT RUN; real owner sign-in and staff pilot remain separate. The next integrated release SHA/CI is recorded in the Codex handoff/PR2.
+UI/security refresh released on 2026-11-15: UI1–UI3 and dependency hardening are live.
 
-Live code: `8ac72aa2c81e91e77550f0b3f936b909d26d67ea`, Render deploy `dep-dbsnvcm1egvs73ecrql0`, released 2026-11-15 with matching scoped Firestore rules and credential-connected Neon server.
+Live code: `15788028fffb90d4e057259a7169ab51a2c4b52e`, Render deploy `dep-dbt0kpff3r2c73bjda4g`, Neon deployment3. All four main CI jobs PASS (run43753239977); local evidence:354 client/58 server/5 emulator-browser tests.
 
-Production desktop smoke — **PASS**, 2026-11-15, Linux/Chromium153: login form loads, unauthenticated admin deep link redirects to login, one root service worker, no permission prompt on load, offline shell reload, no page errors. This used a fresh unsigned browser context. Actual owner sign-in/inventory/employee actions — **NOT RUN**. These are the next owner checks; do not use real writes to replace emulator demo steps casually. Push remains unconfigured/schedule disabled. Device checklists below are unchanged and remain NOT RUN.
+Production unsigned desktop Chromium153 at390x844 — **PASS**, 2026-11-15: login loads, unauthenticated admin deep link redirects to login, exactly one root service worker, zero permission requests on load, offline app-shell reload, zero page errors. This reduced desktop viewport does not prove real-phone behavior. Neon health200/configured:true and unsigned/forged requests401. See RELEASE.md for artifact hashes and rollback references.
+
+Actual owner sign-in/inventory/employee actions, physical phone installation/update/keyboard/offline checks and staff pilot — **NOT RUN**. Push remains unconfigured and its schedule disabled. Manual checklists below retain their actual status; do not count emulator or unsigned smoke evidence as a signed-in production pilot.
 
 ## Demo script (about 10 minutes)
 

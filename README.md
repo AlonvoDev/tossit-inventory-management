@@ -9,9 +9,10 @@ kitchen: who opened what and when, when it expires, and whether it was finished 
 > and offline app-shell reload. Real signed-in user workflows and phone/staff pilot remain unverified.
 > Push is not configured and its schedule remains disabled. See [What is not verified yet](#what-is-not-verified-yet).
 
-> **Next release:** the UI1–UI3 refresh and dependency hardening are accepted on the integration branch,
-> with354 client/58 server/5 browser checks passing locally. This refresh is **not deployed yet**;
-> final CI/rollout and real-device/staff pilot remain separate. See [release status](docs/RELEASE.md).
+> **UI/security refresh released:** UI1–UI3 and dependency hardening are live at code
+> `1578802`, with 354 client / 58 server / 5 emulator-browser tests and all four main CI jobs passing.
+> Render and Neon were updated; fresh unsigned production browser smoke passes.
+> Real signed-in workflows and phone/staff pilot remain NOT RUN. See [release status](docs/RELEASE.md).
 
 ## What it does
 
