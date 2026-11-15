@@ -75,7 +75,7 @@ describe('ItemsList', () => {
     api.closeInventoryItem.mockReturnValue(new Promise(r => (resolve = r)));
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByLabelText(/נזרק/));
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'כמות שנזרקה' }), { target: { value: '0.3' } });
@@ -93,7 +93,7 @@ describe('ItemsList', () => {
     as('staff');
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByLabelText(/נזרק/));
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'כמות שנזרקה' }), { target: { value: '0.6' } });
@@ -110,7 +110,7 @@ describe('ItemsList', () => {
       .mockResolvedValueOnce({ operationId: 'x', itemId: '1', state: 'synced' });
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: 'סמן כנגמר' }));
     expect(await within(dialog).findByText(/ניסיון חוזר לא יבצע את הפעולה פעמיים/)).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('ItemsList', () => {
     api.closeInventoryItem.mockRejectedValue(Object.assign(new Error('x'), { code: 'already-closed' }));
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: 'סמן כנגמר' }));
     expect(await within(dialog).findByText(/כבר סומן כנגמר או כנזרק על ידי פעולה אחרת/)).toBeInTheDocument();
@@ -152,16 +152,63 @@ describe('ItemsList', () => {
     api.closeInventoryItem.mockResolvedValue({ operationId: 'x', itemId: '1', state: 'pending' });
     render(<ItemsList areaFilter="bar" isOffline />);
     push([mk('1', 'לימון', 'bar')]);
-    await userEvent.click(await screen.findByRole('button', { name: /עדכן סטטוס/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק/ }));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'סמן כנגמר' }));
     expect(await screen.findByText('העדכון של "לימון" ממתין לשליחה לשרת ועדיין לא נשמר')).toBeInTheDocument();
+  });
+
+  it('keeps expiry and failed-sync labels visible together', async () => {
+    as('staff');
+    offline.operations = [{ operationId: 'o1', itemId: '1', state: 'failed' }];
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'שמנת', 'bar', { expiryTime: ts(Date.now() - 3600e3) })]);
+    const card = (await screen.findByText('שמנת')).closest('article') as HTMLElement;
+    expect(within(card).getByText('פג תוקף')).toBeInTheDocument();
+    expect(within(card).getByText('הפעולה נכשלה')).toBeInTheDocument();
+    expect(within(card).getByText('0.5 ק״ג')).toBeInTheDocument();
+  });
+
+  it('distinguishes empty scope from no search matches', async () => {
+    as('staff');
+    const { unmount } = render(<ItemsList areaFilter="bar" />);
+    push([]);
+    expect(await screen.findByText('אין פריטים פתוחים כרגע')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'נקה חיפוש וסינון' })).not.toBeInTheDocument();
+    unmount();
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar')]);
+    await screen.findByText('לימון');
+    fireEvent.change(screen.getByRole('textbox', { name: 'חיפוש פריט' }), { target: { value: 'אין כזה' } });
+    expect(await screen.findByText('אין פריטים שתואמים לחיפוש או לסינון')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'נקה חיפוש וסינון' }));
+    expect(await screen.findByText('לימון')).toBeInTheDocument();
+  });
+
+  it('keeps permission errors visible instead of an empty list', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    act(() => api.onError!(Object.assign(new Error('x'), { code: 'permission-denied' })));
+    expect(await screen.findByRole('alert')).toHaveTextContent('אין לך הרשאה לבצע פעולה זו.');
+    expect(screen.queryByText('אין פריטים פתוחים כרגע')).not.toBeInTheDocument();
+  });
+
+  it('filters by status with counts that match the list', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'שמנת', 'bar', { expiryTime: ts(Date.now() - 3600e3) }), mk('2', 'נענע', 'bar', { expiryTime: ts(Date.now() + 5 * 3600e3) }), mk('3', 'לימון', 'bar')]);
+    await screen.findByText('לימון');
+    await userEvent.click(screen.getByRole('button', { name: 'פג תוקף (1)' }));
+    expect(screen.getByText('שמנת')).toBeInTheDocument();
+    expect(screen.queryByText('לימון')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'הכל (3)' }));
+    expect(screen.getByText('לימון')).toBeInTheDocument();
   });
 
   it('off-shift staff cannot open the action dialog', async () => {
     as('staff', false);
     render(<ItemsList areaFilter="bar" />);
     push([mk('1', 'לימון', 'bar')]);
-    expect(await screen.findByRole('button', { name: /עדכן סטטוס/ })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: /נגמר \/ נזרק/ })).toBeDisabled();
     expect(screen.getByText(/יש להתחיל משמרת/)).toBeInTheDocument();
   });
 

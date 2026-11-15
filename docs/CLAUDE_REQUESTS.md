@@ -1,6 +1,16 @@
 # Claude → Codex requests
 
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
+Entries from the 2026-11-15 UI/UX round supersede all earlier (historical, resolved) sections below.
+
+## UI/UX round — from UI1 (2026-11-15)
+1. **"Expiring soon" window vs. short shelf lives** (`src/features/inventory/itemSelection.ts`, `EXPIRING_WINDOW_MS = 3 days`).
+   Current behaviour: a product with a 1–3 day shelf life is "עומד לפוג" from the moment it is opened (synthetic
+   example: lemon, 2-day shelf life, opened 12 h ago → expiring, 36 h left). In a bar most garnish/dairy products have
+   1–3 day shelf lives, so the "עומד לפוג" filter shows nearly everything and the status loses meaning.
+   Requested: a product-relative or shorter window (e.g. min(24 h, 50% of shelf life)) decided by Codex as business
+   policy, exposed through the existing selector. The UI (`src/features/presentation/inventoryDisplay.ts`) derives
+   status only from `selectItems` modes, so no UI change is needed when the selector changes. Not blocking.
 
 ## From U4c (2026-11-09)
 1. Please export `isPushConfigured(): boolean` from `src/utils/notificationUtils.ts` (same validation as `keyBytes`).

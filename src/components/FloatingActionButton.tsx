@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Fab,
+  Button,
   useTheme,
   alpha,
   Modal,
@@ -21,6 +22,8 @@ interface FloatingActionButtonProps {
   department: Department;
   onItemAdded: () => void;
   disabled?: boolean;
+  /** 'inline' renders a labelled button in the page header (UI1); default keeps the floating button. */
+  variant?: 'fab' | 'inline';
 }
 
 /**
@@ -30,7 +33,8 @@ interface FloatingActionButtonProps {
 const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   department,
   onItemAdded,
-  disabled = false
+  disabled = false,
+  variant = 'fab',
 }) => {
   const [showModal, setShowModal] = useState(false);
   const { profile, user, isOffline } = useAuth();
@@ -59,7 +63,17 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 
   return (
     <>
-      {/* Modern Floating Action Button */}
+      {variant === 'inline' ? (
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleOpenModal}
+          disabled={isDisabled}
+          sx={{ minHeight: 44, px: 2, flexShrink: 0, fontWeight: 700 }}
+        >
+          פתיחת פריט
+        </Button>
+      ) : (
       <Fab
         color="primary"
         aria-label="פתיחת פריט"
@@ -92,6 +106,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       >
         <AddIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
       </Fab>
+      )}
 
       {/* Modern Modal with OpenItemForm */}
       <Modal

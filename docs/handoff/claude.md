@@ -1,5 +1,67 @@
 # Claude handoff
 Branch: claude/tossit-ui
+Task / bounded subtask: UI/UX round (2026-11-15 plan) — **UI1 inventory hierarchy and visual foundation**
+Status: **UI1 READY** (checks below pass). Next: UI2 (opening/closing on a phone), then UI3.
+Round starting HEAD: `381d7e4` (plan publication; includes live main `6addce2`), fast-forward from `357bf15`.
+Last previously confirmed remote SHA: 381d7e4e0996203afc3e5e63286c041eb0e12f8c
+
+## UI1 — problems found (before, synthetic emulator data, 390/1280 px)
+- 390 px first screen had no inventory: large gradient greeting, big red end-shift button, four KPI cards; the list
+  started ~2.5 screens down. The only open action was an unlabeled floating "+". Full page 2760 px tall.
+- Status pills in English ("EXPIRING SOON") with yellow-on-yellow text; vague "עדכן סטטוס" on every card; quantity
+  "kg 0.5" (English unit, reversed); nested cards, purple department header with emoji, oversized search box; grouping
+  by fridge instead of urgency; dates in the browser's time zone.
+- Screenshots: `docs/ui-review/ui1/before-390-staff-first-screen.png`, `before-390-staff-full.png`,
+  `before-1280-admin-first-screen.png`.
+
+## UI1 — layout implemented
+Compact identity row (name, role, department, compact shift control) → department tabs + "נזרקו" → inventory header
+"מלאי <מחלקה>" with a labelled **"פתיחת פריט"** button → search + fridge filter → status filter chips with counts
+("הכל / פג תוקף / עומד לפוג / בתוקף") → one urgency-ordered list (existing selector order: soonest expiry first),
+1 column on phones, 2 at ≥600 px, 3 at ≥1200 px. The four KPI cards are no longer rendered on the dashboard (their
+counts duplicated the list with a separate data path); the status chips give the same counts from the same selector.
+- Screenshots: `docs/ui-review/ui1/after-390-staff-first-screen.png`, `after-390-staff-full.png` (page now 1298 px),
+  `after-1280-admin-first-screen.png`, `after-320-staff-first-screen.png`, `after-768-staff-first-screen.png`.
+
+## UI1 changed files
+- `src/components/inventory/InventoryItemCard.tsx` (new, presentational): name wraps (`overflow-wrap:anywhere`), status
+  chip = Hebrew text + icon + colour + coloured edge (never colour alone), quantity in natural RTL ("0.5 ק״ג", "2 יח׳"),
+  expiry (Asia/Jerusalem) + relative ("בעוד 9 שעות" / "לפני 24 שעות"), opened time, fridge only if the item has one,
+  queued state chip ("ממתין לשליחה" / "הפעולה נכשלה") alongside the expiry status, closed-item details, 44 px action
+  "נגמר / נזרק" with a per-item accessible name. Dates/times in an LTR isolate span.
+- `src/features/presentation/inventoryDisplay.ts` (new): `displayStatus` derives status **only** from `selectItems`
+  modes (expired / expiring / discarded / finished); Hebrew labels; quantity/date/relative formatting (display only).
+- `src/components/ItemsList.tsx`: render rewritten with MUI (≈900 lines of custom CSS removed); data/action logic,
+  props and `selectItems`/`useCloseItem`/`useOffline` usage unchanged. Distinct states: loading; **error as `role=alert`**
+  (never shown as empty); **empty scope** ("אין פריטים פתוחים כרגע" + scope); **no matches** ("אין פריטים שתואמים לחיפוש או
+  לסינון" + "נקה חיפוש וסינון"); offline note; off-shift note. No longer uses `utils/expiryUtils` (browser-time-zone
+  dates, English labels).
+- `src/pages/Dashboard.tsx`: new hierarchy above; `DashboardKPIs` no longer rendered (file untouched).
+- `src/components/FloatingActionButton.tsx`: optional `variant?: 'fab' | 'inline'` (default unchanged).
+- `src/components/ShiftButton.tsx`: compact visual (44 px, "סיום משמרת" outlined red instead of a large red block).
+- Tests: new `InventoryItemCard.test.tsx` (3), `inventoryDisplay.test.ts` (2); ItemsList +4 (`keeps expiry and
+  failed-sync labels visible together`, `distinguishes empty scope from no search matches`, `keeps permission errors
+  visible instead of an empty list`, `filters by status with counts that match the list`) — all observed RED before the
+  change; Dashboard +1 (`preserves staff department restrictions and puts the open action before the list`).
+
+## UI1 checks (all on this checkpoint)
+- `npm run test:run`: 37 files, **314/314 pass** (baseline 304). `npm run build`: PASS. `npm run lint`: 0 errors / 7
+  existing warnings. `git diff --check`: clean.
+- **Browser suite**: `npm run build:functions`, emulator build with `VITE_SERVER_API_URL=http://127.0.0.1:5001`, then
+  `firebase emulators:exec --only auth,firestore … "npx playwright test --trace off"` with
+  `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium`: **4/4 PASS**.
+- Narrow screen: page-level horizontal overflow **0 px** at 320, 390, 640 (=1280 at 200 % zoom), 768, 1280 (measured
+  `scrollWidth - clientWidth`). Long Hebrew name wraps without hiding the action; decimal kg; item without fridge shows no
+  fridge; expired + queued labels together (unit test).
+- Keyboard (390 px): Tab order = shift → tabs → **פתיחת פריט** → search → fridge → status chips → each item's action
+  → header; Escape from the action dialog returns focus to its opener. Dialog focus containment not asserted yet
+  (probe measured the wrong element) — verified in UI2.
+- NOT RUN: real iPhone/Android, screen readers.
+
+## UI1 known issues / requests
+- Request UI1-1 (CLAUDE_REQUESTS): 3-day "expiring" window marks short-shelf-life products as expiring immediately.
+- The header (`UnifiedNavigation`: clock box, "TossIt Enterprise") still has old styling — UI3.
+
 Task / bounded subtask: U5 — C5 candidate integration, push helper/error codes, README and demo/pilot docs
 Status: **All Claude tasks U1–U5 done in code/docs.** Remaining items are owner/manual: deployment per docs/RELEASE.md, real-device checks and the pilot (docs/PILOT.md, all NOT RUN).
 Last previously confirmed remote SHA: 1cd48edadc9c718c0890244d2ede7c66ee450117 (U4c)
