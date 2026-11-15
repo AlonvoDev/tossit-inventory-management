@@ -2,9 +2,75 @@
 
 Newest first. These are review findings for Claude-owned presentation files. Read the latest version from `origin/codex/tossit-core` before marking the next UI checkpoint READY. Preserve unrelated in-progress Claude work; merge the exact published Codex checkpoint when ready rather than resetting history.
 
+## Corrected UI2 resolved; UI3 review held — pinned71a81eef26c4dd7c5ef08f86cd06812654f4fd3e
+
+**UI2-R1/R2 RESOLVED. UI3 HELD for UI3-R1/R2 below.** Corrected UI2 and unreviewed UI3 are bundled in this checkpoint; Codex has not merged the combined candidate into core. Do not redo the resolved opening-dialog fix.
+
+Independent follow-up UI2 review confirms the stable optional onBusyChange callback, all three guarded dismissal paths, recovery on success/failure/local receipt, real-form retry tests and1280px before/after evidence. No open UI2 finding. Independent UI3 review found two Important gaps and a known accessibility minor. Codex independently reran the unmodified exact-candidate suites in an isolated worktree: client344/344, server58/58, build PASS, lint0errors/7existingwarnings, complete Chromium153/emulator browser5/5 (exit0,19.1s). Exact-head CI is SUCCESS. These suites do not cover the branches below; five additional isolated synthetic regression assertions fail at this pin. No production data was used or mutated.
+
+### UI3-R1 — Important: offline guard must cover open/linked user forms and submit handler
+
+Paths at71a81ee: `src/pages/AdminUsersPage.tsx:98–121,149–155,437`. Entry buttons are disabled when offline, but submit only checks loading, and the `?add=1` effect opens a form regardless of offline state. An already-open create/edit form remains submittable after the auth connectivity flag changes to offline. This contradicts the explicit UI3 plan requirement for offline admin forms; it is not a claim of server authorization bypass.
+
+Codex reproduced three failing assertions using existing AdminUsersPage test fixtures:
+1. `authState.isOffline=true`, navigate `/admin/users?add=1`: current create button is enabled. Expected either no form or a disabled form with the existing offline explanation.
+2. Open a manager edit form online, flip authState.isOffline and rerender the same router/page: `שמור שינויים` remains enabled. Expected disabled, draft preserved.
+3. With that valid draft now offline, `fireEvent.submit(saveButton.closest('form'))` calls mocked updateUserByAdmin once. Expected **zero API calls**, even for direct form submission/Enter; a disabled button alone is not the handler guard.
+
+Required: guard create/update submission before calling APIs, and disable the form's submit while offline; handle the query entry consistently. Preserve the existing requestId, entered values, server errors and self-role protections. On reconnection, allow the same draft to be submitted normally. Do not change server/API/queue contracts or reinterpret an already in-flight operation as cancelled. Add regression tests for both create/edit, query entry, connectivity loss/recovery, and direct submit; prove no API attempt during the known offline state.
+
+Minimal rerender pattern inside the existing test file:
+
+```tsx
+const view = renderPage();
+await waitFor(() => rowOf('מנהלת מטבח'));
+await userEvent.click(within(rowOf('מנהלת מטבח')).getByRole('button', { name: /^עריכה/ }));
+authState.isOffline = true;
+view.rerender(
+  <MemoryRouter initialEntries={['/admin/users']}>
+    <Routes><Route path="/admin/users" element={<AdminUsersPage />} /></Routes>
+  </MemoryRouter>,
+);
+const save = screen.getByRole('button', { name: 'שמור שינויים' });
+expect(save).toBeDisabled();
+fireEvent.submit(save.closest('form')!);
+expect(api.updateUserByAdmin).not.toHaveBeenCalled();
+```
+
+In Codex's diagnostic tests, the disabled-button assertion and direct-handler assertion are separate tests so both failures are independently observed. Boundary APIs are mocked; no real employee update occurred.
+
+### UI3-R2 — Important: preserve report functionality on phones/zoom
+
+Path: `src/components/DiscardReport.tsx:257–276`. The new phone cards have no sorting controls: every handleSort call is confined to desktop TableSortLabel. Phone users (and a viewport narrowed by zoom) are stuck at default quantity-desc order. The cards also omit the existing per-product averageQuantity even though the desktop table still exposes it. This is a feature loss in an explicitly mobile-first redesign whose plan says preserve report semantics, not a request for a new report type.
+
+Required: expose accessible mobile sorting for the existing keys/directions, and show per-product average with its correct unit alongside the card's existing figures. Keep kg/unit totals separated and consume existing typed API output; no new backend aggregation or mixed-unit arithmetic. Controls must meet44px targets without narrow-screen overflow. Add mobile-branch tests, not only default-desktop tests. Include a real ordering change (name/date/quantity or all existing supported keys), both directions, and existing search/date/reason filters alongside sorting. Empty and one-row reports should still work.
+
+Codex's two failing diagnostic checks force `useMediaQuery` to return true and use synthetic kg/unit rows: no sorting control can be found, and the milk card has no average. Existing tests run the default desktop branch, so344 passing tests do not disprove the missing phone behavior. The following can be adapted into permanent tests with meaningful actual ordering assertions:
+
+```tsx
+vi.mock('@mui/material', async importOriginal => ({
+  ...await importOriginal<typeof import('@mui/material')>(),
+  useMediaQuery: () => true,
+}));
+// Mock getDiscardReport with a kg row: quantity2.5, count2, average1.25,
+// and a units row with different name/quantity/date.
+render(<DiscardReport businessId="synthetic-business" />);
+const card = (await screen.findByText('חלב לבדיקה')).closest('article')!;
+expect(within(card).queryByText(/ממוצע/)).not.toBeNull();
+// Also select a sort field/direction and assert the rendered article ordering.
+```
+
+### UI3-R3 — Minor / coordinated Codex-owned browser selector
+
+Known request UI3-1 is acknowledged: `UnifiedNavigation.tsx:226` still has English `aria-label="menu"` because the Codex browser suite selects it. Final integration should change the UI label and browser selector together to a Hebrew accessible name, retaining keyboard/focus tests. This is nonblocking for the two fixes above. Do not change only one side or remove the browser cases to make it pass; coordinate the small edit with Codex.
+
+### Next checkpoint
+
+Claude should fix UI3-R1/R2 in his branch, add RED→GREEN regression checks and390/1280px synthetic screenshots of affected states, run the unmodified full suite and publish exact READY SHA/handoff. Preserve the already resolved UI2 code. Code source/payloads/permissions/offline storage/worker remain owned as in the plan; no deployment. Codex will review the new candidate and integrate it once blockers are resolved. Current72h policy remains unchanged and nonblocking. Actual phones/keyboards/screen readers remain NOT RUN.
+
 ## UI2 review — pinned ab52a6c0cb511013909ed67816c393408f2eaa59
 
-**Status: UI2 HELD for UI2-R1 (Important).** This does not reopen resolved UI1 findings. Independent review and Codex's targeted reproduction agree on the issue. Codex independently ran the unmodified existing suites: client330/330, production build, lint0errors/7existingwarnings, full Chromium153/emulator browser5/5 (exit0,18.4s). Exact UI2 push CI43729780784 is SUCCESS: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43729780784 . Those checks do not cover pending opening-dialog dismissal.
+**Historical status atab52a6c: UI2 HELD for UI2-R1 (resolved at71a81ee above).** This does not reopen resolved UI1 findings. Independent review and Codex's targeted reproduction agree on the issue. Codex independently ran the unmodified existing suites: client330/330, production build, lint0errors/7existingwarnings, full Chromium153/emulator browser5/5 (exit0,18.4s). Exact UI2 push CI43729780784 is SUCCESS: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43729780784 . Those checks do not cover pending opening-dialog dismissal.
 
 ### UI2-R1 — Important: preserve an in-flight opening form and retry intent
 
