@@ -110,13 +110,13 @@ test('logout keeps an offline intent private until the original account returns'
   await expect(page.getByText(/נשמר במכשיר/).first()).toBeVisible(); await page.getByRole('button', { name: 'סגירה', exact: true }).click();
   await expect(page.getByText('1 ממתינות לשליחה', { exact: true })).toBeVisible();
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'menu', exact: true }).click(); await page.getByText('התנתק', { exact: true }).click();
+  await page.getByRole('button', { name: 'פתיחת תפריט', exact: true }).click(); await page.getByText('התנתק', { exact: true }).click();
   await expect(page).toHaveURL(/\/login$/); await context.setOffline(false);
   await login(page, second);
   await expect(page.getByText('1 ממתינות לשליחה', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: first.productName, exact: true })).toHaveCount(0);
   expect((await db.collection('items').where('businessId', '==', first.businessId).get()).size).toBe(0);
-  await page.getByRole('button', { name: 'menu', exact: true }).click(); await page.getByText('התנתק', { exact: true }).click(); await expect(page).toHaveURL(/\/login$/);
+  await page.getByRole('button', { name: 'פתיחת תפריט', exact: true }).click(); await page.getByText('התנתק', { exact: true }).click(); await expect(page).toHaveURL(/\/login$/);
   await login(page, first);
   await expect.poll(async () => (await db.collection('items').where('businessId', '==', first.businessId).get()).size).toBe(1);
   expect((await db.collection('items').where('businessId', '==', second.businessId).get()).size).toBe(0);

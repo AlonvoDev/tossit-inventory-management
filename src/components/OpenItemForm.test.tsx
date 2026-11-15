@@ -150,6 +150,40 @@ describe('OpenItemForm', () => {
     setItem.mockRestore();
   });
 
+  it('retains values and retry intent after failure', async () => {
+    as('staff', true);
+    api.openInventoryItem.mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'unavailable' }));
+    render(<OpenItemForm department="kitchen" />);
+    await pick(/עוף/);
+    fireEvent.change(amount(), { target: { value: '0.5' } });
+    await userEvent.click(submit());
+    await screen.findByText(/ניסיון חוזר לא ייצור פריט כפול/);
+    expect(amount()).toHaveValue('0.5');
+    expect(screen.getByRole('combobox', { name: 'מוצר' })).toHaveTextContent('עוף');
+  });
+
+  it('shows an invalid amount once, on the field, and moves focus there', async () => {
+    as('staff', true);
+    render(<OpenItemForm department="kitchen" />);
+    await pick(/ביצים/);
+    fireEvent.change(amount(), { target: { value: '1.5' } });
+    await userEvent.click(submit());
+    expect(screen.getAllByText(/מספר שלם של יחידות/)).toHaveLength(1);
+    expect(amount()).toHaveAttribute('aria-invalid', 'true');
+    expect(amount()).toHaveFocus();
+  });
+
+  it('keeps the submit button and any server error in the action footer', async () => {
+    as('staff', true);
+    api.openInventoryItem.mockRejectedValue(Object.assign(new Error('x'), { code: 'permission-denied' }));
+    render(<OpenItemForm department="kitchen" />);
+    await pick(/ביצים/);
+    await userEvent.click(submit());
+    const footer = screen.getByTestId('open-item-footer');
+    expect(within(footer).getByRole('button', { name: 'פתח פריט' })).toBeInTheDocument();
+    expect(await within(footer).findByText('אין לך הרשאה לבצע פעולה זו.')).toBeInTheDocument();
+  });
+
   it('ignores repeated submits while sending', async () => {
     as('staff', true);
     let resolve!: (v: unknown) => void;

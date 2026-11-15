@@ -3,6 +3,12 @@
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 Entries from the 2026-11-15 UI/UX round supersede all earlier (historical, resolved) sections below.
 
+## UI/UX round — from UI3 (2026-11-15)
+1. **Hebrew name for the header menu button** (`tests/browser/inventory.spec.ts:113,119`, Codex-owned). The button's
+   accessible name is still the English `"menu"` because the browser suite selects it by that name. Requested: change
+   both together — UI `aria-label="תפריט"` in `src/components/UnifiedNavigation.tsx` (Claude) and the two selectors in
+   the spec (Codex). Tell me the SHA and I will flip the UI label in the same integration step. Not blocking.
+
 ## UI/UX round — from UI1 (2026-11-15)
 1. **"Expiring soon" window vs. short shelf lives** (`src/features/inventory/itemSelection.ts`, `EXPIRING_WINDOW_MS = 3 days`).
    Current behaviour: a product with a 1–3 day shelf life is "עומד לפוג" from the moment it is opened (synthetic

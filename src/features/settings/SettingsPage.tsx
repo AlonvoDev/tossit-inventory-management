@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Box, CircularProgress, Divider, FormControlLabel, Switch, Typography } from '@mui/material';
 import { Card, Button } from '../../components/ui';
 import { tokens } from '../../app/theme';
+import { PageHeader } from '../../components/layout/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 import { getBusinessSettings, saveBusinessSettings } from '../../api/settingsAPI';
 import type { BusinessSettings } from '../../domain/contracts';
@@ -100,13 +101,8 @@ export const SettingsPage: React.FC = () => {
   const role = toAppRole(userProfile.role);
 
   return (
-    <Box sx={{ maxWidth: '800px', margin: '0 auto' }}>
-      <Typography
-        variant="h1"
-        sx={{ marginBottom: tokens.spacing.xl, color: tokens.colors.text.primary, fontSize: { xs: '1.75rem', sm: '2.25rem' } }}
-      >
-        הגדרות
-      </Typography>
+    <Box sx={{ maxWidth: '800px', margin: '0 auto', py: { xs: 1, sm: 2 } }}>
+      <PageHeader title="הגדרות" description="הגדרות העסק והפרטים שלך." />
 
       <Card title="הגדרות העסק" padding="large">
         {loading ? (

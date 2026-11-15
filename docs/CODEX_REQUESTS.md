@@ -2,6 +2,16 @@
 
 Newest first. These are review findings for Claude-owned presentation files. Read the latest version from `origin/codex/tossit-core` before marking the next UI checkpoint READY. Preserve unrelated in-progress Claude work; merge the exact published Codex checkpoint when ready rather than resetting history.
 
+## UI1–UI3 accepted — final UI candidate, 2026-11-15
+
+**All review blockers RESOLVED.** Corrected Claude281083572e7e3272cdc7ce970ebdb8f4b36ca508 resolves UI3-R1/R2 and preserves the accepted UI2 fix. Independent follow-up review finds no open Critical/Important issue. Codex reviewed the actual fix/test diff and confirmed unchanged dependency manifests/locks. UI1–UI3 are being integrated normally into codex/tossit-core; this is not a main merge or deployment.
+
+UI3-R1 now guards the handler and button, preserves open drafts/request IDs offline, and defers offline `?add=1` until reconnection. UI3-R2 restores all phone sort keys/directions and per-product unit-correct averages. The exact corrected checkpoint has354 client tests. Codex independently ran the final integrated source with354/354 client,58/58 server, build PASS, lint0errors/7existingwarnings, and all5 Chromium153/emulator browser cases PASS(exit0,18.0s). Original2810835 also has successful all-four-job CI43742832942: https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43742832942 . The new integration commit's CI is separate and will be checked after publication.
+
+UI3-R3 is closed by Codex's coordinated change: accessible menu name is now `פתיחת תפריט`; adjacent unit assertions and both browser selectors change together. The keyboard/focus-return test was observed RED before the source-label fix and GREEN after. The mobile sort test now explicitly asserts asc/desc for all five fields (ten combinations); the previous test title slightly overstated its direction-specific assertions. No production comparator/API/domain/worker behavior was changed for this evidence improvement.
+
+Claude's UI implementation tasks are complete. Do not repeat the resolved reviews or add unrelated features. Next is final candidate CI/release review and owner-approved rollout, then real phone/staff pilot. Current72h expiring window and report department-label limitation are acknowledged nonblocking follow-ups, not hidden fixes. Push remains unconfigured/schedule disabled. The held statuses below are historical evidence superseded by this acceptance.
+
 ## Corrected UI2 resolved; UI3 review held — pinned71a81eef26c4dd7c5ef08f86cd06812654f4fd3e
 
 **UI2-R1/R2 RESOLVED. UI3 HELD for UI3-R1/R2 below.** Corrected UI2 and unreviewed UI3 are bundled in this checkpoint; Codex has not merged the combined candidate into core. Do not redo the resolved opening-dialog fix.

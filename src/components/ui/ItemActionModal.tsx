@@ -83,9 +83,9 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth dir="rtl">
-      <DialogTitle sx={{ paddingBottom: tokens.spacing.md }}>
-        <Typography component="span" variant="h2" sx={{ color: tokens.colors.text.primary, display: 'block' }}>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth dir="rtl" aria-labelledby="item-action-title">
+      <DialogTitle id="item-action-title" sx={{ paddingBottom: tokens.spacing.sm }}>
+        <Typography component="span" sx={{ color: tokens.colors.text.primary, display: 'block', fontSize: '1.15rem', fontWeight: 700 }}>
           עדכון מצב פריט
         </Typography>
         <Typography component="span" variant="body2" sx={{ color: tokens.colors.text.muted, marginTop: tokens.spacing.sm, display: 'block' }}>
@@ -108,6 +108,16 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
                   value="finished"
                   control={<Radio />}
                   disabled={loading}
+                  sx={{
+                    m: 0,
+                    mb: 1,
+                    minHeight: 56,
+                    px: 1,
+                    border: 1,
+                    borderColor: draft.action === 'finished' ? 'primary.main' : 'divider',
+                    borderRadius: 2,
+                    bgcolor: draft.action === 'finished' ? 'rgba(15, 118, 110, 0.06)' : 'transparent',
+                  }}
                   label={
                     <Box>
                       <Typography variant="body1" sx={{ fontWeight: 600 }}>נגמר</Typography>
@@ -121,6 +131,16 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
                   value="discarded"
                   control={<Radio />}
                   disabled={loading}
+                  sx={{
+                    m: 0,
+                    mb: 1,
+                    minHeight: 56,
+                    px: 1,
+                    border: 1,
+                    borderColor: draft.action === 'discarded' ? 'primary.main' : 'divider',
+                    borderRadius: 2,
+                    bgcolor: draft.action === 'discarded' ? 'rgba(15, 118, 110, 0.06)' : 'transparent',
+                  }}
                   label={
                     <Box>
                       <Typography variant="body1" sx={{ fontWeight: 600 }}>נזרק</Typography>
@@ -141,7 +161,7 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
                     disabled={loading}
                     error={fieldError?.field === 'amount'}
                     helperText={fieldError?.field === 'amount' ? fieldError.message : `עד ${itemAmount} ${unitLabel(itemType)}`}
-                    inputProps={{ inputMode: itemType === 'kg' ? 'decimal' : 'numeric', dir: 'ltr', 'aria-label': 'כמות שנזרקה' }}
+                    inputProps={{ inputMode: itemType === 'kg' ? 'decimal' : 'numeric', dir: 'ltr', 'aria-label': 'כמות שנזרקה', enterKeyHint: 'done' }}
                   />
                   <FormControl error={fieldError?.field === 'reason'} disabled={loading}>
                     <FormLabel id="discard-reason-label">סיבת זריקה</FormLabel>
@@ -152,7 +172,7 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
                       onChange={e => update({ reason: e.target.value as DiscardReason })}
                     >
                       {DISCARD_REASONS.map(r => (
-                        <FormControlLabel key={r.value} value={r.value} control={<Radio />} label={r.label} />
+                        <FormControlLabel key={r.value} value={r.value} control={<Radio />} label={r.label} sx={{ minHeight: 44, me: 2 }} />
                       ))}
                     </RadioGroup>
                     {fieldError?.field === 'reason' && <FormHelperText>{fieldError.message}</FormHelperText>}
@@ -175,11 +195,12 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ padding: tokens.spacing.lg, gap: tokens.spacing.md }}>
-        <Button onClick={handleClose} variant="outlined" disabled={loading}>
+        <Button onClick={handleClose} variant="outlined" disabled={loading} sx={{ minHeight: 44 }}>
           {closedElsewhere ? 'סגור' : 'ביטול'}
         </Button>
         {!closedElsewhere && (
-          <Button onClick={handleConfirm} variant="contained" disabled={loading} loading={loading}>
+          // Not using the shared Button's `loading` (it replaces the label with a generic "טוען...").
+          <Button onClick={handleConfirm} variant="contained" disabled={loading} sx={{ minHeight: 44, flex: 1 }}>
             {loading ? 'שולח...' : draft.action === 'finished' ? 'סמן כנגמר' : 'סמן כנזרק'}
           </Button>
         )}

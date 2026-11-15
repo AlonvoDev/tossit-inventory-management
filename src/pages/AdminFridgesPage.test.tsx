@@ -97,6 +97,15 @@ describe('AdminFridgesPage', () => {
     renderPage();
     await screen.findByText('מקרר בר');
     expect(screen.getByRole('button', { name: 'הוסף מקרר' })).toBeDisabled();
-    screen.getAllByRole('button', { name: 'מחק' }).forEach(b => expect(b).toBeDisabled());
+    screen.getAllByRole('button', { name: /^מחיקה/ }).forEach(b => expect(b).toBeDisabled());
+  });
+
+  it('UI3: row actions name the fridge and the page has one heading', async () => {
+    asRole('admin', 'bar');
+    renderPage();
+    await screen.findByText('מקרר בר');
+    expect(screen.getByRole('heading', { level: 1, name: 'ניהול מקררים' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'עריכה — מקרר בר' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'מחיקה — מקרר בר' })).toBeInTheDocument();
   });
 });

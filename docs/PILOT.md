@@ -4,6 +4,8 @@ Record every manual check as **PASS / FAIL / NOT RUN** with date, device, OS/bro
 build SHA. Desktop Chromium results do not prove iPhone behaviour. Do not report a pilot result that
 was not actually observed.
 
+UI/security refresh candidate: UI1–UI3 accepted at Claude2810835 plus Codex integration refinements (Hebrew menu/selectors, explicit all-field sorting assertions). Not deployed yet. Local final354unit/58server/full5Chromium emulator browser cases pass. Existing manual device checklists below are still NOT RUN; real owner sign-in and staff pilot remain separate. The next integrated release SHA/CI is recorded in the Codex handoff/PR2.
+
 Live code: `8ac72aa2c81e91e77550f0b3f936b909d26d67ea`, Render deploy `dep-dbsnvcm1egvs73ecrql0`, released 2026-11-15 with matching scoped Firestore rules and credential-connected Neon server.
 
 Production desktop smoke — **PASS**, 2026-11-15, Linux/Chromium153: login form loads, unauthenticated admin deep link redirects to login, one root service worker, no permission prompt on load, offline shell reload, no page errors. This used a fresh unsigned browser context. Actual owner sign-in/inventory/employee actions — **NOT RUN**. These are the next owner checks; do not use real writes to replace emulator demo steps casually. Push remains unconfigured/schedule disabled. Device checklists below are unchanged and remain NOT RUN.

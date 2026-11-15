@@ -1,8 +1,18 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: UI2 checkpoint review — pending opening-dialog lifecycle
-Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
+Task / bounded subtask: final UI1–UI3/security candidate integration
+Status: UI1–UI3 accepted and locally verified; final integration CI pending publication; no new main/live deployment.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
+
+## Final UI candidate accepted/integrated — 2026-11-15
+
+Pinned Claude281083572e7e3272cdc7ce970ebdb8f4b36ca508 contains all previous core/security docs and corrected UI1/UI2/UI3. Follow-up independent reviewer clears both UI3 blockers; no new Critical/Important issue. Handler/button/query offline behavior and mobile report feature preservation now match requirements. Source manifests/locks unchanged. Exact Claude CI43742832942 succeeds all4 jobs; https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/43742832942 .
+
+Codex closes known UI3-R3 with a single Hebrew menu label (`פתיחת תפריט`) and synchronized unit/browser selectors, observed RED→GREEN on existing focus-return test. Also expands mobile sorting assertion to every field in both directions, resolving a minor evidence overclaim without changing production sorting. Final patched source tested in detached worktree:354/354client,58/58server, frontend build PASS, lint0errors/7existingwarnings, full5Chromium153/emulator browser cases PASS(exit0,18.0s), including actual employee create through external host. Independent reviewer checks the four-file integration patch and reports no findings. Source tree is this tested patched candidate plus acceptance/release docs only.
+
+Normal no-ff integration into codex/tossit-core; all review blockers closed in docs/CODEX_REQUESTS.md. Integration commit's exact-head CI pending after push; inspect all4 jobs/native step before claiming final remote readiness. PR2 can become ready for owner release review after green CI, but no main merge/deploy is authorized by UI acceptance. Main remains6addce2/released application8ac72aa; live Neon deployment2 remains prior SDK bundle. No production users/data, secrets, rules/indexes, billing, schedule or service settings changed. Push unavailable, schedule disabled. Real phones/keyboards/screen readers and live owner workflow/staff pilot remain NOT RUN. Current72h policy/report department-label limitation remain explicitly nonblocking.
+
+Claude can stop implementing this round; only concrete review/pilot fixes remain. Do not edit Claude's handoff or invent further features. Next owner gate is reviewed candidate rollout (client and rebuilt Neon artifact while preserving existing secrets, no rules change required), then pilot. Release docs capture this sequence.
 
 ## Corrected UI2 resolved / UI3 HELD — 2026-11-15
 

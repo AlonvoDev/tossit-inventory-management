@@ -1,8 +1,8 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { Card } from '../../components/ui';
-import { tokens } from '../../app/theme';
 import DiscardReport from '../../components/DiscardReport';
+import { PageHeader } from '../../components/layout/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 
 /**
@@ -21,17 +21,8 @@ export const ReportsPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <Typography
-        variant="h1"
-        sx={{
-          marginBottom: tokens.spacing.lg,
-          color: tokens.colors.text.primary,
-          fontSize: { xs: '1.75rem', sm: '2.25rem' },
-        }}
-      >
-        דוחות
-      </Typography>
+    <Box sx={{ maxWidth: '1200px', margin: '0 auto', py: { xs: 1, sm: 2 } }}>
+      <PageHeader title="דוחות" />
       <DiscardReport businessId={userProfile.businessId} />
     </Box>
   );

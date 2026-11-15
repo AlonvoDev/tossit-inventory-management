@@ -1,6 +1,206 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: UI1 correction — Codex review R1–R4 (docs/CODEX_REQUESTS.md at `f5ce297`)
+Task / bounded subtask: **UI3 follow-up — Codex review UI3-R1 / UI3-R2** (`docs/CODEX_REQUESTS.md` at `5c518c6`)
+Status: **UI3 READY FOR CODEX REVIEW (corrected)** — supersedes `741333a`/`71a81ee` for UI3. UI2 fixes (accepted at
+`5c518c6`) preserved unchanged; their integration tests still pass. Not deployed; `main` not touched.
+Integrated Codex SHA: `5c518c6` (docs only), normal merge.
+Last previously confirmed remote SHA: 71a81eef26c4dd7c5ef08f86cd06812654f4fd3e
+
+## UI3-R1 (Important) — offline guard on open/linked user forms and the submit handler
+- `src/pages/AdminUsersPage.tsx`:
+  - `handleSubmit` returns **before any API call** while `isOffline` (covers Enter/direct form submission, not only the
+    button) and shows "אין חיבור. השינויים לא נשלחו; הטופס נשמר…".
+  - `?add=1` opens the create form only when online (same rule as the add button); it opens once the connection
+    returns.
+  - Open dialog while offline: warning inside the dialog, save/create button disabled; draft values and the create
+    `requestId` are kept; on reconnection the same draft submits normally. Existing self-role protection, server errors
+    and in-flight behaviour unchanged.
+- Tests (`AdminUsersPage.test.tsx`, +5, all **RED before → GREEN**): offline `?add=1` opens no form + explanation;
+  linked form opens after reconnection; open edit form disabled on connectivity loss with draft kept; direct submit
+  offline → `updateUserByAdmin` not called; create draft offline → direct submit blocked (0 calls), button disabled,
+  after reconnection the same draft submits with a `requestId`.
+- Real Chromium (Playwright offline mode fires the browser `offline` event), 390 and 1280 px: save disabled, Enter keeps
+  the dialog open without submitting, draft "עובדת חדשה" kept; online again → save enabled.
+  `docs/ui-review/ui3/r1-390-users-dialog-offline.png`, `r1-1280-users-dialog-offline.png`.
+
+## UI3-R2 (Important) — report functionality on phones / zoom
+- `src/components/DiscardReport.tsx` (phone branch, < 600 px): sort control "מיון לפי" with the **same five keys and
+  labels as the desktop headers** (שם המוצר, כמות כוללת נזרקת, מספר זריקות, ממוצע לזריקה, זריקה אחרונה) and a 44 px
+  direction button (accessible name "כיוון מיון: יורד/עולה"), both driving the existing `sortKey`/`sortOrder` state;
+  each card shows "ממוצע לזריקה: <value> ק״ג/יח׳" from the existing `averageQuantity` (rounded to ≤ 2 decimals, no
+  string stripping; kg/units never mixed). Desktop table unchanged.
+- Tests — new `src/components/DiscardReport.mobile.test.tsx` (phone branch forced via `useMediaQuery`, 5 tests): average
+  with correct unit + separate kg/unit totals; real ordering changes for every key in both directions; sorting
+  combined with search and the reason filter (server reason argument asserted, sort kept); 44 px controls and one-row /
+  empty reports; average formatting (60 stays 60, 1.5 units shown). First four **RED before → GREEN**; the formatting
+  test guards a bug I caught in my own first draft (a trailing-zero regex would have shown 60 as 6).
+- Real Chromium 390 px: sort by "מספר זריקות" applied, overflow 0 px; 1280 px table unchanged, overflow 0 px.
+  `docs/ui-review/ui3/r2-390-report-phone-sort-average.png`, `r2-1280-report-table.png`.
+- Note (existing scope, unchanged): the report groups by product + unit and does not show department, so same-name bar
+  and kitchen products appear as two rows without a department label (desktop and phone alike).
+
+## UI3-R3 (Minor, coordinated) — unchanged: header menu button still `aria-label="menu"` until Codex changes the browser
+selector together with it (request UI3-1).
+
+## Checks (this checkpoint)
+- `npm run test:run`: 41 files, **354/354 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified, full output): exit 0, **Running 5 tests
+  … 5 passed (23.2 s)**.
+- NOT RUN: real phones/keyboards/screen readers.
+
+Task / bounded subtask (accepted by Codex at `5c518c6`): **UI2 follow-up — Codex review UI2-R1 / UI2-R2** (`docs/CODEX_REQUESTS.md` at `c4df88e`)
+Status: **UI2 READY (corrected)** — supersedes UI2 at `ab52a6c`. UI3 (`741333a`) remains READY FOR CODEX REVIEW and is
+contained in this checkpoint. Not deployed; `main` not touched.
+Integrated Codex SHA: `c4df88e` (UI2 review, docs only), normal merge.
+Last previously confirmed remote SHA: 741333a6e1b80cb59e45fab9f4909ed123d4ec0d
+
+## UI2-R1 (Important) — pending opening dialog could be dismissed
+- Cause (as reported): `FloatingActionButton` closed the dialog unconditionally (header "סגירה", backdrop, Escape) while
+  `OpenItemForm` awaited `openInventoryItem`; closing unmounted the form, its values and its intent ref.
+- Fix (presentation only; payloads, operation IDs, queue, server untouched):
+  - `OpenItemForm`: new **optional** `onBusyChange?(busy)` prop, reported from the existing `submitting` state and
+    reset to false on unmount. Existing props unchanged.
+  - `FloatingActionButton`: while busy, `handleCloseModal` is a no-op (header button and backdrop), `disableEscapeKeyDown`
+    is set, and the header button stays focusable with `aria-disabled="true"` and an explanatory title. Close works
+    again as soon as the request succeeds, returns a local (pending) receipt, or fails.
+- Tests — new `src/components/OpenItemDialog.integration.test.tsx` with the **real wrapper + real form** (API boundaries
+  mocked, synthetic fixtures), Codex's reproduction adopted unweakened:
+  1. pending submission + Escape (focus on the header close button) / header click / backdrop → dialog, amount value and
+     "שולח..." remain; exactly one API call (×3) — **RED before, GREEN after**;
+  2. pending → rejected (`unavailable`): error shown, values kept, submit re-enabled, retry sends an **identical** input
+     (same `operationId` and `openedAtMs`) — **RED before, GREEN after**;
+  3. pending → `synced` and → `pending` (local) receipts: truthful message, normal close restored, focus returns to the
+     opener (guards); idle Escape close still works (guard).
+## UI2-R2 (Minor) — desktop evidence
+- 1280 px before (pre-UI2 tree `75c68f1`, built in a temporary worktree, removed afterwards) and after, synthetic data:
+  `docs/ui-review/ui2/before-1280-open-dialog.png`, `before-1280-open-dialog-short-460.png`, `before-1280-close-dialog.png`,
+  `after-1280-open-dialog.png`, `after-1280-open-dialog-short-460.png`, `after-1280-close-dialog.png`; 390 px re-captured
+  on this tree: `after-r1-390-open-dialog*.png`.
+- Short-height measurement (viewport 1280×460, amount focused, invalid value): before — submit 475–519 px, **off-screen**;
+  after — submit 362–410 px, visible; amount visible in both. 390×460 after: amount 219–272, submit 404–452, visible.
+  Action dialog targets after: finished 56 / discarded 56 / ביטול 44 / confirm 44 px (before 42/42 choices).
+- This is a reduced headless viewport, **not** a real phone keyboard. Real iPhone/Android keyboards and screen readers:
+  **NOT RUN**.
+
+## Checks (this checkpoint)
+- `npm run test:run`: 40 files, **344/344 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified, full output): exit 0, **Running 5 tests
+  … 5 passed (22.6 s)**.
+- Changed files: `src/components/OpenItemForm.tsx`, `src/components/FloatingActionButton.tsx`,
+  `src/components/OpenItemDialog.integration.test.tsx` (new), screenshots above, this handoff.
+
+Task / bounded subtask (READY FOR CODEX REVIEW at `741333a`): UI/UX round — **UI3 navigation, admin screens and final visual review**
+Status: **UI3 READY FOR CODEX REVIEW**. UI1 (accepted at `4aae9eb`), UI2 (`ab52a6c`) and UI3 together form the UI
+candidate. Not deployed; `main` not touched.
+Last previously confirmed remote SHA: ab52a6c0cb511013909ed67816c393408f2eaa59
+
+## UI3 — problems found (before, 390/1280 px, synthetic emulator data)
+- Header: large clock card and "TossIt Enterprise" tagline (desktop), English menu-button name, page title "לוח הבקרה".
+- Admin panel: gradient banner "פאנל ניהול מתקדם", centred section headings, oversized tabs.
+- Users / fridges: inline-styled buttons ("חזרה לפאנל ניהול", green "לוח בקרה", ~30 px "ערוך"/"מחק"), long blue
+  instruction boxes, cramped tables at 390 px; the users add/edit form was a hand-built overlay **without focus trap**.
+- Products: duplicated "ניהול מוצרים" heading, inline-styled add button, table squeezed at 390 px.
+- Discard report: emoji title and four full-width gradient blocks before data; **totals summed kg and units together**
+  and averaged them (meaningless mixed number).
+- Login: bright blue Google button, 4 px radii, no visible focus ring.
+- Screenshots: `docs/ui-review/ui3/before-*.png`, overview `before-sheet-390.png`.
+
+## UI3 changed files
+- `src/components/layout/PageHeader.tsx` (new): one h1, optional one-line description, actions; wraps on phones.
+- `src/components/UnifiedNavigation.tsx`: flat teal app bar, logo + current page as plain text (pages own their h1),
+  44 px menu button with focus ring, removed decorative clock card and tagline, 48 px menu items; menu labels aligned
+  with page titles ("מלאי", "ניהול"); role-based visibility unchanged.
+- `src/pages/AdminPanel.tsx`: PageHeader "ניהול" + scope description; simple outlined panel and tabs; right-aligned h2
+  section headings. (The inventory tab's older sub-tabs were left as-is — see known issues.)
+- `src/pages/AdminUsersPage.tsx` (logic unchanged): PageHeader with "הוסף משתמש"; offline → warning + add/edit/
+  deactivate disabled; users as cards (name, LTR email, "אתה"/"מושבת", role/department chips) with 44 px actions named
+  per user ("עריכה — X", "השבתה — X"); self-deactivation still disabled; add/edit form is now an MUI **Dialog**
+  (focus trap, Escape, focus returns to the opener) with the same fields/placeholders/titles.
+- `src/pages/AdminFridgesPage.tsx` (logic unchanged): PageHeader with "הוסף מקרר", offline warning, cards with
+  department chip and 44 px named actions ("עריכה — X", "מחיקה — X").
+- `src/components/ProductManagement.tsx` (logic unchanged): MUI alerts, 44 px add button, product cards with shelf
+  life/unit/department/fridge chips and 44 px named actions; form fields min-height 44 px; no duplicated heading.
+- `src/components/DiscardReport.tsx`: h2 "דוח זריקות" + description; compact filter row (dates, reason, search, 44 px);
+  four small stats — events, products, **kg total and units total shown separately** (mixed total/average removed);
+  phone (< 600 px) shows per-product cards, tablet/desktop keeps the sortable table.
+- `src/features/reports/ReportsPage.tsx`, `src/features/settings/SettingsPage.tsx`: PageHeader.
+- `src/pages/LoginPage.tsx` (CSS only): 48 px inputs/buttons, 10 px radii, neutral Google button, visible focus rings.
+- Tests: UnifiedNavigation +2 (Escape returns focus to the menu button; title is plain text, no tagline/clock),
+  AdminUsersPage +3 (offline actions disabled with explanation; labelled dialog returns focus; per-user action names),
+  AdminPanel +1 (plain h1 "ניהול"), AdminFridgesPage +1 (one h1, per-fridge action names); existing tests updated only
+  for renamed accessible names (`/^עריכה/`, `/^מחיקה/`), card containers and the report's separate kg/units totals.
+  RED before: 6 of the new assertions (Escape guard already passed and stays as a guard).
+
+## UI3 checks
+- `npm run test:run`: 39 files, **337/337 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified, full output): exit 0, **Running 5
+  tests … 5 passed (24.0 s)** — including admin employee creation through the redesigned users page.
+- Real Chromium, synthetic data, admin at 390 / 640 (=1280 at 200 % zoom) / 1280 px on `/admin`, products, reports tab,
+  `/admin/users`, `/admin/fridges`, `/reports`, `/settings`: page overflow **0 px everywhere**. Interactive elements
+  under 40 px that remain are inner `<input>` elements of 44 px MUI fields, MUI's hidden native select input, and the
+  three settings switches (38 px; the whole label row is also clickable) — not independently measured hit regions.
+- Screenshots: `docs/ui-review/ui3/after-*.png`, overview `after-sheet-390.png`.
+- NOT RUN: real iPhone/Android, screen readers, staff-account pass through every admin URL beyond the existing
+  browser test (staff denied `/admin/users`).
+
+## UI3 known issues / requests
+- Request UI3-1: header menu button accessible name is still English "menu" (Codex browser spec selects it). Flip
+  together.
+- Admin panel "מלאי מוצרים" tab still uses its older sub-tabs (מוצרים פעילים / פג תוקף בקרוב / נזרקו / נגמר); the
+  item cards inside are the new UI1 cards. Candidate for a follow-up if wanted.
+- Request UI1-1 (expiring window) still open, non-blocking.
+
+Task / bounded subtask (historical): UI2 fast, truthful opening and closing — READY at `ab52a6c`.
+Integrated Codex SHA: `4aae9eb` (Codex merge of corrected UI1 + acceptance; fast-forward, docs only).
+Last previously confirmed remote SHA: 75c68f118015144b7c7e7c1087a5f5c8480b25aa
+
+## UI2 — problems found (before, 390 px, synthetic emulator data)
+- Open-item dialog floated mid-screen; with an emulated keyboard (viewport 390×460, amount focused) the submit
+  "פתח פריט" was at 479–527 px — **off-screen**; dialog header clipped. Title duplicated ("פתיחת פריט - בר" header +
+  "פתיחת פריט — בר" in the form). An invalid amount showed twice (top banner + helper). Empty amount showed a stray
+  unit "יחידות". Screenshots: `docs/ui-review/ui2/before-390-open-dialog.png`, `before-390-open-dialog-keyboard-460.png`.
+- Finished/discarded dialog: choice rows 42 px (< 44); the confirm button used the shared `ui/Button` `loading` prop,
+  which replaces the label with a generic "טוען..." (the intended "שולח..." never appeared).
+  `docs/ui-review/ui2/before-390-close-dialog.png`.
+- Already correct and now locked by tests: Escape restores focus to the opener; focus stays inside the action dialog.
+
+## UI2 changed files
+- `src/components/FloatingActionButton.tsx`: MUI `Dialog` (was `Modal`), **full screen below `sm`**, one title
+  "פתיחת פריט — <מחלקה>" labelling the dialog (`aria-labelledby`), 44 px "סגירה" button; MUI focus trap and focus return.
+- `src/components/OpenItemForm.tsx` (props unchanged; open/intent/receipt logic unchanged): no own heading (form keeps
+  an accessible name); **sticky action footer** holding server error/receipt messages + "פתח פריט" (`data-testid=
+  open-item-footer`, safe-area padding); invalid amount shown **once**, on the field (`aria-invalid`), and **focused**;
+  unit adornment only when a product is selected; hints ("בחר מוצר כדי להזין כמות", "אפשר משקל עשרוני", "מספר שלם של
+  יחידות"); 48 px selects/options; `enterKeyHint=done`; values and retry intent retained after failure.
+- `src/components/ui/ItemActionModal.tsx` (props/`ItemActionConfirm` unchanged): dialog labelled by its title; finished /
+  discarded as 56 px bordered options; reasons 44 px; buttons 44 px; "שולח..." while sending (no generic loading label);
+  Escape/backdrop ignored while sending (existing guard, now tested).
+- Tests: OpenItemForm +3 (`retains values and retry intent after failure`, `shows an invalid amount once, on the field,
+  and moves focus there`, `keeps the submit button and any server error in the action footer`); new
+  `FloatingActionButton.test.tsx` (2: labelled dialog/title once/focus restored on Escape; close button); new
+  `ui/ItemActionModal.test.tsx` (3: 56 px choices, discard requires reason with exact confirm values, blocked while
+  sending); ItemsList +2 (`restores focus to the item action button when the dialog is dismissed`, `prevents a repeated
+  close while the first request is pending`); SyncStatus +1 (`keeps a failed operation distinct from the disconnected
+  state`). Existing concurrent-close, offline receipt, off-shift and retry-ID tests preserved. RED before: 6 of the new
+  assertions (invalid-once/focus, footer, 56 px, sending label ×2, dialog title/focus).
+
+## UI2 checks
+- `npm run test:run`: 39 files, **330/330 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified script, full output kept): exit 0,
+  **Running 5 tests … 5 passed (23.5 s)**.
+- Real Chromium, synthetic emulator data: at 390×460 (emulated keyboard) amount field 219–272 px and submit 404–452 px
+  — both visible (before: submit off-screen). Also at 1280×460: submit visible. Escape from the open dialog → focus on
+  "פתיחת פריט"; action dialog: focus inside the modal; targets finished 56 / discarded 56 / ביטול 44 / סמן כנגמר 44 px.
+  Page overflow 0 px at 390 and 1280. Screenshots: `docs/ui-review/ui2/after-390-open-dialog.png`,
+  `after-390-open-dialog-keyboard-460.png`, `after-390-close-dialog.png`.
+- NOT RUN: real iPhone/Android on-screen keyboard (headless emulation by viewport height only), screen readers.
+- No change to `useCloseItem`, receipts, operation IDs, offline queue, worker, `SyncStatus`/`OfflineIndicator` source.
+
+Task / bounded subtask (accepted by Codex at 4aae9eb): UI1 correction — Codex review R1–R4 (docs/CODEX_REQUESTS.md at `f5ce297`)
 Status: **UI1 READY (corrected)**. Supersedes the earlier UI1 READY at `a8ed3b3`. Not deployed.
 Integrated Codex SHA: `f5ce297` (security/dependency checkpoint + review requests), normal merge, `npm ci` + `npm ci --prefix functions`.
 Last previously confirmed remote SHA: a8ed3b353a145fe23db773b26a4d3d7128592fa3
