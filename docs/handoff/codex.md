@@ -1,14 +1,18 @@
 # Codex handoff
 Branch: codex/tossit-core
 Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and release gates
-Status: Neon implementation and CI complete; staging deployed without production credentials. Owner approval obtained 2026-11-15; Google sign-in renewal required before credential provisioning. No production cutover.
-Last previously confirmed remote SHA: 138eebcbff59ed9b9d66222563ca809507cc6168
+Status: Neon credential connection complete and read-only verified; no production client cutover.
+Last previously confirmed remote SHA: 0de379a061c8d6d16b2e02fda1bafe7a3cbdcdc4
 
-## Credential authorization — 2026-11-15
+## Credential connection complete — 2026-11-15
 
-Alon explicitly approved the concrete next action: create tossit-neon-api@tossit-4cc02.iam.gserviceaccount.com, grant only project-scoped roles/firebaseauth.admin and roles/datastore.user, create its dedicated credential and install it directly as a Neon runtime secret. Do not ask for this authorization again. Billing activation, enabling scheduled delivery, production user/data mutations, main merge and Render cutover are not included.
+Alon's explicit authorization has been executed; do not ask again for this completed action. Enabled the nonbillable IAM API, created tossit-neon-api@tossit-4cc02.iam.gserviceaccount.com (unique ID 102321388725695366320), and preserved existing project policy/etag while granting exactly two unconditional project roles: roles/firebaseauth.admin and roles/datastore.user. No Owner/Editor/billing role. Dedicated key ID 70de3a5e25cbd0252913f6b284def6961fefe437 was installed directly as FIREBASE_SERVICE_ACCOUNT_JSON in Neon deployment2; private material was never committed or printed, and the temporary local credential was removed after verification.
 
-Fresh preflight: Neon connection active, deployment1 still completed with only the three public configuration names, inventory trigger still disabled/next_run_at:null. Firebase CLI reports no authorized Google accounts in the current runtime, so no IAM creation/grant/key call has run. Renew Google sign-in, then resume approved provisioning and read-only verification. Do not ask for a private key in chat or reuse interactive Google credentials as the server credential. Keep temporary key material out of git and logs; remove the temporary copy after successful secure installation/verification. Preserve existing IAM policy bindings and etag, verify exactly the two authorized roles, and do not overwrite an unexpectedly preexisting account/key.
+Deployment2 is active/completed on Node24 and reuses deployment1's reviewed bundle. Existing public env values are preserved, including deliberately non-working trigger-staging-probe. Real read-only checks PASS: service-account Auth listUsers(1) (no identities logged), Firestore reads, remote /health200 configured:true, and remote anonymous revoke of a cryptographically random absent device returns400/FAILED_PRECONDITION after a real Firestore transaction read. Device and revocation documents were absent before and after; no production user/inventory/device writes occurred. Unsigned employee and invalid-token employee calls return401; forged scheduled call returns401. Authenticated production employee writes were NOT RUN.
+
+Inventory trigger remains disabled, next_run_at:null. Google billingEnabled:false confirmed after provisioning. VAPID keys absent; genuine provider-scheduled delivery/retries, real push, phone/staff pilot NOT RUN. Main, Render live site, rules/indexes and unrelated alondb unchanged; PR1 remains draft. Remaining work: review production profiles/rules/indexes and Render workspace/auto-deploy settings, prepare matching client configuration and VAPID/pilot, then obtain concrete coordinated main/rules/client cutover authorization. Credential approval did not authorize those actions.
+
+The sections below are historical checkpoint records; their statements about missing credentials or awaiting credential approval were superseded by the completed connection above.
 
 ## Neon N3 complete — implementation verified, production credential gate remains
 
