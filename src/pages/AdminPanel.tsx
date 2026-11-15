@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ItemsList from '../components/ItemsList';
 import ProductManagement from '../components/ProductManagement';
+import { PageHeader } from '../components/layout/PageHeader';
 import DiscardReport from '../components/DiscardReport';
 // UnifiedNavigation is already rendered in App.tsx
 import {
@@ -167,41 +168,13 @@ const AdminPanel: React.FC = () => {
       )}
 
       {canAccessAdminPanel && !isLoading && (
-        <Container maxWidth={false} sx={{ flexGrow: 1, py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3, md: 4, lg: 6 }, maxWidth: '1920px', margin: '0 auto' }}>
-          {/* Page Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 700,
-                mb: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              פאנל ניהול מתקדם
-            </Typography>
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-              <Chip 
-                label={profile?.role === 'admin' ? 'מנהל מערכת' : 'מנהל מחלקה'} 
-                color="primary"
-                variant="filled"
-                sx={{ fontWeight: 600 }}
-              />
-              {isOffline && (
-                <Chip 
-                  label="מצב לא מקוון"
-                  color="warning"
-                  variant="filled"
-                  size="small"
-                  icon={<WifiOffIcon />}
-                  sx={{ fontWeight: 600 }}
-                />
-              )}
-            </Stack>
-          </Box>
+        <Container maxWidth="lg" disableGutters sx={{ flexGrow: 1, py: { xs: 1, sm: 2 } }}>
+          {/* Page header (was a large gradient banner) */}
+          <PageHeader
+            title="ניהול"
+            description={profile?.role === 'admin' ? 'מלאי, מוצרים ודוחות של כל העסק' : 'מלאי, מוצרים ודוחות של המחלקה שלך'}
+            actions={isOffline ? <Chip label="אין חיבור" color="warning" size="small" icon={<WifiOffIcon />} sx={{ fontWeight: 600 }} /> : undefined}
+          />
 
           {/* Network error alert */}
       {networkError && (
@@ -214,18 +187,9 @@ const AdminPanel: React.FC = () => {
       )}
       
           {/* Main Content */}
-          <Paper 
-            elevation={0}
-            sx={{ 
-              borderRadius: 4,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              overflow: 'hidden',
-              background: alpha(theme.palette.background.paper, 0.8),
-              backdropFilter: 'blur(20px)',
-            }}
-          >
+          <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
             {/* Modern Tabs */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3, pt: 2 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: { xs: 0, sm: 1 } }}>
               <Tabs 
                 value={activeTab} 
                 onChange={(_, newValue) => {
@@ -237,27 +201,8 @@ const AdminPanel: React.FC = () => {
                 }}
                 variant="scrollable"
                 scrollButtons="auto"
-                sx={{
-                  '& .MuiTab-root': {
-                    fontWeight: 600,
-                    fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                    minHeight: { xs: 56, sm: 64 },
-                    textTransform: 'none',
-                    minWidth: { xs: 120, sm: 140, md: 160 },
-                    padding: { xs: '12px 16px', sm: '12px 24px' },
-                    '&.Mui-selected': {
-                      color: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiTabs-indicator': {
-                    height: 3,
-                    borderRadius: '3px 3px 0 0',
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  },
-                  '& .MuiTabs-scrollButtons': {
-                    '&.Mui-disabled': { opacity: 0.3 },
-                  },
-                }}
+                aria-label="אזורי ניהול"
+                sx={{ minHeight: 48, '& .MuiTab-root': { minHeight: 48, fontWeight: 600, fontSize: '0.95rem', px: 2 } }}
               >
                 <Tab 
                   value="inventory" 
@@ -290,11 +235,11 @@ const AdminPanel: React.FC = () => {
               </Tabs>
             </Box>
             
-            <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
               {activeTab === 'inventory' && (
                 <Box>
-                  <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
                       מלאי מוצרים
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -424,8 +369,8 @@ const AdminPanel: React.FC = () => {
 
               {activeTab === 'users' && (
                 <Box>
-                  <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
                       ניהול משתמשים
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -447,8 +392,8 @@ const AdminPanel: React.FC = () => {
 
               {activeTab === 'products' && (
                 <Box>
-                  <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
                       ניהול מוצרים
                     </Typography>
                     <Typography variant="body2" color="text.secondary">

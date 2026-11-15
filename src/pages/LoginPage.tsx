@@ -257,9 +257,11 @@ const LoginPage: React.FC = () => {
         
         input {
           width: 100%;
+          min-height: 48px;
+          box-sizing: border-box;
           padding: 12px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
+          border: 1px solid #c7ccd6;
+          border-radius: 10px;
           font-size: 16px;
         }
         
@@ -268,16 +270,18 @@ const LoginPage: React.FC = () => {
           text-align: left !important;
         }
         
-        input:focus {
-          border-color: #009688;
-          outline: none;
+        input:focus-visible {
+          border-color: #0F766E;
+          outline: 3px solid #99F6E4;
+          outline-offset: 1px;
         }
         
         .login-button, .google-button {
           width: 100%;
+          min-height: 48px;
           padding: 12px;
           border: none;
-          border-radius: 4px;
+          border-radius: 10px;
           font-size: 16px;
           font-weight: 500;
           cursor: pointer;
@@ -286,21 +290,28 @@ const LoginPage: React.FC = () => {
         }
         
         .login-button {
-          background-color: #009688;
+          background-color: #0F766E;
           color: white;
+          font-weight: 700;
         }
         
         .login-button:hover {
-          background-color: #00796b;
+          background-color: #0d6660;
         }
         
         .google-button {
-          background-color: #4285F4;
-          color: white;
+          background-color: #fff;
+          color: #0B1220;
+          border: 1px solid #c7ccd6;
         }
         
         .google-button:hover {
-          background-color: #3367D6;
+          background-color: #F6F7F9;
+        }
+
+        .login-button:focus-visible, .google-button:focus-visible {
+          outline: 3px solid #99F6E4;
+          outline-offset: 2px;
         }
         
         button:disabled {

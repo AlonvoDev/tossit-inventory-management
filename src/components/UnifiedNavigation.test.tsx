@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { UseAuthReturn } from '../context/AuthContext';
@@ -48,12 +48,12 @@ const openMenu = async (role: Role) => {
   return within(screen.getByRole('menu'));
 };
 
-const ALL = ['לוח הבקרה', 'ניהול מערכת', 'ניהול משתמשים', 'הוסף משתמש חדש', 'ניהול מקררים', 'הוסף קטגוריה חדשה', 'דוחות', 'הגדרות', 'התראות במכשיר', 'התנתק'];
+const ALL = ['מלאי', 'ניהול', 'ניהול משתמשים', 'הוסף משתמש חדש', 'ניהול מקררים', 'הוסף קטגוריה חדשה', 'דוחות', 'הגדרות', 'התראות במכשיר', 'התנתק'];
 
 const visibleFor: Record<Role, string[]> = {
   admin: ALL,
-  manager: ['לוח הבקרה', 'ניהול מערכת', 'ניהול מקררים', 'דוחות', 'התראות במכשיר', 'התנתק'],
-  staff: ['לוח הבקרה', 'התראות במכשיר', 'התנתק'],
+  manager: ['מלאי', 'ניהול', 'ניהול מקררים', 'דוחות', 'התראות במכשיר', 'התנתק'],
+  staff: ['מלאי', 'התראות במכשיר', 'התנתק'],
 };
 
 describe('UnifiedNavigation menu matches route access', () => {
@@ -113,6 +113,35 @@ describe('UnifiedNavigation menu matches route access', () => {
     confirm.mockRestore();
     offline.pendingCount = 0;
     offline.failedCount = 0;
+  });
+
+  it('UI3: Escape closes the menu and returns focus to the menu button', async () => {
+    authState.current = as('staff');
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <UnifiedNavigation />
+      </MemoryRouter>,
+    );
+    const button = screen.getByRole('button', { name: 'menu' });
+    await userEvent.click(button);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(button).toHaveFocus();
+  });
+
+  it('UI3: the header shows the page title without the decorative clock or "Enterprise" tagline', () => {
+    authState.current = as('admin');
+    render(
+      <MemoryRouter initialEntries={['/admin/users']}>
+        <UnifiedNavigation />
+      </MemoryRouter>,
+    );
+    // Plain text: each page owns its own h1, so the app bar title is not a second heading.
+    expect(screen.getByText('ניהול משתמשים')).toBeInTheDocument();
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.queryByText('TossIt Enterprise')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('header-clock')).not.toBeInTheDocument();
   });
 
   it('renders nothing without a profile', () => {

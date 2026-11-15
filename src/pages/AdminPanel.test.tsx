@@ -44,4 +44,10 @@ describe('AdminPanel', () => {
     expect(screen.queryByRole('tab', { name: /ניהול משתמשים/ })).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /ניהול מוצרים/ })).toBeInTheDocument();
   });
+
+  it('UI3: uses a plain page heading instead of the decorative banner', () => {
+    renderAs('admin');
+    expect(screen.getByRole('heading', { level: 1, name: 'ניהול' })).toBeInTheDocument();
+    expect(screen.queryByText('פאנל ניהול מתקדם')).not.toBeInTheDocument();
+  });
 });

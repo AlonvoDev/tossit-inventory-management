@@ -5,8 +5,8 @@ import { getBusinessFridges } from '../api/fridgesAPI';
 import { getBusinessCategories, addCustomCategory } from '../api/categoriesAPI';
 import { Product, PRODUCT_CATEGORIES } from '../types/Product';
 import { Fridge } from '../types/Fridge';
-import { Alert } from '@mui/material';
-import { WifiOff as WifiOffIcon } from '@mui/icons-material';
+import { Alert, Box, Button, Chip, Paper, Typography } from '@mui/material';
+import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon, WifiOff as WifiOffIcon } from '@mui/icons-material';
 import {
   canManageBusiness,
   Department,
@@ -29,6 +29,8 @@ interface ProductManagementProps {
 
 const fieldStyle = (hasError: boolean): React.CSSProperties => ({
   width: '100%',
+  minHeight: '44px',
+  boxSizing: 'border-box',
   padding: '8px',
   marginTop: '5px',
   border: hasError ? '2px solid #f44336' : '2px solid #333333',
@@ -285,10 +287,17 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
 
   return (
     <div className="product-management" dir="rtl">
-      <h2>ניהול מוצרים</h2>
-
-      {error && <div className="alert error" role="alert">{error}</div>}
-      {success && <div className="alert success" role="status">{success}</div>}
+      {/* The surrounding admin tab provides the "ניהול מוצרים" heading. */}
+      {error && (
+        <Alert severity="error" role="alert" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
+      )}
 
       {isOffline && (
         <Alert severity="warning" icon={<WifiOffIcon />} sx={{ mb: 2 }}>
@@ -309,27 +318,9 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
       )}
 
       {canEdit && !formOpen && (
-        <div className="product-actions">
-          <button
-            className="action-button"
-            onClick={openAdd}
-            disabled={disabled}
-            style={{
-              background: disabled ? '#9E9E9E' : '#2196F3',
-              color: 'white',
-              padding: '12px 20px',
-              borderRadius: '4px',
-              border: 'none',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              marginBottom: '20px',
-            }}
-          >
-            הוסף מוצר חדש
-          </button>
-        </div>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd} disabled={disabled} sx={{ minHeight: 44, mb: 2 }}>
+          הוסף מוצר חדש
+        </Button>
       )}
 
       {formOpen && (
@@ -516,54 +507,61 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         </div>
       )}
 
-      <div className="products-list">
-        <h3>רשימת מוצרים</h3>
-        {loading && <p>טוען מוצרים...</p>}
-
-        {!loading && products.length === 0 ? (
-          <div className="no-products">
-            <p>
-              {allowedDepartments.length === 1
-                ? `לא נמצאו מוצרים עבור מחלקת ${departmentLabel(allowedDepartments[0])}.`
-                : 'לא נמצאו מוצרים.'}
-            </p>
-          </div>
-        ) : (
-          products.length > 0 && (
-            <table className="products-table">
-              <thead>
-                <tr>
-                  <th>מזהה מוצר</th>
-                  <th>שם</th>
-                  <th>תוקף בימים</th>
-                  <th>סוג</th>
-                  <th>אזור</th>
-                  <th>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map(product => (
-                  <tr key={product.id}>
-                    <td>{product.productId}</td>
-                    <td>{product.name}</td>
-                    <td>{product.shelfLifeDays}</td>
-                    <td>{product.type === 'kg' ? 'ק"ג' : 'יחידות'}</td>
-                    <td>{departmentLabel(product.area) ?? 'לא הוגדר'}</td>
-                    <td className="actions-cell">
-                      <button className="edit-button" onClick={() => openEdit(product)} disabled={disabled}>
-                        ערוך
-                      </button>
-                      <button className="delete-button" onClick={() => handleDeleteProduct(product)} disabled={disabled}>
-                        מחק
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        )}
-      </div>
+      <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1.5 }}>
+        רשימת מוצרים{!loading && products.length > 0 ? ` (${products.length})` : ''}
+      </Typography>
+      {loading ? (
+        <Typography role="status">טוען מוצרים...</Typography>
+      ) : products.length === 0 ? (
+        <Box sx={{ py: 3, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+          <Typography sx={{ fontWeight: 700 }}>
+            {allowedDepartments.length === 1
+              ? `לא נמצאו מוצרים עבור מחלקת ${departmentLabel(allowedDepartments[0])}.`
+              : 'לא נמצאו מוצרים.'}
+          </Typography>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
+          {products.map(product => (
+            <Paper
+              key={product.id}
+              component="article"
+              variant="outlined"
+              aria-label={product.name}
+              sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'flex-start' }}>
+                <Typography component="h4" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>
+                  {product.name}
+                </Typography>
+                <Typography variant="body2" dir="ltr" sx={{ flexShrink: 0 }}>
+                  {product.productId}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                <Chip size="small" variant="outlined" label={`${product.shelfLifeDays} ימים`} />
+                <Chip size="small" variant="outlined" label={product.type === 'kg' ? 'ק״ג' : 'יחידות'} />
+                <Chip size="small" variant="outlined" label={departmentLabel(product.area) ?? 'לא הוגדר'} />
+                {product.fridgeId && fridges.find(f => f.id === product.fridgeId) && (
+                  <Chip size="small" variant="outlined" label={fridges.find(f => f.id === product.fridgeId)!.name} />
+                )}
+              </Box>
+              {canEdit && (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button variant="outlined" startIcon={<EditIcon />} onClick={() => openEdit(product)} disabled={disabled}
+                    aria-label={`עריכה — ${product.name}`} sx={{ minHeight: 44, flex: 1 }}>
+                    עריכה
+                  </Button>
+                  <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteProduct(product)} disabled={disabled}
+                    aria-label={`מחיקה — ${product.name}`} sx={{ minHeight: 44, flex: 1 }}>
+                    מחיקה
+                  </Button>
+                </Box>
+              )}
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       <style>{`
         /* Base styles */

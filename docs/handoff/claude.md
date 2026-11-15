@@ -1,7 +1,68 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: UI/UX round — **UI2 fast, truthful opening and closing**
-Status: **UI2 READY**. Next: UI3 (navigation, admin screens, final visual review). Not deployed.
+Task / bounded subtask: UI/UX round — **UI3 navigation, admin screens and final visual review**
+Status: **UI3 READY FOR CODEX REVIEW**. UI1 (accepted at `4aae9eb`), UI2 (`ab52a6c`) and UI3 together form the UI
+candidate. Not deployed; `main` not touched.
+Last previously confirmed remote SHA: ab52a6c0cb511013909ed67816c393408f2eaa59
+
+## UI3 — problems found (before, 390/1280 px, synthetic emulator data)
+- Header: large clock card and "TossIt Enterprise" tagline (desktop), English menu-button name, page title "לוח הבקרה".
+- Admin panel: gradient banner "פאנל ניהול מתקדם", centred section headings, oversized tabs.
+- Users / fridges: inline-styled buttons ("חזרה לפאנל ניהול", green "לוח בקרה", ~30 px "ערוך"/"מחק"), long blue
+  instruction boxes, cramped tables at 390 px; the users add/edit form was a hand-built overlay **without focus trap**.
+- Products: duplicated "ניהול מוצרים" heading, inline-styled add button, table squeezed at 390 px.
+- Discard report: emoji title and four full-width gradient blocks before data; **totals summed kg and units together**
+  and averaged them (meaningless mixed number).
+- Login: bright blue Google button, 4 px radii, no visible focus ring.
+- Screenshots: `docs/ui-review/ui3/before-*.png`, overview `before-sheet-390.png`.
+
+## UI3 changed files
+- `src/components/layout/PageHeader.tsx` (new): one h1, optional one-line description, actions; wraps on phones.
+- `src/components/UnifiedNavigation.tsx`: flat teal app bar, logo + current page as plain text (pages own their h1),
+  44 px menu button with focus ring, removed decorative clock card and tagline, 48 px menu items; menu labels aligned
+  with page titles ("מלאי", "ניהול"); role-based visibility unchanged.
+- `src/pages/AdminPanel.tsx`: PageHeader "ניהול" + scope description; simple outlined panel and tabs; right-aligned h2
+  section headings. (The inventory tab's older sub-tabs were left as-is — see known issues.)
+- `src/pages/AdminUsersPage.tsx` (logic unchanged): PageHeader with "הוסף משתמש"; offline → warning + add/edit/
+  deactivate disabled; users as cards (name, LTR email, "אתה"/"מושבת", role/department chips) with 44 px actions named
+  per user ("עריכה — X", "השבתה — X"); self-deactivation still disabled; add/edit form is now an MUI **Dialog**
+  (focus trap, Escape, focus returns to the opener) with the same fields/placeholders/titles.
+- `src/pages/AdminFridgesPage.tsx` (logic unchanged): PageHeader with "הוסף מקרר", offline warning, cards with
+  department chip and 44 px named actions ("עריכה — X", "מחיקה — X").
+- `src/components/ProductManagement.tsx` (logic unchanged): MUI alerts, 44 px add button, product cards with shelf
+  life/unit/department/fridge chips and 44 px named actions; form fields min-height 44 px; no duplicated heading.
+- `src/components/DiscardReport.tsx`: h2 "דוח זריקות" + description; compact filter row (dates, reason, search, 44 px);
+  four small stats — events, products, **kg total and units total shown separately** (mixed total/average removed);
+  phone (< 600 px) shows per-product cards, tablet/desktop keeps the sortable table.
+- `src/features/reports/ReportsPage.tsx`, `src/features/settings/SettingsPage.tsx`: PageHeader.
+- `src/pages/LoginPage.tsx` (CSS only): 48 px inputs/buttons, 10 px radii, neutral Google button, visible focus rings.
+- Tests: UnifiedNavigation +2 (Escape returns focus to the menu button; title is plain text, no tagline/clock),
+  AdminUsersPage +3 (offline actions disabled with explanation; labelled dialog returns focus; per-user action names),
+  AdminPanel +1 (plain h1 "ניהול"), AdminFridgesPage +1 (one h1, per-fridge action names); existing tests updated only
+  for renamed accessible names (`/^עריכה/`, `/^מחיקה/`), card containers and the report's separate kg/units totals.
+  RED before: 6 of the new assertions (Escape guard already passed and stays as a guard).
+
+## UI3 checks
+- `npm run test:run`: 39 files, **337/337 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified, full output): exit 0, **Running 5
+  tests … 5 passed (24.0 s)** — including admin employee creation through the redesigned users page.
+- Real Chromium, synthetic data, admin at 390 / 640 (=1280 at 200 % zoom) / 1280 px on `/admin`, products, reports tab,
+  `/admin/users`, `/admin/fridges`, `/reports`, `/settings`: page overflow **0 px everywhere**. Interactive elements
+  under 40 px that remain are inner `<input>` elements of 44 px MUI fields, MUI's hidden native select input, and the
+  three settings switches (38 px; the whole label row is also clickable) — not independently measured hit regions.
+- Screenshots: `docs/ui-review/ui3/after-*.png`, overview `after-sheet-390.png`.
+- NOT RUN: real iPhone/Android, screen readers, staff-account pass through every admin URL beyond the existing
+  browser test (staff denied `/admin/users`).
+
+## UI3 known issues / requests
+- Request UI3-1: header menu button accessible name is still English "menu" (Codex browser spec selects it). Flip
+  together.
+- Admin panel "מלאי מוצרים" tab still uses its older sub-tabs (מוצרים פעילים / פג תוקף בקרוב / נזרקו / נגמר); the
+  item cards inside are the new UI1 cards. Candidate for a follow-up if wanted.
+- Request UI1-1 (expiring window) still open, non-blocking.
+
+Task / bounded subtask (historical): UI2 fast, truthful opening and closing — READY at `ab52a6c`.
 Integrated Codex SHA: `4aae9eb` (Codex merge of corrected UI1 + acceptance; fast-forward, docs only).
 Last previously confirmed remote SHA: 75c68f118015144b7c7e7c1087a5f5c8480b25aa
 

@@ -155,8 +155,8 @@ describe('ProductManagement', () => {
     render(<ProductManagement />);
     await screen.findByText('לימון');
     expect(screen.getByRole('button', { name: 'הוסף מוצר חדש' })).toBeDisabled();
-    screen.getAllByRole('button', { name: 'ערוך' }).forEach(b => expect(b).toBeDisabled());
-    screen.getAllByRole('button', { name: 'מחק' }).forEach(b => expect(b).toBeDisabled());
+    screen.getAllByRole('button', { name: /^עריכה/ }).forEach(b => expect(b).toBeDisabled());
+    screen.getAllByRole('button', { name: /^מחיקה/ }).forEach(b => expect(b).toBeDisabled());
     expect(setItem).not.toHaveBeenCalledWith('pendingOperations', expect.anything());
     setItem.mockRestore();
   });
@@ -166,7 +166,7 @@ describe('ProductManagement', () => {
     api.updateProduct.mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
     render(<ProductManagement />);
     await screen.findByText('לימון');
-    await userEvent.click(screen.getAllByRole('button', { name: 'ערוך' })[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: /^עריכה/ })[0]);
     const form = screen.getByRole('form', { name: 'עריכת מוצר' });
     expect(within(form).getByRole('combobox', { name: /סוג מדידה/ })).toBeDisabled();
     await userEvent.click(within(form).getByRole('button', { name: 'עדכן מוצר' }));

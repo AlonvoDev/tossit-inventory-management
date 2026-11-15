@@ -48,7 +48,6 @@ import { useOffline } from '../offline/OfflineProvider';
 import { SyncStatus } from '../pwa/SyncStatus';
 import { NotificationControls } from '../pwa/NotificationControls';
 import tossitFavicon from '../assets/tossit-favicon.png';
-import ClockDisplay from './ClockDisplay';
 
 import { addCustomCategory } from '../api/categoriesAPI';
 import { canAccessRoute, canManageBusiness, departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
@@ -173,8 +172,8 @@ const UnifiedNavigation: React.FC = () => {
 
   const getCurrentPageTitle = () => {
     const path = location.pathname;
-    if (path === '/dashboard') return 'לוח הבקרה';
-    if (path === '/admin') return 'ניהול מערכת';
+    if (path === '/dashboard') return 'מלאי';
+    if (path === '/admin') return 'ניהול';
     if (path === '/admin/users') return 'ניהול משתמשים';
     if (path === '/admin/fridges') return 'ניהול מקררים';
     if (path === '/reports') return 'דוחות';
@@ -190,9 +189,9 @@ const UnifiedNavigation: React.FC = () => {
   const isBusinessAdmin = canManageBusiness(role);
 
   const navigationItems: NavigationItem[] = [
-    { id: 'dashboard', label: 'לוח הבקרה', icon: <DashboardIcon />, onClick: go('/dashboard'), visible: canAccessRoute(role, 'dashboard') },
+    { id: 'dashboard', label: 'מלאי', icon: <DashboardIcon />, onClick: go('/dashboard'), visible: canAccessRoute(role, 'dashboard') },
     { id: 'divider1', label: '', icon: <></>, onClick: () => {}, divider: true, visible: canSeeAdminPanel },
-    { id: 'admin', label: 'ניהול מערכת', icon: <AdminIcon />, onClick: go('/admin'), visible: canSeeAdminPanel },
+    { id: 'admin', label: 'ניהול', icon: <AdminIcon />, onClick: go('/admin'), visible: canSeeAdminPanel },
     { id: 'users', label: 'ניהול משתמשים', icon: <UsersIcon />, onClick: go('/admin/users'), visible: canAccessRoute(role, 'adminUsers') },
     { id: 'add-user', label: 'הוסף משתמש חדש', icon: <PersonAddIcon />, onClick: go('/admin/users?add=1'), visible: isBusinessAdmin },
     { id: 'fridges', label: 'ניהול מקררים', icon: <FridgeIcon />, onClick: go('/admin/fridges'), visible: canAccessRoute(role, 'adminFridges') },
@@ -215,13 +214,11 @@ const UnifiedNavigation: React.FC = () => {
       position="fixed" 
       elevation={0}
       sx={{
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-        borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
-        backdropFilter: 'blur(20px)',
+        background: theme.palette.primary.main,
         zIndex: (theme) => theme.zIndex.appBar,
       }}
     >
-      <Toolbar sx={{ px: { xs: 1, sm: 2, md: 3 }, minHeight: { xs: 56, sm: 64, md: 70 } }}>
+      <Toolbar sx={{ px: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 60 }, gap: 1 }}>
         {/* Menu Button */}
         <IconButton
           edge="start"
@@ -229,62 +226,21 @@ const UnifiedNavigation: React.FC = () => {
           aria-label="menu"
           onClick={handleMenuOpen}
           sx={{
-            mr: { xs: 1, sm: 2 },
-            background: alpha(theme.palette.common.white, 0.1),
-            '&:hover': {
-              background: alpha(theme.palette.common.white, 0.2),
-              transform: 'scale(1.05)',
-            },
-            transition: 'all 0.2s ease-in-out',
-            width: { xs: 40, sm: 48 },
-            height: { xs: 40, sm: 48 },
+            width: 44,
+            height: 44,
+            '&:hover': { background: alpha(theme.palette.common.white, 0.15) },
+            '&:focus-visible': { outline: `3px solid ${theme.palette.secondary.main}` },
           }}
         >
           <MenuIcon />
         </IconButton>
 
-        {/* App Title and Page */}
-        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* TossIt Logo - only show on larger screens */}
-                                <Box
-                      component="img"
-                      src={tossitFavicon}
-                      alt="TossIt"
-              sx={{ 
-                height: { xs: 20, sm: 24, md: 28 },
-                width: 'auto',
-                display: { xs: 'none', sm: 'block' }
-              }}
-            />
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 700,
-                fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.3rem' },
-                lineHeight: 1.2,
-                fontFamily: 'Inter, Heebo, sans-serif',
-              }}
-            >
-              {getCurrentPageTitle()}
-            </Typography>
-          </Box>
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              opacity: 0.8,
-              fontSize: { xs: '0.65rem', sm: '0.75rem' },
-              display: { xs: 'none', sm: 'block' },
-              fontFamily: 'Inter, Heebo, sans-serif',
-            }}
-          >
-            TossIt Enterprise
+        {/* Logo + current page (plain text; each page renders its own h1) */}
+        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+          <Box component="img" src={tossitFavicon} alt="" aria-hidden sx={{ height: 28, width: 28, flexShrink: 0 }} />
+          <Typography component="div" sx={{ fontWeight: 700, fontSize: { xs: '1rem', sm: '1.1rem' }, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {getCurrentPageTitle()}
           </Typography>
-        </Box>
-
-        {/* User Info and Clock - Desktop */}
-        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', mr: 2 }}>
-          <ClockDisplay />
         </Box>
 
         {/* Action Buttons */}
@@ -375,7 +331,8 @@ const UnifiedNavigation: React.FC = () => {
               onClick={item.onClick}
               disabled={isOffline && item.id !== 'logout' && item.id !== 'dashboard'}
               sx={{
-                py: 1.5,
+                minHeight: 48,
+                py: 1,
                 px: 3,
                 '&:hover': {
                   background: alpha(theme.palette.primary.main, 0.08),

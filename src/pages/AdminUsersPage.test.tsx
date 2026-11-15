@@ -12,8 +12,9 @@ const api = vi.hoisted(() => ({
   deleteUserByAdmin: vi.fn(),
 }));
 vi.mock('../api/authAPI', () => api);
+const authState = vi.hoisted(() => ({ isOffline: false }));
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ isAdmin: true, businessId: 'b1', uid: 'admin-1', loading: false }),
+  useAuth: () => ({ isAdmin: true, businessId: 'b1', uid: 'admin-1', loading: false, isOffline: authState.isOffline }),
 }));
 
 import AdminUsersPage from './AdminUsersPage';
@@ -34,7 +35,7 @@ const renderPage = (path = '/admin/users') =>
     </MemoryRouter>,
   );
 
-const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement;
+const rowOf = (name: string) => screen.getByText(name).closest('[data-user-row]') as HTMLElement;
 
 describe('userForm rules', () => {
   it('requires a department for staff and managers but not admins', () => {
@@ -60,6 +61,7 @@ describe('userForm rules', () => {
 
 describe('AdminUsersPage', () => {
   beforeEach(() => {
+    authState.isOffline = false;
     Object.values(api).forEach(fn => fn.mockReset());
     api.getAllUsers.mockResolvedValue(users);
   });
@@ -76,7 +78,7 @@ describe('AdminUsersPage', () => {
     api.updateUserByAdmin.mockResolvedValue(undefined);
     renderPage();
     await waitFor(() => rowOf('מנהלת מטבח'));
-    await userEvent.click(within(rowOf('מנהלת מטבח')).getByRole('button', { name: 'עריכה' }));
+    await userEvent.click(within(rowOf('מנהלת מטבח')).getByRole('button', { name: /^עריכה/ }));
     await userEvent.click(screen.getByRole('button', { name: 'שמור שינויים' }));
     await waitFor(() =>
       expect(api.updateUserByAdmin).toHaveBeenCalledWith(
@@ -91,7 +93,7 @@ describe('AdminUsersPage', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage();
     await waitFor(() => rowOf('עובד בר'));
-    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'השבתה' }));
+    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: /^השבתה/ }));
     expect(confirm.mock.calls[0][0]).toContain('הפרטים שלו נשמרים לתיעוד ואינם נמחקים');
     expect(api.deleteUserByAdmin).toHaveBeenCalledWith('staff-1');
     expect(await screen.findByText(/הושבת. הפרטים נשמרו לתיעוד/)).toBeInTheDocument();
@@ -109,7 +111,7 @@ describe('AdminUsersPage', () => {
   it('cannot deactivate yourself', async () => {
     renderPage();
     await waitFor(() => rowOf('אדמין'));
-    expect(within(rowOf('אדמין')).getByRole('button', { name: 'השבתה' })).toBeDisabled();
+    expect(within(rowOf('אדמין')).getByRole('button', { name: /^השבתה/ })).toBeDisabled();
   });
 
   it('shows a permission error instead of a success', async () => {
@@ -117,7 +119,7 @@ describe('AdminUsersPage', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage();
     await waitFor(() => rowOf('עובד בר'));
-    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'השבתה' }));
+    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: /^השבתה/ }));
     expect(await screen.findByText('אין לך הרשאה לבצע פעולה זו.')).toBeInTheDocument();
     expect(screen.queryByText(/הושבת/)).not.toBeInTheDocument();
   });
@@ -127,7 +129,7 @@ describe('AdminUsersPage', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage();
     await waitFor(() => rowOf('עובד בר'));
-    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: 'השבתה' }));
+    await userEvent.click(within(rowOf('עובד בר')).getByRole('button', { name: /^השבתה/ }));
     expect(await screen.findByText(/נסה שוב בעוד רגע/)).toBeInTheDocument();
   });
 
@@ -165,5 +167,34 @@ describe('AdminUsersPage', () => {
     const [first, second] = api.createUserByAdmin.mock.calls.map(c => c[0].requestId);
     expect(first).toBeTruthy();
     expect(second).toBe(first);
+  });
+
+  it('UI3: offline admin actions are disabled with an explanation', async () => {
+    authState.isOffline = true;
+    renderPage();
+    await waitFor(() => rowOf('עובד בר'));
+    expect(screen.getByText(/אין חיבור\. ניהול משתמשים זמין רק כשיש חיבור/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'הוסף משתמש' })).toBeDisabled();
+    expect(within(rowOf('עובד בר')).getByRole('button', { name: /עריכה/ })).toBeDisabled();
+    expect(within(rowOf('עובד בר')).getByRole('button', { name: /השבתה/ })).toBeDisabled();
+  });
+
+  it('UI3: the user form is a labelled modal dialog that returns focus to its opener', async () => {
+    renderPage();
+    await waitFor(() => rowOf('עובד בר'));
+    const opener = screen.getByRole('button', { name: 'הוסף משתמש' });
+    await userEvent.click(opener);
+    const dialog = await screen.findByRole('dialog', { name: 'הוספת משתמש חדש' });
+    expect(within(dialog).getByPlaceholderText('שם פרטי ומשפחה')).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'ביטול' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it('UI3: row actions name the user they act on', async () => {
+    renderPage();
+    await waitFor(() => rowOf('עובד בר'));
+    expect(screen.getByRole('button', { name: 'עריכה — עובד בר' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'השבתה — עובד בר' })).toBeInTheDocument();
   });
 });

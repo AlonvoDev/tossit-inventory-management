@@ -1,8 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Paper,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { Block as BlockIcon, Edit as EditIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
+import { PageHeader } from '../components/layout/PageHeader';
 import { getAllUsers, createUserByAdmin, updateUserByAdmin, deleteUserByAdmin } from '../api/authAPI';
 import { UserProfile } from '../types/UserProfile';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
 import {
   emptyUserForm,
@@ -32,8 +49,7 @@ const formatCreatedAt = (createdAt: UserProfile['createdAt']): string => {
 };
 
 const AdminUsersPage: React.FC = () => {
-  const { isAdmin, businessId, uid: currentUid, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { isAdmin, businessId, uid: currentUid, loading: authLoading, isOffline } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -71,7 +87,7 @@ const AdminUsersPage: React.FC = () => {
     }
   }, [isAdmin, businessId, loadUsers]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (formErrors[name as keyof UserFormData]) {
@@ -184,14 +200,10 @@ const AdminUsersPage: React.FC = () => {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '50vh' 
-      }}>
-        <div>טוען...</div>
-      </div>
+      <Box role="status" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh', gap: 1 }}>
+        <CircularProgress size={24} />
+        <Typography>טוען...</Typography>
+      </Box>
     );
   }
 
@@ -200,577 +212,235 @@ const AdminUsersPage: React.FC = () => {
     return null;
   }
 
+  const offline = !!isOffline;
+  const fieldHelp = (name: keyof UserFormData) => formErrors[name];
+
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
-      padding: '20px',
-      fontFamily: 'Arial, sans-serif',
-      direction: 'rtl'
-    }}>
-      {/* Navigation */}
-      <div style={{ 
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '15px'
-      }}>
-        <button
-          onClick={() => navigate('/admin')}
-          style={{
-            backgroundColor: '#666',
-            color: 'white',
-            padding: '8px 16px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          ← חזרה לפאנל ניהול
-        </button>
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            padding: '8px 16px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          לוח בקרה
-        </button>
-      </div>
+    <Container maxWidth="lg" disableGutters sx={{ py: { xs: 1, sm: 2 } }} dir="rtl">
+      <PageHeader
+        title="ניהול משתמשים"
+        description="משתמשים נפתחים על ידי מנהל העסק. עובד ומנהל מחלקה משויכים למחלקה אחת; מנהל מערכת מנהל את כל העסק."
+        actions={
+          <Button variant="contained" startIcon={<PersonAddIcon />} onClick={openAddModal} disabled={offline} sx={{ minHeight: 44 }}>
+            הוסף משתמש
+          </Button>
+        }
+      />
 
-      <h1 style={{ 
-        color: '#333', 
-        marginBottom: '30px',
-        textAlign: 'center'
-      }}>
-        ניהול משתמשים
-      </h1>
-
-      {/* Instructions */}
-      <div style={{ 
-        backgroundColor: '#e3f2fd', 
-        padding: '15px', 
-        borderRadius: '8px',
-        marginBottom: '20px',
-        border: '1px solid #2196f3'
-      }}>
-        <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>הוראות שימוש:</h3>
-        <ul style={{ margin: '0', paddingRight: '20px', color: '#333' }}>
-          <li>לחץ על כפתור <strong>הוסף משתמש</strong> כדי ליצור עובד חדש.</li>
-          <li>יצירת משתמש פותחת עבורו חשבון התחברות עם הסיסמה הראשונית שתזין.</li>
-          <li><strong>עובד:</strong> עובד במחלקה שנבחרה (בר או מטבח).</li>
-          <li><strong>מנהל מחלקה:</strong> מנהל את המחלקה שנבחרה בלבד.</li>
-          <li><strong>מנהל מערכת:</strong> מנהל את כל העסק.</li>
-          <li><strong>השבתה</strong> חוסמת את הכניסה לאפליקציה ושומרת את פרטי המשתמש לתיעוד. הפעלה מחדש אינה זמינה כרגע מהאפליקציה.</li>
-        </ul>
-      </div>
-
-      {/* Add User Button */}
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={openAddModal}
-          style={{
-            backgroundColor: '#2196f3',
-            color: 'white',
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}
-        >
-          הוסף משתמש
-        </button>
-      </div>
-
-      {/* Global messages (shown outside modal) */}
+      {offline && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          אין חיבור. ניהול משתמשים זמין רק כשיש חיבור לשרת.
+        </Alert>
+      )}
       {!showModal && error && (
-        <div style={{ 
-          color: '#f44336', 
-          backgroundColor: '#ffebee', 
-          padding: '10px', 
-          borderRadius: '4px',
-          marginBottom: '15px',
-          border: '1px solid #f44336'
-        }}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }}>
           {error}
-        </div>
+        </Alert>
       )}
       {!showModal && success && (
-        <div style={{ 
-          color: '#4caf50', 
-          backgroundColor: '#e8f5e8', 
-          padding: '10px', 
-          borderRadius: '4px',
-          marginBottom: '15px',
-          border: '1px solid #4caf50'
-        }}>
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
           {success}
-        </div>
+        </Alert>
       )}
 
-      {/* Add User Form (legacy) - removed as it's no longer used. User creation is handled via a modal. */}
+      <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 1.5 }}>
+        כל המשתמשים ({users.length})
+      </Typography>
 
-      {/* Users List */}
-      <div style={{ 
-        backgroundColor: '#fff', 
-        borderRadius: '8px',
-        border: '1px solid #ddd',
-        overflow: 'hidden'
-      }}>
-        <h2 style={{ 
-          color: '#333', 
-          margin: '0', 
-          padding: '20px',
-          backgroundColor: '#f5f5f5',
-          borderBottom: '1px solid #ddd'
-        }}>
-          כל המשתמשים ({users.length})
-        </h2>
-        
-        {loading && users.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <div>טוען משתמשים...</div>
-          </div>
-        ) : users.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-            לא נמצאו משתמשים.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ 
-              width: '100%', 
-              borderCollapse: 'collapse',
-              fontSize: '14px'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8f9fa' }}>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    שם מלא
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    דוא״ל
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    תפקיד
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    מחלקה
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    טלפון
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    נוצר
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #dee2e6' }}>
-                    פעולות
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user, index) => (
-                  <tr 
-                    key={user.uid || index} 
-                    style={{ 
-                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
-                      opacity: isDeactivated(user) ? 0.6 : 1
-                    }}
-                  >
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      <div style={{ fontWeight: 'bold' }}>{user.fullName || '-'}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>
-                        {user.uid === currentUid ? 'אתה' : ''}
-                        {isDeactivated(user) && (
-                          <span style={{ color: '#b71c1c', fontWeight: 'bold' }}>מושבת</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {user.email || '-'}
-                    </td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      <span style={{ 
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        backgroundColor: 
-                          (user.role === 'admin') ? '#e3f2fd' : 
-                          (user.role === 'manager') ? '#fff3e0' : 
-                          '#f3e5f5',
-                        color: 
-                          (user.role === 'admin') ? '#1976d2' : 
-                          (user.role === 'manager') ? '#f57c00' : 
-                          '#7b1fa2'
-                      }}>
-                        {toAppRole(user.role) ? ROLE_LABELS[toAppRole(user.role)!] : 'תפקיד לא תקין'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {user.role !== 'admin' ? (
-                        <span style={{ 
-                          padding: '4px 8px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          backgroundColor: (user.department === 'bar') ? '#fff3e0' : '#e8f5e8',
-                          color: (user.department === 'bar') ? '#f57c00' : '#388e3c'
-                        }}>
-                          {departmentLabel(user.department) ?? 'לא הוגדרה'}
-                        </span>
-                      ) : (
-                        <span style={{ 
-                          padding: '4px 8px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          backgroundColor: '#e3f2fd',
-                          color: '#1976d2'
-                        }}>
-                          כל המחלקות
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {user.phoneNumber || '-'}
-                    </td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {formatCreatedAt(user.createdAt)}
-                    </td>
-                    {/* Actions */}
-                    <td style={{ padding: '12px', borderBottom: '1px solid #dee2e6' }}>
-                      {isDeactivated(user) ? (
-                        <span style={{ fontSize: '12px', color: '#666' }}>אין פעולות זמינות</span>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => openEditModal(user)}
-                            disabled={loading}
-                            style={{
-                              marginLeft: '8px',
-                              backgroundColor: '#1976d2',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '6px 10px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            עריכה
-                          </button>
-                          <button
-                            onClick={() => handleDeactivate(user)}
-                            disabled={loading || user.uid === currentUid}
-                            title={user.uid === currentUid ? 'לא ניתן להשבית את עצמך' : undefined}
-                            style={{
-                              opacity: user.uid === currentUid ? 0.5 : 1,
-                              backgroundColor: '#f44336',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '6px 10px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            השבתה
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Modal overlay for add/edit user */}
-      {showModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              padding: '20px',
-              maxWidth: '600px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflowY: 'auto'
-            }}
-          >
-            <h2 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center', color: '#333' }}>
-              {editMode ? 'עריכת משתמש' : 'הוספת משתמש חדש'}
-            </h2>
-
-            {/* Messages within modal */}
-            {error && (
-              <div style={{ 
-                color: '#f44336', 
-                backgroundColor: '#ffebee', 
-                padding: '10px', 
-                borderRadius: '4px',
-                marginBottom: '15px',
-                border: '1px solid #f44336'
-              }}>
-                {error}
-              </div>
-            )}
-            {success && (
-              <div style={{ 
-                color: '#4caf50', 
-                backgroundColor: '#e8f5e8', 
-                padding: '10px', 
-                borderRadius: '4px',
-                marginBottom: '15px',
-                border: '1px solid #4caf50'
-              }}>
-                {success}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                  gap: '20px',
-                  marginBottom: '20px'
-                }}
+      {loading && users.length === 0 ? (
+        <Box role="status" sx={{ py: 4, textAlign: 'center' }}>
+          <CircularProgress size={24} />
+          <Typography sx={{ mt: 1 }}>טוען משתמשים...</Typography>
+        </Box>
+      ) : users.length === 0 ? (
+        <Box sx={{ py: 4, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+          <Typography sx={{ fontWeight: 700 }}>לא נמצאו משתמשים.</Typography>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+          {users.map((user, index) => {
+            const name = user.fullName || user.email || '-';
+            const self = user.uid === currentUid;
+            const inactive = isDeactivated(user);
+            const role = toAppRole(user.role);
+            return (
+              <Paper
+                key={user.uid || index}
+                component="article"
+                variant="outlined"
+                data-user-row
+                aria-label={name}
+                sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 1, opacity: inactive ? 0.7 : 1, minWidth: 0 }}
               >
-                {/* Full Name */}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    שם מלא <span style={{ color: 'red' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: formErrors.fullName ? '2px solid #f44336' : '1px solid #ccc',
-                      borderRadius: '4px',
-                      fontSize: '16px'
-                    }}
-                    placeholder="שם פרטי ומשפחה"
-                  />
-                  {formErrors.fullName && (
-                    <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
-                      {formErrors.fullName}
-                    </div>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>
+                      {user.fullName || '-'}
+                    </Typography>
+                    <Typography variant="body2" dir="ltr" sx={{ textAlign: 'right', overflowWrap: 'anywhere' }}>
+                      {user.email || '-'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
+                    {self && <Chip size="small" label="אתה" variant="outlined" />}
+                    {inactive && <Chip size="small" color="error" label="מושבת" />}
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Chip size="small" color="primary" variant="outlined" label={role ? ROLE_LABELS[role] : 'תפקיד לא תקין'} sx={{ fontWeight: 600 }} />
+                  <Chip size="small" variant="outlined" label={user.role !== 'admin' ? departmentLabel(user.department) ?? 'לא הוגדרה' : 'כל המחלקות'} />
+                  {user.phoneNumber && (
+                    <Typography variant="body2" dir="ltr">
+                      {user.phoneNumber}
+                    </Typography>
                   )}
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    דוא״ל <span style={{ color: 'red' }}>*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={editMode}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: formErrors.email ? '2px solid #f44336' : '1px solid #ccc',
-                      borderRadius: '4px',
-                      fontSize: '16px',
-                      backgroundColor: editMode ? '#f5f5f5' : '#fff'
-                    }}
-                    placeholder="name@example.com"
-                    dir="ltr"
-                  />
-                  {formErrors.email && (
-                    <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
-                      {formErrors.email}
-                    </div>
-                  )}
-                </div>
-
-                {/* Phone Number */}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    טלפון
-                  </label>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      fontSize: '16px'
-                    }}
-                    placeholder="אופציונלי"
-                    dir="ltr"
-                  />
-                </div>
-
-                {/* Role */}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    תפקיד <span style={{ color: 'red' }}>*</span>
-                  </label>
-                  <select
-                    name="role"
-                    title="בחר תפקיד"
-                    disabled={editMode && editingUser?.uid === currentUid}
-                    value={formData.role}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: formErrors.role ? '2px solid #f44336' : '1px solid #ccc',
-                      borderRadius: '4px',
-                      fontSize: '16px'
-                    }}
-                  >
-                    <option value="staff">{ROLE_LABELS.staff}</option>
-                    <option value="manager">{ROLE_LABELS.manager}</option>
-                    <option value="admin">{ROLE_LABELS.admin}</option>
-                  </select>
-                  {formErrors.role && (
-                    <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
-                      {formErrors.role}
-                    </div>
-                  )}
-                </div>
-
-                {/* Department - staff and managers are scoped to one department */}
-                {roleNeedsDepartment(formData.role) && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                      מחלקה <span style={{ color: 'red' }}>*</span>
-                    </label>
-                    <select
-                      name="department"
-                      title="בחר מחלקה"
-                      value={formData.department}
-                      onChange={handleInputChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: formErrors.department ? '2px solid #f44336' : '1px solid #ccc',
-                        borderRadius: '4px',
-                        fontSize: '16px'
-                      }}
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                    נוצר: {formatCreatedAt(user.createdAt)}
+                  </Typography>
+                </Box>
+                {inactive ? (
+                  <Typography variant="body2">אין פעולות זמינות</Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      onClick={() => openEditModal(user)}
+                      disabled={loading || offline}
+                      aria-label={`עריכה — ${name}`}
+                      sx={{ minHeight: 44, flex: 1 }}
                     >
-                      <option value="bar">בר</option>
-                      <option value="kitchen">מטבח</option>
-                    </select>
-                    {formErrors.department && (
-                      <div style={{ 
-                        color: '#f44336', 
-                        fontSize: '14px', 
-                        marginTop: '5px'
-                      }}>
-                        {formErrors.department}
-                      </div>
-                    )}
-                  </div>
+                      עריכה
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<BlockIcon />}
+                      onClick={() => handleDeactivate(user)}
+                      disabled={loading || offline || self}
+                      title={self ? 'לא ניתן להשבית את עצמך' : undefined}
+                      aria-label={`השבתה — ${name}`}
+                      sx={{ minHeight: 44, flex: 1 }}
+                    >
+                      השבתה
+                    </Button>
+                  </Box>
                 )}
-
-                {/* Password - only show on create */}
-                {!editMode && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                      סיסמה ראשונית <span style={{ color: 'red' }}>*</span>
-                    </label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: formErrors.password ? '2px solid #f44336' : '1px solid #ccc',
-                        borderRadius: '4px',
-                        fontSize: '16px'
-                      }}
-                      placeholder="לפחות 6 תווים"
-                      dir="ltr"
-                    />
-                    {formErrors.password && (
-                      <div style={{ color: '#f44336', fontSize: '14px', marginTop: '5px' }}>
-                        {formErrors.password}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  style={{
-                    backgroundColor: '#ccc',
-                    color: '#333',
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  ביטול
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    backgroundColor: loading ? '#ccc' : '#2196f3',
-                    color: 'white',
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  {loading ? 'שומר...' : editMode ? 'שמור שינויים' : 'צור משתמש'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </Paper>
+            );
+          })}
+        </Box>
       )}
-    </div>
+
+      {/* Add / edit user: MUI dialog (focus trap, Escape, focus returns to the opener). */}
+      <Dialog open={showModal} onClose={loading ? undefined : closeModal} fullWidth maxWidth="sm" aria-labelledby="user-form-title" dir="rtl">
+        <form onSubmit={handleSubmit} noValidate>
+          <DialogTitle id="user-form-title" sx={{ fontWeight: 700, fontSize: '1.15rem' }}>
+            {editMode ? 'עריכת משתמש' : 'הוספת משתמש חדש'}
+          </DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+            {error && (
+              <Alert severity="error" role="alert">
+                {error}
+              </Alert>
+            )}
+            {success && <Alert severity="success">{success}</Alert>}
+            <TextField
+              label="שם מלא"
+              required
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleInputChange}
+              placeholder="שם פרטי ומשפחה"
+              error={!!fieldHelp('fullName')}
+              helperText={fieldHelp('fullName')}
+              fullWidth
+            />
+            <TextField
+              label="דוא״ל"
+              required
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              disabled={editMode}
+              placeholder="name@example.com"
+              inputProps={{ dir: 'ltr' }}
+              error={!!fieldHelp('email')}
+              helperText={fieldHelp('email')}
+              fullWidth
+            />
+            <TextField
+              label="טלפון"
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleInputChange}
+              placeholder="אופציונלי"
+              inputProps={{ dir: 'ltr' }}
+              fullWidth
+            />
+            <TextField
+              select
+              label="תפקיד"
+              required
+              name="role"
+              value={formData.role}
+              onChange={handleInputChange}
+              disabled={editMode && editingUser?.uid === currentUid}
+              SelectProps={{ native: true, inputProps: { title: 'בחר תפקיד' } }}
+              error={!!fieldHelp('role')}
+              helperText={editMode && editingUser?.uid === currentUid ? 'לא ניתן לשנות את התפקיד של עצמך' : fieldHelp('role')}
+              fullWidth
+            >
+              <option value="staff">{ROLE_LABELS.staff}</option>
+              <option value="manager">{ROLE_LABELS.manager}</option>
+              <option value="admin">{ROLE_LABELS.admin}</option>
+            </TextField>
+            {roleNeedsDepartment(formData.role) && (
+              <TextField
+                select
+                label="מחלקה"
+                required
+                name="department"
+                value={formData.department}
+                onChange={handleInputChange}
+                SelectProps={{ native: true, inputProps: { title: 'בחר מחלקה' } }}
+                error={!!fieldHelp('department')}
+                helperText={fieldHelp('department')}
+                fullWidth
+              >
+                <option value="bar">בר</option>
+                <option value="kitchen">מטבח</option>
+              </TextField>
+            )}
+            {!editMode && (
+              <TextField
+                label="סיסמה ראשונית"
+                required
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="לפחות 6 תווים"
+                inputProps={{ dir: 'ltr' }}
+                error={!!fieldHelp('password')}
+                helperText={fieldHelp('password')}
+                fullWidth
+              />
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2, gap: 1 }}>
+            <Button type="button" variant="outlined" onClick={closeModal} disabled={loading} sx={{ minHeight: 44 }}>
+              ביטול
+            </Button>
+            <Button type="submit" variant="contained" disabled={loading} sx={{ minHeight: 44, flex: 1 }}>
+              {loading ? 'שומר...' : editMode ? 'שמור שינויים' : 'צור משתמש'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Container>
   );
 };
 

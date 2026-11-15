@@ -12,8 +12,15 @@ import {
   FormControl,
   InputLabel,
   Alert,
+  Box,
+  Chip,
+  CircularProgress,
+  Container,
+  Paper,
+  Typography,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
+import { PageHeader } from '../components/layout/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import {
   getBusinessFridges,
@@ -31,7 +38,6 @@ import { errorMessage } from '../features/common/errorMessage';
  */
 const AdminFridgesPage: React.FC = () => {
   const { businessId, role, profile, isOffline, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
   const allowedDepartments = useMemo(
     () => manageableDepartments(role, profile?.department),
     [role, profile?.department],
@@ -263,206 +269,77 @@ const AdminFridgesPage: React.FC = () => {
   }
 
   return (
-    <div
-      style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif', direction: 'rtl' }}
-    >
-      {/* Navigation buttons */}
-      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-        <button
-          onClick={() => navigate('/admin')}
-          style={{
-            backgroundColor: '#666',
-            color: 'white',
-            padding: '8px 16px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px',
-          }}
-        >
-          ← חזרה לפאנל ניהול
-        </button>
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            padding: '8px 16px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px',
-          }}
-        >
-          לוח בקרה
-        </button>
-      </div>
+    <Container maxWidth="lg" disableGutters sx={{ py: { xs: 1, sm: 2 } }} dir="rtl">
+      <PageHeader
+        title="ניהול מקררים"
+        description={
+          allowedDepartments.length === 1
+            ? `מקררים ומיקומים של מחלקת ${departmentLabel(allowedDepartments[0])}.`
+            : 'מקררים ומיקומים לפי מחלקה. מוצרים ופריטים יכולים להיות משויכים למקרר.'
+        }
+        actions={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddModal} disabled={!!isOffline} sx={{ minHeight: 44 }}>
+            הוסף מקרר
+          </Button>
+        }
+      />
 
-      {/* Page title */}
-      <h1
-        style={{ color: '#333', marginBottom: '30px', textAlign: 'center' }}
-      >
-        ניהול מקררים
-      </h1>
-
-      {/* Instructions */}
-      <div
-        style={{
-          backgroundColor: '#e3f2fd',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #2196f3',
-        }}
-      >
-        <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>הוראות שימוש:</h3>
-        <ul style={{ margin: '0', paddingRight: '20px', color: '#333' }}>
-          <li>לחץ על כפתור <strong>הוסף מקרר</strong> כדי להוסיף מיקום חדש.</li>
-          <li>
-            לכל מקרר יש לבחור שם ייחודי ולשייך אותו למחלקה המתאימה (בר או מטבח).
-          </li>
-          <li>ניתן לערוך או למחוק מקררים באמצעות כפתורי העריכה/מחיקה בטבלה למטה.</li>
-          {allowedDepartments.length === 1 && (
-            <li>
-              מוצגים ומנוהלים מקררי מחלקת <strong>{departmentLabel(allowedDepartments[0])}</strong> בלבד.
-            </li>
-          )}
-          {isOffline && <li><strong>אין חיבור:</strong> שינויים זמינים רק כשיש חיבור.</li>}
-        </ul>
-      </div>
-
-      {/* Add fridge button */}
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={openAddModal}
-          disabled={!!isOffline}
-          style={{
-            opacity: isOffline ? 0.5 : 1,
-            backgroundColor: '#2196f3',
-            color: 'white',
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 'bold',
-          }}
-        >
-          הוסף מקרר
-        </button>
-      </div>
-
-      {/* Global messages outside modal */}
+      {isOffline && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          אין חיבור. שינויים במקררים זמינים רק כשיש חיבור לשרת.
+        </Alert>
+      )}
       {!showModal && error && (
-        <div
-          style={{
-            color: '#f44336',
-            backgroundColor: '#ffebee',
-            padding: '10px',
-            borderRadius: '4px',
-            marginBottom: '15px',
-            border: '1px solid #f44336',
-          }}
-        >
+        <Alert severity="error" role="alert" sx={{ mb: 2 }}>
           {error}
-        </div>
+        </Alert>
       )}
       {!showModal && success && (
-        <div
-          style={{
-            color: '#4caf50',
-            backgroundColor: '#e8f5e8',
-            padding: '10px',
-            borderRadius: '4px',
-            marginBottom: '15px',
-            border: '1px solid #4caf50',
-          }}
-        >
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
           {success}
-        </div>
+        </Alert>
       )}
 
-      {/* Fridges table */}
-      <div
-        style={{
-          overflowX: 'auto',
-          border: '1px solid #ddd',
-          borderRadius: '6px',
-        }}
-      >
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f5f5f5' }}>
-              <th style={{ padding: '12px', borderBottom: '1px solid #ddd', textAlign: 'right' }}>
-                שם
-              </th>
-              <th style={{ padding: '12px', borderBottom: '1px solid #ddd', textAlign: 'right' }}>
-                מחלקה
-              </th>
-              <th style={{ padding: '12px', borderBottom: '1px solid #ddd', textAlign: 'right' }}>
-                פעולות
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={3} style={{ padding: '20px', textAlign: 'center' }}>
-                  טוען נתונים...
-                </td>
-              </tr>
-            ) : fridges.length === 0 ? (
-              <tr>
-                <td colSpan={3} style={{ padding: '20px', textAlign: 'center' }}>
-                  אין מקררים במערכת
-                </td>
-              </tr>
-            ) : (
-              fridges.map((fridge) => (
-                <tr key={fridge.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{fridge.name}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>
-                    {departmentLabel(fridge.department) ?? 'לא הוגדרה'}
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>
-                    <button
-                      onClick={() => openEditModal(fridge)}
-                      disabled={!!isOffline}
-                      style={{
-                        marginLeft: '10px',
-                        backgroundColor: '#ffc107',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '6px 12px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                      }}
-                    >
-                      ערוך
-                    </button>
-                    <button
-                      onClick={() => handleDelete(fridge)}
-                      disabled={!!isOffline}
-                      style={{
-                        backgroundColor: '#f44336',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '6px 12px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                      }}
-                    >
-                      מחק
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <Box role="status" sx={{ py: 4, textAlign: 'center' }}>
+          <CircularProgress size={24} />
+          <Typography sx={{ mt: 1 }}>טוען נתונים...</Typography>
+        </Box>
+      ) : fridges.length === 0 ? (
+        <Box sx={{ py: 4, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+          <Typography sx={{ fontWeight: 700 }}>אין מקררים במערכת</Typography>
+          <Typography variant="body2">הוסף מקרר כדי לשייך אליו מוצרים ופריטים.</Typography>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
+          {fridges.map(fridge => (
+            <Paper
+              key={fridge.id}
+              component="article"
+              variant="outlined"
+              aria-label={fridge.name}
+              sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>
+                  {fridge.name}
+                </Typography>
+                <Chip size="small" variant="outlined" label={departmentLabel(fridge.department) ?? 'לא הוגדרה'} sx={{ flexShrink: 0 }} />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button variant="outlined" startIcon={<EditIcon />} onClick={() => openEditModal(fridge)} disabled={!!isOffline}
+                  aria-label={`עריכה — ${fridge.name}`} sx={{ minHeight: 44, flex: 1 }}>
+                  עריכה
+                </Button>
+                <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(fridge)} disabled={!!isOffline}
+                  aria-label={`מחיקה — ${fridge.name}`} sx={{ minHeight: 44, flex: 1 }}>
+                  מחיקה
+                </Button>
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       {/* Modal for adding/editing fridges using Material UI components */}
       {showModal && (
@@ -530,7 +407,7 @@ const AdminFridgesPage: React.FC = () => {
           </form>
         </Dialog>
       )}
-    </div>
+    </Container>
   );
 };
 
