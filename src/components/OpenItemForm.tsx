@@ -1,479 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { addItem } from '../api/firestoreAPI';
-import { Product } from '../types/Product';
-import { useAuth } from '../context/AuthContext';
-import { getBusinessProducts } from '../api/firestoreAPI';
-import { getBusinessFridges } from '../api/fridgesAPI';
-import { Fridge } from '../types/Fridge';
-import { 
-  MenuItem, 
-  Select, 
-  FormControl, 
-  InputLabel, 
-  TextField, 
-  Button, 
-  Alert, 
-  Box, 
-  Typography,
-
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  FormControl,
   FormHelperText,
-  SelectChangeEvent
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
 } from '@mui/material';
-
-// Using Box flexbox layout for better compatibility
+import { useAuth } from '../context/AuthContext';
+import { getBusinessProducts } from '../api/productsAPI';
+import { getBusinessFridges } from '../api/fridgesAPI';
+import { openInventoryItem } from '../api/inventoryOperations';
+import type { Product } from '../types/Product';
+import type { Fridge } from '../types/Fridge';
+import type { Department, WriteReceipt } from '../domain/contracts';
+import { departmentLabel, normalizeDepartment } from '../app/access';
+import { errorMessage } from '../features/common/errorMessage';
+import { amountError, Intent, nextIntent, parseAmount, shiftBlocksOpening, unitLabel } from '../features/inventory/openItem';
 
 interface OpenItemFormProps {
-  businessId?: string;
-  userId?: string;
-  onItemAdded?: () => void;
-  onError?: (error: string) => void;
-  defaultArea?: string;
-  areas?: string[];
-  area?: string;
+  /** Canonical department whose catalog is offered. */
+  department: Department;
+  onItemAdded?: (receipt: WriteReceipt) => void;
   disabled?: boolean;
 }
 
-const OpenItemForm: React.FC<OpenItemFormProps> = ({
-  businessId: propBusinessId,
-  userId: propUserId,
-  onItemAdded,
-  onError,
-  defaultArea,
-  area: areaFilter,
-  disabled = false,
-  areas = ['מטבח', 'בר', 'מחסן', 'אחר'],
-}) => {
+const formatExpiry = (ms: number) =>
+  new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(ms);
+
+/**
+ * Open an inventory batch. Name, unit and expiry come from the catalog on the server; the form
+ * sends only product, fridge, amount and the opening instant. Success is shown only for a
+ * receipt; a failed send keeps the same operation ID so a retry cannot create a duplicate.
+ */
+const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, disabled = false }) => {
+  const { businessId, role, isOnShift, isOffline } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [amount, setAmount] = useState<number>(1);
-  const [area, setArea] = useState<string>(defaultArea || areaFilter || areas[0]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
-  const [usingCachedProducts, setUsingCachedProducts] = useState(false);
-
-  // List of fridges available to the business
   const [fridges, setFridges] = useState<Fridge[]>([]);
-  // Selected fridge ID for this item
-  const [selectedFridgeId, setSelectedFridgeId] = useState<string>('');
-  
-  const { user, profile, businessId: authBusinessId } = useAuth();
-  
-  const businessId = propBusinessId || authBusinessId || profile?.businessId;
-  const userId = propUserId || user?.uid;
-  
-  // Get user's department for filtering products
-  const userDepartment = profile?.department;
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Update area when areaFilter changes
-  useEffect(() => {
-    if (areaFilter && areaFilter !== area) {
-      setArea(areaFilter);
-    }
-  }, [areaFilter, area]);
-  
-  // Load products from Firestore
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    
-    const loadProducts = async () => {
-      try {
-        // First try to get cached products
-        const cachedProducts = localStorage.getItem(`products_${businessId}`);
-        let productsData: Product[] = [];
-        
-        if (cachedProducts) {
-          productsData = JSON.parse(cachedProducts);
-          
-          // Filter cached products by user's department
-          if (userDepartment) {
-            productsData = productsData.filter(product => product.area === userDepartment);
-          }
-          
-          if (isMounted) {
-            setProducts(productsData);
-            setUsingCachedProducts(true);
-          }
-        }
-        
-        // Then try to get from Firestore
-        if (businessId && navigator.onLine && !disabled) {
-          const firestoreProducts = await getBusinessProducts(businessId);
-          
-          // Filter Firestore products by user's department
-          let filteredProducts = firestoreProducts;
-          if (userDepartment) {
-            filteredProducts = firestoreProducts.filter(product => product.area === userDepartment);
-          }
-          
-          if (isMounted) {
-            setProducts(filteredProducts);
-            setUsingCachedProducts(false);
-            
-            // Update cache with filtered products
-            localStorage.setItem(`products_${businessId}_${userDepartment || 'all'}`, JSON.stringify(filteredProducts));
-          }
-        } else if (!navigator.onLine || disabled) {
-          setIsOfflineMode(true);
-        }
-      } catch (error: unknown) {
-        console.error('Error loading products:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        if (isMounted) {
-          setError(`Failed to load products: ${errorMessage}`);
-          setIsOfflineMode(!navigator.onLine || disabled);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    
-    // Only load products if we have user department info
-    if (profile) {
-      loadProducts();
-    }
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [businessId, disabled, userDepartment, profile]);
+  const [productId, setProductId] = useState('');
+  const [fridgeId, setFridgeId] = useState('');
+  const [amountRaw, setAmountRaw] = useState('1');
+  const [amountInvalid, setAmountInvalid] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ severity: 'success' | 'info'; text: string } | null>(null);
+  const intent = useRef<Intent | null>(null);
 
-  // Load fridges from Firestore for fridge selection
   useEffect(() => {
-    let isMounted = true;
-    const loadFridges = async () => {
-      if (!businessId || !navigator.onLine || disabled) {
-        return;
-      }
-      try {
-        const data = await getBusinessFridges(businessId);
-        // Filter fridges by area if user selects an area or has a department
-        let filtered = data;
-        // Determine area/department to filter by (Hebrew values)
-        const currentArea = areaFilter || area;
-        const areaNormalized = currentArea === 'בר' || currentArea === 'bar' ? 'bar' : currentArea === 'מטבח' || currentArea === 'kitchen' ? 'kitchen' : undefined;
-        if (areaNormalized) {
-          filtered = data.filter((f) => f.department === areaNormalized);
-        }
-        if (isMounted) {
-          setFridges(filtered);
-        }
-      } catch (err) {
-        console.error('Error loading fridges:', err);
-      }
-    };
-    loadFridges();
+    if (!businessId) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([getBusinessProducts(businessId), getBusinessFridges(businessId)])
+      .then(([productList, fridgeList]) => {
+        if (cancelled) return;
+        setProducts(productList.filter(p => normalizeDepartment(p.area) === department));
+        setFridges(fridgeList.filter(f => normalizeDepartment(f.department) === department));
+      })
+      .catch(err => {
+        console.error('Error loading catalog:', err);
+        if (!cancelled) setLoadError(errorMessage(err, 'טעינת רשימת המוצרים נכשלה.'));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
-  }, [businessId, area, areaFilter, disabled]);
-  
+  }, [businessId, department]);
+
+  const product = useMemo(() => products.find(p => p.id === productId), [products, productId]);
+  const unit = product?.type === 'kg' ? 'kg' : 'units';
+  const blockedByShift = shiftBlocksOpening(role, !!isOnShift);
+  const blockedReason = blockedByShift ? 'יש להתחיל משמרת כדי לפתוח פריטים.' : null;
+  const formDisabled = disabled || submitting || !!blockedReason;
+
+  const selectProduct = (id: string) => {
+    const next = products.find(p => p.id === id);
+    setProductId(id);
+    setAmountRaw('1');
+    setAmountInvalid(false);
+    setFridgeId(next?.fridgeId && fridges.some(f => f.id === next.fridgeId) ? next.fridgeId : '');
+    setError(null);
+    setNotice(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedProduct) {
+    if (formDisabled) return;
+    setError(null);
+    setNotice(null);
+    if (!product?.id) {
       setError('יש לבחור מוצר');
       return;
     }
-    
-    if (amount <= 0) {
-      setError('יש להוסיף כמות תקינה');
-      return;
-    }
-    
-    if (!businessId) {
-      setError('לא זוהה עסק');
-      return;
-    }
-    
-    if (!userId || !user) {
-      setError('יש להתחבר מחדש');
+    const amount = parseAmount(amountRaw, unit);
+    if (amount === null) {
+      setAmountInvalid(true);
+      setError(amountError(unit));
       return;
     }
 
-    if (!selectedFridgeId) {
-      setError('יש לבחור מקרר');
-      return;
-    }
-    
-    setError(null);
-    setSuccess(null);
-    setIsLoading(true);
-    
+    const current = nextIntent(
+      intent.current,
+      JSON.stringify([product.id, fridgeId, amount, department]),
+      () => Date.now(),
+      () => crypto.randomUUID(),
+    );
+    intent.current = current;
+
+    setSubmitting(true);
     try {
-      // Check if we're in offline mode
-      if (!navigator.onLine || disabled) {
-        // Store the pending operation
-        const pendingOperations = JSON.parse(localStorage.getItem('pendingOperations') || '[]');
-        pendingOperations.push({
-          type: 'add',
-          data: {
-            productId: selectedProduct.id,
-            productName: selectedProduct.name,
-            amount,
-            area,
-            businessId,
-            userId,
-            fridgeId: selectedFridgeId,
-            timestamp: new Date().toISOString(),
-          }
-        });
-        localStorage.setItem('pendingOperations', JSON.stringify(pendingOperations));
-        
-        setSuccess('הפריט נוסף למאגר מקומי ויסונכרן כאשר יחזור החיבור לאינטרנט');
-        setIsOfflineMode(true);
-        
-        if (onItemAdded) {
-          onItemAdded();
-        }
-      } else {
-        // Extra validation to prevent undefined values
-        const productId = selectedProduct.id;
-        const productName = selectedProduct.name;
-        
-        if (!productId || !productName || !businessId || !userId) {
-          console.error('Missing required parameters:', {
-            productId,
-            productName,
-            businessId,
-            userId,
-            amount,
-            area
-          });
-          setError('חסרים נתונים נדרשים. נסה לטעון את הדף מחדש.');
-          return;
-        }
-        
-        console.log('Adding item with parameters:', {
-          productId,
-          productName,
-          amount,
-          area,
-          businessId,
-          userId
-        });
-        
-        const itemId = await addItem(productId, productName, amount, area, businessId, userId, selectedFridgeId);
-        console.log('Item added successfully with ID:', itemId);
-        setSuccess('הפריט נוסף בהצלחה');
-        
-        console.log('Item added successfully - calling onItemAdded callback');
-        console.log('Added item details:', { productId, productName, amount, area, businessId, userId });
-        if (onItemAdded) {
-          onItemAdded();
-          console.log('onItemAdded callback called');
-        } else {
-          console.warn('onItemAdded callback not provided');
-        }
-      }
-      
-      // Reset form
-      setSelectedProduct(null);
-      setAmount(1);
-      setSelectedFridgeId('');
-    } catch (error: unknown) {
-      console.error('Error adding item:', error);
-      const firebaseError = error as { code?: string; message?: string };
-      const errorMessage = firebaseError?.message || 'אירעה שגיאה בהוספת הפריט';
-      setError(errorMessage);
-      
-      if (onError) {
-        onError(errorMessage);
-      }
-      
-      // If we get a network error, try to store offline
-      if (firebaseError.code === 'unavailable' || firebaseError.message?.includes('network') || !navigator.onLine) {
-        setIsOfflineMode(true);
-        // Store the pending operation
-        const pendingOperations = JSON.parse(localStorage.getItem('pendingOperations') || '[]');
-        pendingOperations.push({
-          type: 'add',
-          data: {
-            productId: selectedProduct.id,
-            productName: selectedProduct.name,
-            amount,
-            area,
-            businessId,
-            userId,
-            fridgeId: selectedFridgeId,
-            timestamp: new Date().toISOString(),
-          }
-        });
-        localStorage.setItem('pendingOperations', JSON.stringify(pendingOperations));
-        
-        setSuccess('הפריט נוסף למאגר מקומי ויסונכרן כאשר יחזור החיבור לאינטרנט');
-        
-        if (onItemAdded) {
-          onItemAdded();
-        }
-      }
+      const receipt = await openInventoryItem({
+        operationId: current.operationId,
+        productId: product.id,
+        amount,
+        fridgeId: fridgeId || undefined,
+        openedAtMs: current.openedAtMs,
+      });
+      intent.current = null;
+      const expiry = formatExpiry(current.openedAtMs + product.shelfLifeDays * 24 * 60 * 60 * 1000);
+      setNotice(
+        receipt.state === 'synced'
+          ? { severity: 'success', text: `"${product.name}" נפתח. תוקף עד ${expiry}.` }
+          : { severity: 'info', text: `"${product.name}" נשמר במכשיר וממתין לשליחה לשרת. הוא עדיין לא נשמר בשרת.` },
+      );
+      setProductId('');
+      setFridgeId('');
+      setAmountRaw('1');
+      onItemAdded?.(receipt);
+    } catch (err) {
+      console.error('Error opening item:', err);
+      const code = (err as { code?: unknown } | null)?.code;
+      setError(
+        code === 'unavailable'
+          ? 'השליחה לא הושלמה והפריט לא נשמר. נסה שוב — ניסיון חוזר לא ייצור פריט כפול.'
+          : errorMessage(err, 'פתיחת הפריט נכשלה. הפריט לא נשמר.'),
+      );
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   };
-  
-  // Handle area change
-  const handleAreaChange = (e: SelectChangeEvent<string>) => {
-    setArea(e.target.value);
-  };
-  
-  // Handle product change
-  const handleProductChange = (e: SelectChangeEvent<string>) => {
-    const productId = e.target.value;
-    const product = products.find(p => p.id === productId) || null;
-    setSelectedProduct(product);
-  };
-  
+
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit}
-      sx={{
-        p: 2,
-        bgcolor: 'background.paper',
-        borderRadius: 1,
-        boxShadow: 1,
-        mb: 2,
-      }}
-    >
-      {(isOfflineMode || disabled) && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          אתה במצב לא מקוון. הפריטים ישמרו מקומית ויסונכרנו כשהחיבור יחזור.
-        </Alert>
-      )}
-      
-      {usingCachedProducts && (
+    <Box component="form" onSubmit={handleSubmit} noValidate aria-label="פתיחת פריט" sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        פתיחת פריט — {departmentLabel(department)}
+      </Typography>
+
+      {isOffline && !blockedReason && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          מציג מוצרים מהמטמון המקומי.
+          אין חיבור. הפריט יישמר במכשיר וישלח לשרת כשהחיבור יחזור.
         </Alert>
       )}
-      
-      {error && (
+      {blockedReason && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {blockedReason}
+        </Alert>
+      )}
+      {loadError && (
         <Alert severity="error" sx={{ mb: 2 }}>
+          {loadError}
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} role="alert">
           {error}
         </Alert>
       )}
-      
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {success}
+      {notice && (
+        <Alert severity={notice.severity} sx={{ mb: 2 }} role="status">
+          {notice.text}
         </Alert>
       )}
-      
-      <Typography variant="h6" gutterBottom>
-        הוספת פריט חדש
-      </Typography>
-      
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: '1 1 300px' }}>
-            <FormControl fullWidth margin="normal" disabled={isLoading || disabled}>
-              <InputLabel id="area-select-label">אזור</InputLabel>
-              <Select
-                labelId="area-select-label"
-                id="area-select"
-                value={area}
-                label="אזור"
-                onChange={handleAreaChange}
-              >
-                {areas.map((areaOption) => (
-                  <MenuItem key={areaOption} value={areaOption}>
-                    {areaOption}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-          
-          <Box sx={{ flex: '1 1 300px' }}>
-            <FormControl fullWidth margin="normal" disabled={isLoading || disabled}>
-              <InputLabel id="product-select-label">מוצר</InputLabel>
-              <Select
-                labelId="product-select-label"
-                id="product-select"
-                value={selectedProduct?.id || ''}
-                label="מוצר"
-                onChange={handleProductChange}
-              >
-                {products.map((product) => (
-                  <MenuItem key={product.id} value={product.id}>
-                    {product.name}
-                  </MenuItem>
-                ))}
-              </Select>
-              {products.length === 0 && !isLoading && (
-                <FormHelperText error>
-                  {userDepartment 
-                    ? `אין מוצרים זמינים עבור מחלקת ${userDepartment === 'bar' ? 'הבר' : 'המטבח'}`
-                    : 'אין מוצרים זמינים'
-                  }
-                </FormHelperText>
-              )}
-            </FormControl>
-          </Box>
-        </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: '1 1 300px' }}>
-            <FormControl fullWidth margin="normal" disabled={isLoading || disabled || fridges.length === 0}>
-              <InputLabel id="fridge-select-label">מקרר</InputLabel>
-              <Select
-                labelId="fridge-select-label"
-                id="fridge-select"
-                value={selectedFridgeId}
-                label="מקרר"
-                onChange={(e) => setSelectedFridgeId(e.target.value as string)}
-              >
-                {fridges.length === 0 && (
-                  <MenuItem value="" disabled>
-                    אין מקררים זמינים
-                  </MenuItem>
-                )}
-                {fridges.map((fridge) => (
-                  <MenuItem key={fridge.id} value={fridge.id || ''}>
-                    {fridge.name}
-                  </MenuItem>
-                ))}
-              </Select>
-              {fridges.length === 0 && (
-                <FormHelperText error>
-                  אין מקררים זמינים עבור אזור {area}
-                </FormHelperText>
-              )}
-            </FormControl>
-          </Box>
-          
-          <Box sx={{ flex: '1 1 300px' }}>
-            <TextField
-              fullWidth
-              label="כמות"
-              type="number"
-              inputProps={{ min: 1, dir: 'ltr' }}
-              value={amount}
-              onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
-              margin="normal"
-              disabled={isLoading || disabled}
-              sx={{ 
-                '& input': { color: 'text.primary' },
-                '& label': { color: 'text.secondary' }
-              }}
-            />
-          </Box>
-        </Box>
-        
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <FormControl fullWidth disabled={formDisabled || loading}>
+          <InputLabel id="product-select-label">מוצר</InputLabel>
+          <Select
+            labelId="product-select-label"
+            value={productId}
+            label="מוצר"
+            onChange={e => selectProduct(e.target.value)}
+          >
+            {products.map(p => (
+              <MenuItem key={p.id} value={p.id}>
+                {p.name} ({unitLabel(p.type)}, {p.shelfLifeDays} ימים)
+              </MenuItem>
+            ))}
+          </Select>
+          {!loading && !loadError && products.length === 0 && (
+            <FormHelperText error>אין מוצרים בקטלוג של מחלקת {departmentLabel(department)}</FormHelperText>
+          )}
+        </FormControl>
+
+        <FormControl fullWidth disabled={formDisabled || loading || fridges.length === 0}>
+          <InputLabel id="fridge-select-label">מקרר (אופציונלי)</InputLabel>
+          <Select
+            labelId="fridge-select-label"
+            value={fridgeId}
+            label="מקרר (אופציונלי)"
+            onChange={e => {
+              setFridgeId(e.target.value);
+              setNotice(null);
+            }}
+          >
+            <MenuItem value="">ללא מקרר</MenuItem>
+            {fridges.map(f => (
+              <MenuItem key={f.id} value={f.id ?? ''}>
+                {f.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <TextField
           fullWidth
-          disabled={isLoading || !selectedProduct || disabled}
-          sx={{ mt: 2 }}
-        >
-          {isLoading ? 'מוסיף...' : 'הוסף פריט'}
+          label={`כמות (${unitLabel(product?.type)})`}
+          value={amountRaw}
+          onChange={e => {
+            setAmountRaw(e.target.value);
+            setAmountInvalid(false);
+            setNotice(null);
+          }}
+          error={amountInvalid}
+          helperText={amountInvalid ? amountError(unit) : unit === 'kg' ? 'אפשר משקל עשרוני, למשל 0.5' : undefined}
+          disabled={formDisabled || !product}
+          inputProps={{ inputMode: unit === 'kg' ? 'decimal' : 'numeric', dir: 'ltr', 'aria-label': 'כמות' }}
+          InputProps={{ endAdornment: <InputAdornment position="end">{unitLabel(product?.type)}</InputAdornment> }}
+        />
+
+        <Button type="submit" variant="contained" fullWidth disabled={formDisabled || !product} size="large">
+          {submitting ? 'שולח...' : 'פתח פריט'}
         </Button>
       </Box>
     </Box>

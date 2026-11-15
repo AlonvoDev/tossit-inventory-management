@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getDiscardReport, DiscardReportItem } from '../api/firestoreAPI';
 import DateRangePicker from './DateRangePicker';
+import { toQueryBounds } from './dateRange';
+import type { DiscardReason } from '../domain/contracts';
 import {
   Box,
   Typography,
@@ -19,10 +21,12 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Button,
   useTheme,
   alpha,
   TextField,
   InputAdornment,
+  MenuItem,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -56,6 +60,8 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [dateFilterActive, setDateFilterActive] = useState(false);
+  // Totals are computed server-side for the selected reason only (C2 getDiscardReport reason filter).
+  const [reason, setReason] = useState<DiscardReason | ''>('');
 
   // Load report data
   const loadReport = useCallback(async () => {
@@ -65,13 +71,11 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
     setError(null);
     
     try {
-      let endDateWithTime: Date | undefined;
-      if (endDate) {
-        endDateWithTime = new Date(endDate);
-        endDateWithTime.setHours(23, 59, 59, 999); // Include end of day
-      }
-      
-      const data = await getDiscardReport(businessId, startDate || undefined, endDateWithTime);
+      // Whole local days: first day from 00:00, last day through 23:59:59.999.
+      const bounds = toQueryBounds(startDate, endDate);
+      const data = reason
+        ? await getDiscardReport(businessId, bounds.start, bounds.end, reason)
+        : await getDiscardReport(businessId, bounds.start, bounds.end);
       setReportData(data);
       setFilteredData(data);
     } catch (err: unknown) {
@@ -80,7 +84,7 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
     } finally {
       setLoading(false);
     }
-  }, [businessId, startDate, endDate]);
+  }, [businessId, startDate, endDate, reason]);
 
   // Load data when component mounts or when date filters change
   useEffect(() => {
@@ -175,7 +179,15 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ m: 2 }}>
+      <Alert
+        severity="error"
+        sx={{ m: 2 }}
+        action={
+          <Button color="inherit" size="small" onClick={() => loadReport()}>
+            נסה שוב
+          </Button>
+        }
+      >
         {error}
       </Alert>
     );
@@ -294,8 +306,20 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
           )}
         </Paper>
 
-        {/* Search */}
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+        {/* Reason filter and search */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <TextField
+            select
+            label="סיבת זריקה"
+            value={reason}
+            onChange={(e) => setReason(e.target.value as DiscardReason | '')}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="">כל הסיבות</MenuItem>
+            <MenuItem value="expired">פג תוקף</MenuItem>
+            <MenuItem value="damaged">נפגם</MenuItem>
+            <MenuItem value="other">אחר</MenuItem>
+          </TextField>
           <TextField
             placeholder="חיפוש מוצרים..."
             value={searchQuery}
@@ -376,7 +400,7 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
             <TableBody>
               {filteredData.map((item) => (
                 <TableRow 
-                  key={item.productName}
+                  key={`${item.productName}|${item.type}`}
                   sx={{ 
                     '&:nth-of-type(odd)': { 
                       backgroundColor: alpha(theme.palette.primary.main, 0.02) 
@@ -471,7 +495,11 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
             אין נתונים להצגה
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {searchQuery ? 'לא נמצאו מוצרים התואמים לחיפוש' : 'עדיין לא בוצעו זריקות במערכת'}
+            {searchQuery
+              ? 'לא נמצאו מוצרים התואמים לחיפוש'
+              : dateFilterActive || reason
+                ? 'לא נמצאו זריקות התואמות לסינון שנבחר'
+                : 'עדיין לא בוצעו זריקות במערכת'}
           </Typography>
         </Box>
       )}

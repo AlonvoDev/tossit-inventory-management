@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 // Use Material UI components for a more modern look and feel
 import {
   Dialog,
@@ -22,17 +22,22 @@ import {
   deleteFridge,
 } from '../api/fridgesAPI';
 import { Fridge } from '../types/Fridge';
+import { Department, departmentLabel, manageableDepartments, normalizeDepartment } from '../app/access';
+import { errorMessage } from '../features/common/errorMessage';
 
 /**
- * Admin‑only page for managing fridges/locations.
- *
- * Allows an administrator to create, edit and delete fridges associated
- * with the current business. Each fridge belongs to a department
- * ("bar" or "kitchen").
+ * Fridge/location management. Admins manage all departments; managers manage only
+ * their own department (mirrors the C1b rules). Each fridge belongs to "bar" or "kitchen".
  */
 const AdminFridgesPage: React.FC = () => {
-  const { isAdmin, businessId, loading: authLoading } = useAuth();
+  const { businessId, role, profile, isOffline, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const allowedDepartments = useMemo(
+    () => manageableDepartments(role, profile?.department),
+    [role, profile?.department],
+  );
+  const canManage = allowedDepartments.length > 0;
+  const [saving, setSaving] = useState(false);
 
   // State for list of fridges
   const [fridges, setFridges] = useState<Fridge[]>([]);
@@ -60,33 +65,36 @@ const AdminFridgesPage: React.FC = () => {
     department?: string;
   }>({});
 
-  // Redirect non‑admins (should already be protected, but extra safety)
+  // Load fridges for current business, limited to the departments this role manages.
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      navigate('/not-authorized');
-    }
-  }, [authLoading, isAdmin, navigate]);
-
-  // Load fridges for current business
-  useEffect(() => {
+    let cancelled = false;
     const loadFridges = async () => {
-      if (!businessId || !isAdmin) return;
+      if (!businessId) return;
       setLoading(true);
       setError(null);
       try {
         const data = await getBusinessFridges(businessId);
-        setFridges(data);
+        if (cancelled) return;
+        setFridges(
+          data.filter((f) => {
+            const d = normalizeDepartment(f.department);
+            return d !== null && allowedDepartments.includes(d);
+          })
+        );
       } catch (err: unknown) {
         console.error('Failed to load fridges:', err);
-        setError('טעינת המקררים נכשלה. בדוק הרשאות או נסה שוב מאוחר יותר.');
+        if (!cancelled) setError(errorMessage(err, 'טעינת המקררים נכשלה. נסה שוב.'));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-    if (!authLoading && businessId && isAdmin) {
+    if (!authLoading && businessId && canManage) {
       loadFridges();
     }
-  }, [authLoading, businessId, isAdmin]);
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, businessId, canManage, allowedDepartments]);
 
   // Handle input changes in the modal form
   const handleInputChange = (
@@ -103,10 +111,17 @@ const AdminFridgesPage: React.FC = () => {
   // Validate form data before submission
   const validateForm = (): boolean => {
     const errors: { name?: string; department?: string } = {};
-    if (!formData.name || !formData.name.trim()) {
+    const name = formData.name.trim();
+    if (!name) {
       errors.name = 'נדרש שם למקרר';
+    } else if (
+      fridges.some(
+        (f) => f.id !== editingFridge?.id && f.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+      )
+    ) {
+      errors.name = 'כבר קיים מקרר בשם הזה';
     }
-    if (!formData.department || (formData.department !== 'bar' && formData.department !== 'kitchen')) {
+    if (!allowedDepartments.includes(formData.department)) {
       errors.department = 'בחר מחלקה תקינה';
     }
     setFormErrors(errors);
@@ -115,8 +130,10 @@ const AdminFridgesPage: React.FC = () => {
 
   // Open modal for adding a new fridge
   const openAddModal = () => {
-    setFormData({ name: '', department: 'bar' });
+    setFormData({ name: '', department: allowedDepartments[0] ?? 'bar' });
     setFormErrors({});
+    setError(null);
+    setSuccess(null);
     setEditMode(false);
     setEditingFridge(null);
     setShowModal(true);
@@ -124,8 +141,10 @@ const AdminFridgesPage: React.FC = () => {
 
   // Open modal for editing an existing fridge
   const openEditModal = (fridge: Fridge) => {
-    setFormData({ name: fridge.name, department: fridge.department });
+    setFormData({ name: fridge.name, department: normalizeDepartment(fridge.department) ?? 'bar' });
     setFormErrors({});
+    setError(null);
+    setSuccess(null);
     setEditMode(true);
     setEditingFridge(fridge);
     setShowModal(true);
@@ -144,18 +163,22 @@ const AdminFridgesPage: React.FC = () => {
   // Handle add/edit form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return; // ignore repeated submits
     setError(null);
     setSuccess(null);
-    // Validate input
+    if (isOffline) {
+      setError('אין חיבור. שינויים במקררים נשמרים רק כשיש חיבור לשרת.');
+      return;
+    }
     if (!validateForm()) {
       setError('אנא תקן את השגיאות בטופס');
       return;
     }
     if (!businessId) {
-      setError('Business ID not found');
+      setError('לא נמצא עסק עבור החשבון שלך');
       return;
     }
-    // Determine whether to add or update
+    setSaving(true);
     try {
       if (editMode && editingFridge && editingFridge.id) {
         // Update existing fridge
@@ -194,13 +217,15 @@ const AdminFridgesPage: React.FC = () => {
       setShowModal(false);
     } catch (err: unknown) {
       console.error('Error saving fridge:', err);
-      const errorMessage = err instanceof Error ? err.message : 'אירעה שגיאה בשמירת המקרר';
-      setError(errorMessage);
+      setError(errorMessage(err, 'שמירת המקרר נכשלה. נסה שוב.'));
+    } finally {
+      setSaving(false);
     }
   };
 
   // Handle deletion of a fridge
   const handleDelete = async (fridge: Fridge) => {
+    if (isOffline) return;
     const confirmDelete = window.confirm(`האם אתה בטוח שברצונך למחוק את "${fridge.name}"?`);
     if (!confirmDelete) return;
     setError(null);
@@ -213,8 +238,7 @@ const AdminFridgesPage: React.FC = () => {
       }
     } catch (err: unknown) {
       console.error('Error deleting fridge:', err);
-      const errorMessage = err instanceof Error ? err.message : 'מחיקת המקרר נכשלה';
-      setError(errorMessage);
+      setError(errorMessage(err, 'מחיקת המקרר נכשלה. נסה שוב.'));
     }
   };
 
@@ -224,19 +248,23 @@ const AdminFridgesPage: React.FC = () => {
       <div
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}
       >
-        <div>Loading...</div>
+        <div>טוען...</div>
       </div>
     );
   }
 
-  // Hide component if not admin (guarded by route anyway)
-  if (!isAdmin) {
-    return null;
+  // Route guard restricts this page to admin/manager; a manager without a valid department manages nothing.
+  if (!canManage) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', direction: 'rtl' }}>
+        לא הוגדרה עבורך מחלקה לניהול. פנה למנהל המערכת.
+      </div>
+    );
   }
 
   return (
     <div
-      style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}
+      style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif', direction: 'rtl' }}
     >
       {/* Navigation buttons */}
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -294,6 +322,12 @@ const AdminFridgesPage: React.FC = () => {
             לכל מקרר יש לבחור שם ייחודי ולשייך אותו למחלקה המתאימה (בר או מטבח).
           </li>
           <li>ניתן לערוך או למחוק מקררים באמצעות כפתורי העריכה/מחיקה בטבלה למטה.</li>
+          {allowedDepartments.length === 1 && (
+            <li>
+              מוצגים ומנוהלים מקררי מחלקת <strong>{departmentLabel(allowedDepartments[0])}</strong> בלבד.
+            </li>
+          )}
+          {isOffline && <li><strong>אין חיבור:</strong> שינויים זמינים רק כשיש חיבור.</li>}
         </ul>
       </div>
 
@@ -301,7 +335,9 @@ const AdminFridgesPage: React.FC = () => {
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={openAddModal}
+          disabled={!!isOffline}
           style={{
+            opacity: isOffline ? 0.5 : 1,
             backgroundColor: '#2196f3',
             color: 'white',
             padding: '10px 20px',
@@ -386,11 +422,12 @@ const AdminFridgesPage: React.FC = () => {
                 <tr key={fridge.id} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '12px', textAlign: 'right' }}>{fridge.name}</td>
                   <td style={{ padding: '12px', textAlign: 'right' }}>
-                    {fridge.department === 'bar' ? 'בר' : 'מטבח'}
+                    {departmentLabel(fridge.department) ?? 'לא הוגדרה'}
                   </td>
                   <td style={{ padding: '12px', textAlign: 'right' }}>
                     <button
                       onClick={() => openEditModal(fridge)}
+                      disabled={!!isOffline}
                       style={{
                         marginLeft: '10px',
                         backgroundColor: '#ffc107',
@@ -406,6 +443,7 @@ const AdminFridgesPage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handleDelete(fridge)}
+                      disabled={!!isOffline}
                       style={{
                         backgroundColor: '#f44336',
                         color: '#fff',
@@ -467,10 +505,12 @@ const AdminFridgesPage: React.FC = () => {
                   name="department"
                   value={formData.department}
                   label="מחלקה"
+                  disabled={allowedDepartments.length === 1}
                   onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement>)}
                 >
-                  <MenuItem value="bar">בר</MenuItem>
-                  <MenuItem value="kitchen">מטבח</MenuItem>
+                  {allowedDepartments.map((d: Department) => (
+                    <MenuItem key={d} value={d}>{departmentLabel(d)}</MenuItem>
+                  ))}
                 </Select>
                 {formErrors.department && (
                   <p style={{ color: '#f44336', fontSize: '12px', marginTop: '4px' }}>
@@ -483,8 +523,8 @@ const AdminFridgesPage: React.FC = () => {
               <Button onClick={closeModal} color="inherit">
                 ביטול
               </Button>
-              <Button type="submit" variant="contained" color="primary">
-                {editMode ? 'שמור' : 'הוסף'}
+              <Button type="submit" variant="contained" color="primary" disabled={saving}>
+                {saving ? 'שומר...' : editMode ? 'שמור' : 'הוסף'}
               </Button>
             </DialogActions>
           </form>

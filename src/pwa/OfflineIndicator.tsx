@@ -3,6 +3,10 @@ import { Snackbar, Alert } from '@mui/material';
 import { WifiOff as OfflineIcon, Wifi as OnlineIcon } from '@mui/icons-material';
 import { tokens } from '../app/theme';
 
+/**
+ * Browser connectivity only (navigator.onLine). Queue state (pending/failed) is shown
+ * separately by SyncStatus from the C3 OfflineProvider; this banner never claims anything synced.
+ */
 export const OfflineIndicator: React.FC = () => {
   const [, setIsOnline] = useState(navigator.onLine);
   const [showOfflineMessage, setShowOfflineMessage] = useState(false);
@@ -50,7 +54,7 @@ export const OfflineIndicator: React.FC = () => {
             }
           }}
         >
-          <strong>מצב לא מקוון</strong> • שינויים יישמרו מקומית ויסונכרנו כשהחיבור יחזור
+          <strong>אין חיבור לאינטרנט</strong> • פתיחה וסגירה של פריטים נשמרות במכשיר ונשלחות כשהחיבור חוזר. שינויים אחרים דורשים חיבור.
         </Alert>
       </Snackbar>
 
@@ -75,7 +79,7 @@ export const OfflineIndicator: React.FC = () => {
             }
           }}
         >
-          <strong>חזרת למצב מקוון!</strong> מסנכרן נתונים...
+          <strong>החיבור חזר</strong>
         </Alert>
       </Snackbar>
     </>

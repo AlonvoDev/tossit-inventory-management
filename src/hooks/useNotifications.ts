@@ -1,87 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { 
-  checkNotificationPermission, 
-  requestNotificationPermission,
-  registerServiceWorker
-} from '../utils/notificationUtils';
-import { 
-  setupPeriodicChecks, 
-  clearPeriodicChecks 
-} from '../api/expirationChecker';
-
-/**
- * Hook for managing notifications in the TossIt application
- * @param checkInterval - How often to check for notifications (in milliseconds)
- * @returns Object with notification state and methods
- */
-export const useNotifications = (checkInterval = 60000) => {
-  const { currentUser, businessId } = useAuth();
+import { checkNotificationPermission, disablePushNotifications, enablePushNotifications, getPushNotificationState, syncPushNotificationsSession, type PushNotificationState } from '../utils/notificationUtils';
+/** Reads existing state on mount; browser opt-in is only an explicit button action. */
+export function useNotifications(checkInterval = 60000) {
+  void checkInterval; // Compatibility only: server scheduling replaces page polling.
+  const { uid, businessId } = useAuth();
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>('default');
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-
-  // Check if notifications are supported and get current permission status
-  useEffect(() => {
-    const checkSupport = async () => {
-      const status = await checkNotificationPermission();
-      setPermissionStatus(status);
-    };
-
-    checkSupport();
+  const [status, setStatus] = useState<PushNotificationState>('disabled');
+  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const codeOf = (failure: unknown) => failure && typeof failure === 'object' && 'code' in failure && typeof failure.code === 'string' ? failure.code : 'unknown';
+  const [busy, setBusy] = useState(false);
+  const refresh = useCallback(async () => {
+    setPermissionStatus(await checkNotificationPermission());
+    const current = await getPushNotificationState(); setStatus(current); return current;
   }, []);
-
-  // Register service worker and setup periodic checks when user is authenticated
   useEffect(() => {
-    if (!currentUser || !businessId || permissionStatus !== 'granted') {
-      return;
-    }
-
-    const setupNotifications = async () => {
+    let disposed = false;
+    const read = async () => {
       try {
-        // Register service worker
-        const subscription = await registerServiceWorker();
-        setIsSubscribed(!!subscription);
-
-        // Setup periodic checks for expired items and shift management
-        if (businessId) {
-          const id = setupPeriodicChecks(businessId, currentUser.uid, checkInterval);
-          setIntervalId(id);
-        }
-      } catch (error) {
-        console.error('Error setting up notifications:', error);
-      }
+        await syncPushNotificationsSession(uid, businessId ?? undefined);
+        const permission = await checkNotificationPermission(); const current = await getPushNotificationState();
+        if (!disposed) { setPermissionStatus(permission); setStatus(current); setError(null); setErrorCode(null); }
+      } catch (failure) { if (!disposed) { setError(failure instanceof Error ? failure.message : 'Notification status unavailable'); setErrorCode(codeOf(failure)); } }
     };
-
-    setupNotifications();
-
-    // Clean up function
-    return () => {
-      if (intervalId) {
-        clearPeriodicChecks(intervalId);
-        setIntervalId(null);
-      }
-    };
-  }, [currentUser, businessId, permissionStatus, checkInterval, intervalId]);
-
-  // Request permission function
-  const requestPermission = async (): Promise<boolean> => {
-    try {
-      const newStatus = await requestNotificationPermission();
-      setPermissionStatus(newStatus);
-      return newStatus === 'granted';
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      return false;
-    }
+    void read(); window.addEventListener('online', read);
+    return () => { disposed = true; window.removeEventListener('online', read); };
+  }, [uid, businessId]);
+  const enable = async () => {
+    setBusy(true); setError(null); setErrorCode(null);
+    try { const result = await enablePushNotifications(); await refresh(); return result; }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Notification setup failed'); setErrorCode(codeOf(failure)); throw failure; }
+    finally { setBusy(false); }
   };
-
-  return {
-    permissionStatus,
-    isSubscribed,
-    requestPermission,
-    isSupported: permissionStatus !== 'unsupported'
+  const disable = async () => {
+    setBusy(true); setError(null); setErrorCode(null);
+    try { await disablePushNotifications(); await refresh(); }
+    catch (failure) { setStatus('pending-disable'); setErrorCode(codeOf(failure)); setError(failure instanceof Error ? failure.message : 'Device cleanup pending'); throw failure; }
+    finally { setBusy(false); }
   };
-};
-
-export default useNotifications; 
+  return { permissionStatus, status, isSubscribed: status === 'enabled', isSupported: permissionStatus !== 'unsupported', busy, error, errorCode, refresh, enable, disable,
+    requestPermission: async () => (await enable()) === 'enabled' };
+}
+export default useNotifications;

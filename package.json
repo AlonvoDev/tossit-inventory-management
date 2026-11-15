@@ -16,7 +16,16 @@
     "preview": "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}",
     "start": "serve -s dist -l tcp://0.0.0.0:$PORT",
     "emulators": "firebase emulators:start",
-    "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\""
+    "dev:emulate": "concurrently \"npm run emulators\" \"npm run dev\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tossit-auth \"vitest run --config vitest.rules.config.ts\"",
+    "test:functions": "vitest run --config vitest.functions.config.ts",
+    "build:functions": "npm --prefix functions run build",
+    "test:callables": "npm run build:functions && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
+    "test:browser": "npm run build:functions && VITE_USE_FIREBASE_EMULATORS=true VITE_SERVER_API_URL=http://127.0.0.1:5001 npm run build && firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"playwright test\"",
+    "test:callables:native": "npm run build:functions && TOSSIT_NATIVE_FUNCTIONS_EMULATOR=true firebase emulators:exec --only auth,firestore,functions --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
+    "test:callables:neon": "npm run build:functions && TOSSIT_CALLABLE_HOST=neon firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\"",
+    "build:neon": "npm --prefix functions run build:neon",
+    "test:callables:neon:bundle": "npm run build:neon && TOSSIT_CALLABLE_HOST=neon-bundle firebase emulators:exec --only auth,firestore --project demo-tossit-auth \"vitest run --config vitest.callables.config.ts\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -39,6 +48,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@playwright/test": "^1.65.0",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -49,6 +60,7 @@
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
+    "fake-indexeddb": "^6.2.8",
     "firebase-tools": "^14.4.0",
     "globals": "^15.15.0",
     "jsdom": "^26.1.0",

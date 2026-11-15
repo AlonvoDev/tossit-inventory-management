@@ -2,11 +2,13 @@ import React from 'react';
 import { Box } from '@mui/material';
 import { AppRoutes } from './routes';
 import UnifiedNavigation from '../components/UnifiedNavigation';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { tokens } from './theme';
 
 const App: React.FC = () => {
-  const { user } = useAuth();
+  // Navigation only for a resolved, active profile; never during loading or for accounts without access.
+  const { isAuthenticated, loading } = useAuth();
+  const showNavigation = isAuthenticated && !loading;
 
   return (
     <Box
@@ -16,12 +18,12 @@ const App: React.FC = () => {
         direction: 'rtl',
       }}
     >
-      {user && <UnifiedNavigation />}
+      {showNavigation && <UnifiedNavigation />}
       
       <Box
         component="main"
         sx={{
-          marginTop: user ? { xs: '56px', sm: '64px', md: '70px' } : 0, // Responsive navigation height
+          marginTop: showNavigation ? { xs: '56px', sm: '64px', md: '70px' } : 0, // Responsive navigation height
           padding: { xs: tokens.spacing.md, sm: tokens.spacing.lg },
         }}
       >

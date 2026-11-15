@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { normalizeDepartment } from '../app/access';
 import { useAuth } from '../context/AuthContext';
 import { getBusinessItems, getExpiredNotDiscardedItems, getDiscardedItems } from '../api/firestoreAPI';
 import { getBusinessFridges } from '../api/fridgesAPI';
@@ -80,14 +81,13 @@ const DashboardKPIs: React.FC = () => {
       let filteredFridges = fridges;
 
       if (!isAdmin && userDepartment) {
-        const departmentArea = userDepartment === 'bar' ? 'בר' : userDepartment === 'kitchen' ? 'מטבח' : userDepartment;
-        filteredActiveItems = activeItems.filter(item => item.area === departmentArea);
-        filteredExpiredItems = expiredItems.filter(item => item.area === departmentArea);
-        filteredNearExpiryItems = nearExpiryItems.filter(item => item.area === departmentArea);
-        filteredFridges = fridges.filter(fridge => 
-          (userDepartment === 'bar' && fridge.department === 'bar') ||
-          (userDepartment === 'kitchen' && fridge.department === 'kitchen')
-        );
+        // Canonical and legacy Hebrew values compare equal (server queries are already scoped).
+        const own = normalizeDepartment(userDepartment);
+        const inOwn = (value: unknown) => own !== null && normalizeDepartment(value) === own;
+        filteredActiveItems = activeItems.filter(item => inOwn(item.area));
+        filteredExpiredItems = expiredItems.filter(item => inOwn(item.area));
+        filteredNearExpiryItems = nearExpiryItems.filter(item => inOwn(item.area));
+        filteredFridges = fridges.filter(fridge => inOwn(fridge.department));
       }
 
       setKpiData({

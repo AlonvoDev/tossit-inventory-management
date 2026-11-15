@@ -14,9 +14,11 @@ import {
 } from '@mui/icons-material';
 import OpenItemForm from './OpenItemForm';
 import { useAuth } from '../context/AuthContext';
+import type { Department } from '../domain/contracts';
+import { departmentLabel } from '../app/access';
 
 interface FloatingActionButtonProps {
-  area: string;
+  department: Department;
   onItemAdded: () => void;
   disabled?: boolean;
 }
@@ -26,15 +28,18 @@ interface FloatingActionButtonProps {
  * Shows a modal with the OpenItemForm when clicked.
  */
 const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
-  area,
+  department,
   onItemAdded,
   disabled = false
 }) => {
   const [showModal, setShowModal] = useState(false);
   const { profile, user, isOffline } = useAuth();
 
+  // Offline opening is allowed: C3 saves the intent on the device before sending.
+  const isDisabled = disabled || !profile || !user;
+
   const handleOpenModal = () => {
-    if (!disabled && !isOffline) {
+    if (!isDisabled) {
       setShowModal(true);
     }
   };
@@ -43,12 +48,12 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     setShowModal(false);
   };
 
+  // Keep the dialog open after a receipt so the confirmation (with expiry) stays visible
+  // and the next item can be opened; the list refreshes behind it.
   const handleItemAdded = () => {
-    setShowModal(false);
     onItemAdded();
   };
 
-  const isDisabled = disabled || isOffline || !profile || !user;
 
   const theme = useTheme();
 
@@ -57,7 +62,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       {/* Modern Floating Action Button */}
       <Fab
         color="primary"
-        aria-label="add product"
+        aria-label="פתיחת פריט"
         onClick={handleOpenModal}
         disabled={isDisabled}
         sx={{
@@ -83,7 +88,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           transition: 'all 0.2s ease-in-out',
           zIndex: 1000,
         }}
-        title={isDisabled ? 'לא זמין במצב לא מקוון' : 'הוסף מוצר חדש'}
+        title={isOffline ? 'פתיחת פריט (יישמר במכשיר עד שהחיבור יחזור)' : 'פתיחת פריט'}
       >
         <AddIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
       </Fab>
@@ -136,9 +141,10 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              הוסף מוצר חדש - {area}
+              פתיחת פריט - {departmentLabel(department)}
             </Typography>
             <IconButton
+              aria-label="סגירה"
               onClick={handleCloseModal}
               sx={{
                 background: alpha(theme.palette.grey[500], 0.1),
@@ -153,14 +159,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 
           {/* Modal Body */}
           <Box sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto', flexGrow: 1 }}>
-            <OpenItemForm
-              area={area}
-              businessId={profile?.businessId}
-              userId={user?.uid}
-              onItemAdded={handleItemAdded}
-              disabled={isDisabled}
-              areas={['מטבח', 'בר', 'מחסן', 'אחר']}
-            />
+            <OpenItemForm department={department} onItemAdded={handleItemAdded} disabled={isDisabled} />
           </Box>
         </Box>
       </Modal>
