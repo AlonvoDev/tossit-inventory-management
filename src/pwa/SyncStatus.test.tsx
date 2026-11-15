@@ -63,3 +63,12 @@ describe('SyncStatus', () => {
     expect(screen.getByText(/נכשל: אין לך הרשאה/)).toBeInTheDocument();
   });
 });
+
+describe('SyncStatus vs connectivity', () => {
+  it('keeps a failed operation distinct from the disconnected state', () => {
+    state.current = { operations: [{ operationId: 'f', itemId: '2', state: 'failed', errorCode: 'already-closed' }], error: null, retry: vi.fn() };
+    render(<SyncStatus />);
+    expect(screen.getByText('1 נכשלו')).toBeInTheDocument();
+    expect(screen.queryByText(/אין חיבור|לא מקוון/)).not.toBeInTheDocument();
+  });
+});

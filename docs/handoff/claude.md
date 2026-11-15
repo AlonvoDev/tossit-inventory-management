@@ -1,6 +1,54 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: UI1 correction — Codex review R1–R4 (docs/CODEX_REQUESTS.md at `f5ce297`)
+Task / bounded subtask: UI/UX round — **UI2 fast, truthful opening and closing**
+Status: **UI2 READY**. Next: UI3 (navigation, admin screens, final visual review). Not deployed.
+Integrated Codex SHA: `4aae9eb` (Codex merge of corrected UI1 + acceptance; fast-forward, docs only).
+Last previously confirmed remote SHA: 75c68f118015144b7c7e7c1087a5f5c8480b25aa
+
+## UI2 — problems found (before, 390 px, synthetic emulator data)
+- Open-item dialog floated mid-screen; with an emulated keyboard (viewport 390×460, amount focused) the submit
+  "פתח פריט" was at 479–527 px — **off-screen**; dialog header clipped. Title duplicated ("פתיחת פריט - בר" header +
+  "פתיחת פריט — בר" in the form). An invalid amount showed twice (top banner + helper). Empty amount showed a stray
+  unit "יחידות". Screenshots: `docs/ui-review/ui2/before-390-open-dialog.png`, `before-390-open-dialog-keyboard-460.png`.
+- Finished/discarded dialog: choice rows 42 px (< 44); the confirm button used the shared `ui/Button` `loading` prop,
+  which replaces the label with a generic "טוען..." (the intended "שולח..." never appeared).
+  `docs/ui-review/ui2/before-390-close-dialog.png`.
+- Already correct and now locked by tests: Escape restores focus to the opener; focus stays inside the action dialog.
+
+## UI2 changed files
+- `src/components/FloatingActionButton.tsx`: MUI `Dialog` (was `Modal`), **full screen below `sm`**, one title
+  "פתיחת פריט — <מחלקה>" labelling the dialog (`aria-labelledby`), 44 px "סגירה" button; MUI focus trap and focus return.
+- `src/components/OpenItemForm.tsx` (props unchanged; open/intent/receipt logic unchanged): no own heading (form keeps
+  an accessible name); **sticky action footer** holding server error/receipt messages + "פתח פריט" (`data-testid=
+  open-item-footer`, safe-area padding); invalid amount shown **once**, on the field (`aria-invalid`), and **focused**;
+  unit adornment only when a product is selected; hints ("בחר מוצר כדי להזין כמות", "אפשר משקל עשרוני", "מספר שלם של
+  יחידות"); 48 px selects/options; `enterKeyHint=done`; values and retry intent retained after failure.
+- `src/components/ui/ItemActionModal.tsx` (props/`ItemActionConfirm` unchanged): dialog labelled by its title; finished /
+  discarded as 56 px bordered options; reasons 44 px; buttons 44 px; "שולח..." while sending (no generic loading label);
+  Escape/backdrop ignored while sending (existing guard, now tested).
+- Tests: OpenItemForm +3 (`retains values and retry intent after failure`, `shows an invalid amount once, on the field,
+  and moves focus there`, `keeps the submit button and any server error in the action footer`); new
+  `FloatingActionButton.test.tsx` (2: labelled dialog/title once/focus restored on Escape; close button); new
+  `ui/ItemActionModal.test.tsx` (3: 56 px choices, discard requires reason with exact confirm values, blocked while
+  sending); ItemsList +2 (`restores focus to the item action button when the dialog is dismissed`, `prevents a repeated
+  close while the first request is pending`); SyncStatus +1 (`keeps a failed operation distinct from the disconnected
+  state`). Existing concurrent-close, offline receipt, off-shift and retry-ID tests preserved. RED before: 6 of the new
+  assertions (invalid-once/focus, footer, 56 px, sending label ×2, dialog title/focus).
+
+## UI2 checks
+- `npm run test:run`: 39 files, **330/330 pass**. `npm run build`: PASS. `npm run lint`: 0 errors / 7 existing warnings.
+  `git diff --check`: clean.
+- `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` (unmodified script, full output kept): exit 0,
+  **Running 5 tests … 5 passed (23.5 s)**.
+- Real Chromium, synthetic emulator data: at 390×460 (emulated keyboard) amount field 219–272 px and submit 404–452 px
+  — both visible (before: submit off-screen). Also at 1280×460: submit visible. Escape from the open dialog → focus on
+  "פתיחת פריט"; action dialog: focus inside the modal; targets finished 56 / discarded 56 / ביטול 44 / סמן כנגמר 44 px.
+  Page overflow 0 px at 390 and 1280. Screenshots: `docs/ui-review/ui2/after-390-open-dialog.png`,
+  `after-390-open-dialog-keyboard-460.png`, `after-390-close-dialog.png`.
+- NOT RUN: real iPhone/Android on-screen keyboard (headless emulation by viewport height only), screen readers.
+- No change to `useCloseItem`, receipts, operation IDs, offline queue, worker, `SyncStatus`/`OfflineIndicator` source.
+
+Task / bounded subtask (accepted by Codex at 4aae9eb): UI1 correction — Codex review R1–R4 (docs/CODEX_REQUESTS.md at `f5ce297`)
 Status: **UI1 READY (corrected)**. Supersedes the earlier UI1 READY at `a8ed3b3`. Not deployed.
 Integrated Codex SHA: `f5ce297` (security/dependency checkpoint + review requests), normal merge, `npm ci` + `npm ci --prefix functions`.
 Last previously confirmed remote SHA: a8ed3b353a145fe23db773b26a4d3d7128592fa3

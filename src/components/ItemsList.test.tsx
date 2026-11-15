@@ -269,6 +269,33 @@ describe('ItemsList', () => {
     expect(getComputedStyle(fridge).minHeight).toBe('44px');
   });
 
+  it('restores focus to the item action button when the dialog is dismissed', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar')]);
+    const opener = await screen.findByRole('button', { name: /נגמר \/ נזרק — לימון/ });
+    await userEvent.click(opener);
+    await screen.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it('prevents a repeated close while the first request is pending', async () => {
+    as('staff');
+    let resolve!: (v: unknown) => void;
+    api.closeInventoryItem.mockReturnValue(new Promise(r => (resolve = r)));
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'לימון', 'bar')]);
+    await userEvent.click(await screen.findByRole('button', { name: /נגמר \/ נזרק — לימון/ }));
+    const confirm = within(screen.getByRole('dialog')).getByRole('button', { name: 'סמן כנגמר' });
+    await userEvent.click(confirm);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /שולח/ }));
+    expect(api.closeInventoryItem).toHaveBeenCalledTimes(1);
+    resolve({ operationId: 'x', itemId: '1', state: 'synced' });
+    expect(await screen.findByText('"לימון" סומן כנגמר')).toBeInTheDocument();
+  });
+
   it('off-shift staff cannot open the action dialog', async () => {
     as('staff', false);
     render(<ItemsList areaFilter="bar" />);

@@ -10,7 +10,6 @@ import {
   MenuItem,
   Select,
   TextField,
-  Typography,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { getBusinessProducts } from '../api/productsAPI';
@@ -53,6 +52,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ severity: 'success' | 'info'; text: string } | null>(null);
   const intent = useRef<Intent | null>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!businessId) return;
@@ -104,8 +104,9 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
     }
     const amount = parseAmount(amountRaw, unit);
     if (amount === null) {
+      // Shown once, on the field itself (helper text), and focused so a phone user sees it with the keyboard up.
       setAmountInvalid(true);
-      setError(amountError(unit));
+      amountRef.current?.focus();
       return;
     }
 
@@ -150,39 +151,22 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
     }
   };
 
+  // The heading is owned by the surrounding dialog ("פתיחת פריט — <מחלקה>"); the form keeps an accessible name.
   return (
-    <Box component="form" onSubmit={handleSubmit} noValidate aria-label="פתיחת פריט" sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        פתיחת פריט — {departmentLabel(department)}
-      </Typography>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      noValidate
+      aria-label={`פתיחת פריט — ${departmentLabel(department)}`}
+      sx={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pb: 2 }}>
+        {isOffline && !blockedReason && (
+          <Alert severity="info">אין חיבור. הפריט יישמר במכשיר וישלח לשרת כשהחיבור יחזור.</Alert>
+        )}
+        {blockedReason && <Alert severity="warning">{blockedReason}</Alert>}
+        {loadError && <Alert severity="error">{loadError}</Alert>}
 
-      {isOffline && !blockedReason && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          אין חיבור. הפריט יישמר במכשיר וישלח לשרת כשהחיבור יחזור.
-        </Alert>
-      )}
-      {blockedReason && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {blockedReason}
-        </Alert>
-      )}
-      {loadError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {loadError}
-        </Alert>
-      )}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} role="alert">
-          {error}
-        </Alert>
-      )}
-      {notice && (
-        <Alert severity={notice.severity} sx={{ mb: 2 }} role="status">
-          {notice.text}
-        </Alert>
-      )}
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <FormControl fullWidth disabled={formDisabled || loading}>
           <InputLabel id="product-select-label">מוצר</InputLabel>
           <Select
@@ -190,9 +174,10 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
             value={productId}
             label="מוצר"
             onChange={e => selectProduct(e.target.value)}
+            sx={{ minHeight: 48 }}
           >
             {products.map(p => (
-              <MenuItem key={p.id} value={p.id}>
+              <MenuItem key={p.id} value={p.id} sx={{ minHeight: 48, whiteSpace: 'normal' }}>
                 {p.name} ({unitLabel(p.type)}, {p.shelfLifeDays} ימים)
               </MenuItem>
             ))}
@@ -212,10 +197,11 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
               setFridgeId(e.target.value);
               setNotice(null);
             }}
+            sx={{ minHeight: 48 }}
           >
-            <MenuItem value="">ללא מקרר</MenuItem>
+            <MenuItem value="" sx={{ minHeight: 48 }}>ללא מקרר</MenuItem>
             {fridges.map(f => (
-              <MenuItem key={f.id} value={f.id ?? ''}>
+              <MenuItem key={f.id} value={f.id ?? ''} sx={{ minHeight: 48 }}>
                 {f.name}
               </MenuItem>
             ))}
@@ -224,21 +210,62 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
 
         <TextField
           fullWidth
-          label={`כמות (${unitLabel(product?.type)})`}
+          label="כמות"
           value={amountRaw}
+          inputRef={amountRef}
           onChange={e => {
             setAmountRaw(e.target.value);
             setAmountInvalid(false);
             setNotice(null);
           }}
           error={amountInvalid}
-          helperText={amountInvalid ? amountError(unit) : unit === 'kg' ? 'אפשר משקל עשרוני, למשל 0.5' : undefined}
+          helperText={
+            amountInvalid ? amountError(unit) : !product ? 'בחר מוצר כדי להזין כמות' : unit === 'kg' ? 'אפשר משקל עשרוני, למשל 0.5' : 'מספר שלם של יחידות'
+          }
           disabled={formDisabled || !product}
-          inputProps={{ inputMode: unit === 'kg' ? 'decimal' : 'numeric', dir: 'ltr', 'aria-label': 'כמות' }}
-          InputProps={{ endAdornment: <InputAdornment position="end">{unitLabel(product?.type)}</InputAdornment> }}
+          inputProps={{
+            inputMode: unit === 'kg' ? 'decimal' : 'numeric',
+            dir: 'ltr',
+            'aria-label': 'כמות',
+            'aria-invalid': amountInvalid,
+            enterKeyHint: 'done',
+          }}
+          InputProps={{
+            sx: { minHeight: 48 },
+            endAdornment: product ? <InputAdornment position="end">{unitLabel(product.type)}</InputAdornment> : undefined,
+          }}
         />
+      </Box>
 
-        <Button type="submit" variant="contained" fullWidth disabled={formDisabled || !product} size="large">
+      {/* Sticky action footer: the submit button and the result stay reachable with the keyboard open. */}
+      <Box
+        data-testid="open-item-footer"
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          mt: 'auto',
+          pt: 1.5,
+          pb: 'max(8px, env(safe-area-inset-bottom))',
+          bgcolor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          zIndex: 1,
+        }}
+      >
+        {error && (
+          <Alert severity="error" role="alert">
+            {error}
+          </Alert>
+        )}
+        {notice && (
+          <Alert severity={notice.severity} role="status">
+            {notice.text}
+          </Alert>
+        )}
+        <Button type="submit" variant="contained" fullWidth disabled={formDisabled || !product} sx={{ minHeight: 48, fontSize: '1rem' }}>
           {submitting ? 'שולח...' : 'פתח פריט'}
         </Button>
       </Box>
