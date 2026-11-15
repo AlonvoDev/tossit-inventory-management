@@ -4,6 +4,10 @@ Task / bounded subtask: Neon N3 — Node24 artifact, staging verification and re
 Status: owner-approved coordinated client/rules rollout COMPLETE; signed-in production and device/push pilot remain pending.
 Last previously confirmed remote SHA: 8ac72aa2c81e91e77550f0b3f936b909d26d67ea (main merge/released code)
 
+## New UI/UX round — plan published 2026-11-15
+
+Alon requested a concrete plan for his separate Claude session. Entry point: docs/CLAUDE_WORK_PLAN.md. Full plan: docs/superpowers/plans/2026-11-15-tossit-ui-ux.md. Starting integrated main/core6addce2; old Claude branch357bf15 must merge the exact new plan-publication SHA before work. Claude owns UI1 inventory hierarchy, UI2 daily actions, UI3 navigation/admin consistency; Codex owns dependency/security/backend and integration. Explicit ownership/contracts include protected worker/offline/auth internals. Each checkpoint requires checks, emulator screenshots, commit/push/remote SHA and own handoff. UI development is authorized; production deployment of the redesigned candidate is not. No implementer agent was started by Codex; Alon will start Claude separately. No application code or live settings changed in this planning checkpoint.
+
 ## Live rollout complete — 2026-11-15
 
 Alon's next explicit yes authorized the coordinated main/client/rules deployment. PR1 marked ready and merged normally at8ac72aa, expected head d73752b. All four merge CI jobs pass. Render deploy dep-dbsnvcm1egvs73ecrql0 is LIVE, Node22.23.5 confirmed; env patch preserved other keys and set Node22/NeonURL/emulators:false/VAPID empty. The patch triggered one deployment itself, so no duplicate deploy was requested. Free plan, main branch and autoDeploy:no preserved.
