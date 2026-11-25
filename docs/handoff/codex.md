@@ -4,6 +4,14 @@ Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
 Status: C0a/C0b/S0a integrated; local427client/build/lint and all4PR CI jobs PASS; Claude independently working V0; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
 
+## Claude V0 reviewed — 2026-11-25
+
+Pinned7668e623cb82ee6dd111e0c38bc8855f0b4b57a9, based on C0a1c18c5c. No production files changed. Independently ran capture.cjs in a detached worktree using existing Playwright/local Chromium:29/29 PASS, exit0. Viewed phone inventory/opening/scan and desktop combined inventory. Ready for Alon's visual review; Codex does not approve the look for him. Report: docs/ui-review/V0_CODEX_REVIEW.md.
+
+Integration gap against later C0b: the prototype confirms opened-at with day precision after the day-only checkbox, whereas confirmDateCandidate requires an explicit minute. This was introduced in parallel and is not a production write bug; fix/synchronize before V4/C1 integration. Date-only opening may remain unresolved, not applied as confirmed evidence. Existing synthetic DTOs remain compatible otherwise. No production deployment/main merge/provider or real-device recognition test. Recommendations for bottom opening action, density, urgency groups and collapsed optional scan are proposals for Alon's review.
+
+Review docs publish separately if GitHub rejects direct file writes to core; do not discard Claude work or force-push. Earlier runtime/source evidence remains valid and is not rerun for this prototype-only review.
+
 ## C0b/S0a integration verified — 2026-11-25
 
 Source checkpoint e3faac2f476f0b997a3877a65837d27ba9c0c790 was published and verified on codex/tossit-scan-review-c0b. All four PR CI jobs in run45650594524 succeeded: neon-host, browser, firebase-emulators and build-and-unit. PR3 was merged normally into codex/tossit-core at c2a0ba9f8913112e0af2d53738ff150188eb4347; merged tree exactly matches the locally tested source tree. Merge timeout was checked against fresh state before retrying. No force-push, main update or production deployment.
