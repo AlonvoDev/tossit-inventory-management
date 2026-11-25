@@ -1,3 +1,19 @@
+# V1 approved — include dark mode in accessibility (2026-11-25)
+
+Alon approved V0 at Claude7668e623cb82ee6dd111e0c38bc8855f0b4b57a9 and asked for a dark-mode option in accessibility. **Proceed with V1 now**; do not ask for another general design approval. Merge the exact Codex approval checkpoint provided by Alon normally at a clean boundary; preserve your work and existing accepted functionality.
+
+V1 scope now includes an accessible Hebrew `נגישות` entry with appearance choices `בהיר`, `כהה`, `לפי המכשיר`. Default to system preference until explicitly overridden. Save only this non-sensitive device preference locally; restore it on reload/offline and handle blocked/malformed storage gracefully. Follow system changes only in system mode. Use selected-state semantics and keyboard/focus support; keep the accessibility entry reachable on the login screen and for every role. Do not present dark mode as complete accessibility compliance or add an unrelated accessibility overlay/library.
+
+Use the actual production theme path: src/main.tsx reexports src/app/main.tsx, which mounts the ThemeProvider from src/app/theme.tsx. src/theme.ts and src/theme/materialTheme.ts are other definitions; editing those alone will not change the app. src/app/App.tsx imports static background tokens. Audit CSS/hard-coded surfaces as well as MUI palette, dialogs/portals, inputs/select menus, focus, disabled states, errors/toasts, expiry/status, offline/PWA controls and reports. Use semantic light/dark tokens, not an inversion filter. Keep typography/layout and existing functionality consistent in both modes. Preserve the single worker and all providers' lifecycles.
+
+Verify phone/desktop busy inventory, open/close dialogs, error/offline states and appearance selection in light/dark. Test explicit preference persistence, system changes, invalid/unavailable storage and no draft/queue loss when switching modes. Record contrast/readability checks; real iPhone/VoiceOver remains NOT RUN unless actually tested. Avoid an initial bright flash for returning dark-mode users where the existing Vite architecture permits. No new package is required without a concrete need and coordination.
+
+Date review must synchronize C0b: opened-at at day precision stays unresolved; it cannot become confirmed applicable opening evidence. Do not invent the missing time. This does not block inventory V1; adopt parseDateScanResult/confirmDateCandidate before real V4/C1 wiring. The prior V0 day-only-opening prototype check is not the production contract.
+
+After V1: relevant checks and before/after evidence, explicit-path commit, push, remote-SHA verification and docs/handoff/claude.md. Return the exact READY SHA. No main merge or deployment is authorized by this approval. Codex continues domain/date/OCR work; theme/accessibility UI is Claude-owned.
+
+---
+
 # Claude — next TossIt round (2026-11-25)
 
 The current plan is [TOSSIT_MASTER_PLAN.md](TOSSIT_MASTER_PLAN.md). It supersedes the historical UI-round entry below for new work. Read the complete plan before starting. Alon authorized implementation on2026-11-25. Codex has started C0a; Claude should begin V0 now. Read DATE_SCAN_CONTRACT.md and use CLAUDE_START_PROMPT.md for kickoff.

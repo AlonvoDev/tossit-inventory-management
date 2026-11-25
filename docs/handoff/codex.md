@@ -4,6 +4,12 @@ Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
 Status: C0a/C0b/S0a integrated; local427client/build/lint and all4PR CI jobs PASS; Claude independently working V0; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
 
+## Alon approved V0 + dark mode through accessibility — 2026-11-25
+
+Alon explicitly approved the reviewed V0 with an additional dark-mode option in accessibility. Claude can start V1 now. Updated CLAUDE_WORK_PLAN.md records light/dark/system choices, per-device persistence/system default, actual runtime theme paths, all-state token/contrast/focus checks, early-login/all-role access and no unrelated accessibility overlay. Theme/UI remain Claude-owned; Codex did not concurrently change presentation code. V1 must preserve providers, worker, forms and pending queue. Review docs and master plan distinguish this implementation approval from deployment and unresolved date-only-opening semantics.
+
+This checkpoint changes documentation only; checked actual src/app/main.tsx/theme.tsx/App.tsx to avoid directing Claude to unused theme definitions. No application tests rerun for a docs-only requirement update; source/runtime/live state unchanged. Publish a pinned approval checkpoint and let Alon relay it; no external message was sent.
+
 ## Claude V0 reviewed — 2026-11-25
 
 Pinned7668e623cb82ee6dd111e0c38bc8855f0b4b57a9, based on C0a1c18c5c. No production files changed. Independently ran capture.cjs in a detached worktree using existing Playwright/local Chromium:29/29 PASS, exit0. Viewed phone inventory/opening/scan and desktop combined inventory. Ready for Alon's visual review; Codex does not approve the look for him. Report: docs/ui-review/V0_CODEX_REVIEW.md.
