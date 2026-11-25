@@ -1,8 +1,14 @@
 # Codex handoff
-Branch: codex/tossit-date-foundation (C0/S0 working branch; integrates into core through PR)
+Branch: codex/tossit-core (C0a/C0b/S0a integrated through PR3)
 Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
-Status: C0b/S0a locally READY; full client/build/lint verified; publication/CI pending; Claude independently working V0; no live deployment.
+Status: C0a/C0b/S0a integrated; local427client/build/lint and all4PR CI jobs PASS; Claude independently working V0; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## C0b/S0a integration verified — 2026-11-25
+
+Source checkpoint e3faac2f476f0b997a3877a65837d27ba9c0c790 was published and verified on codex/tossit-scan-review-c0b. All four PR CI jobs in run45650594524 succeeded: neon-host, browser, firebase-emulators and build-and-unit. PR3 was merged normally into codex/tossit-core at c2a0ba9f8913112e0af2d53738ff150188eb4347; merged tree exactly matches the locally tested source tree. Merge timeout was checked against fresh state before retrying. No force-push, main update or production deployment.
+
+Evidence: https://github.com/AlonvoDev/tossit-inventory-management/pull/3 and https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/45650594524 . This follow-up changes only this handoff to record observed results; it is not new application code. Do not confuse later docs/core reruns with the verified source/PR run. Claude can merge this core checkpoint at a safe task boundary; existing C0a mocks/types remain compatible. Remaining real-image/provider evaluation and explicit day-only/label-time policy are not completed by this merge.
 
 ## C0b / S0a — runtime review and evaluation foundation, 2026-11-25
 
