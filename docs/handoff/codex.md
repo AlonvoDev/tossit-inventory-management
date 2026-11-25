@@ -1,8 +1,32 @@
 # Codex handoff
-Branch: codex/tossit-core (C0a/C0b/S0a integrated through PR3)
-Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
-Status: C0a/C0b/S0a integrated; local427client/build/lint and all4PR CI jobs PASS; Claude independently working V0; no live deployment.
+Branch: codex/tossit-scan-lifecycle (S1a; integrates into core through a pinned PR)
+Task / bounded subtask: S1a scan lifecycle and server transport seam
+Status: S1a locally verified; publication/CI pending; Claude V1 with dark mode authorized and independently in progress; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## S1a — cancellable scoped scan lifecycle, 2026-11-25
+
+Alon relayed V1/dark-mode kickoff to Claude and asked Codex to continue. Added createDateScanController and bounded Hebrew errors under src/features/dateScan. Scope/source/request identity is captured per scan, checked before dispatch and before exposing a result. Cancel/replacement/dispose settles promptly even when transport ignores abort; timeout aborts and releases timers/listeners; old results cannot overwrite a new scan. refreshContext clears ready results on account/business changes and aborts in-flight scans offline. No automatic retries, photo persistence, confirmation or inventory writes. Blob MIME/size checks are client UX only, not server image validation.
+
+DATE_SCAN_TRANSPORT.md documents observable store/transport API, React/auth/StrictMode cleanup, image-preview ownership, server Auth/scope/quota requirements and the current32768-byte host JSON limitation. A dedicated future image path must preserve existing callable limits. No provider or endpoint has been configured, no credential/real photo read, and no actual OCR inference has run. Actual provider/image/camera/HEIC accuracy remains NOT RUN. Date-only cutoff/staff-label time semantics still need resolution before C1 applies new dates; no silent default or persistence schema change was introduced.
+
+Verification: full client suite445/445 PASS before the final additional synchronous context-change guard. Final lifecycle suite19/19 PASS after that guard; final TypeScript build check PASS and changed-file ESLint PASS. Production bundle build PASS earlier in this checkpoint; full lint0errors/7existingwarnings. CI on the actual published source will rerun complete client/build/server/emulator/browser checks before integration. Focused tests include cancellation, late response, replacement/source, scope changes, offline/reconnect, image limits, safe failures, timeout, disposal, reentrant observer cancellation and synchronous transport failure. The initial orchestration test exposed deferred dispatch assumptions; final implementation dispatches synchronously inside the protected try path and suppresses cancelled/context-changed work before transport.
+
+V1 theme/presentation files, shared domain persistence, Firestore rules, queue, server routes, worker, dependencies and main/live are untouched. The pending changes from the approval/review branch are documentation only and may be integrated with this checkpoint. Each checkpoint remains a verified remote Git commit; no external message to Claude was sent.
+
+## Alon approved V0 + dark mode through accessibility — 2026-11-25
+
+Alon explicitly approved the reviewed V0 with an additional dark-mode option in accessibility. Claude can start V1 now. Updated CLAUDE_WORK_PLAN.md records light/dark/system choices, per-device persistence/system default, actual runtime theme paths, all-state token/contrast/focus checks, early-login/all-role access and no unrelated accessibility overlay. Theme/UI remain Claude-owned; Codex did not concurrently change presentation code. V1 must preserve providers, worker, forms and pending queue. Review docs and master plan distinguish this implementation approval from deployment and unresolved date-only-opening semantics.
+
+This checkpoint changes documentation only; checked actual src/app/main.tsx/theme.tsx/App.tsx to avoid directing Claude to unused theme definitions. No application tests rerun for a docs-only requirement update; source/runtime/live state unchanged. Publish a pinned approval checkpoint and let Alon relay it; no external message was sent.
+
+## Claude V0 reviewed — 2026-11-25
+
+Pinned7668e623cb82ee6dd111e0c38bc8855f0b4b57a9, based on C0a1c18c5c. No production files changed. Independently ran capture.cjs in a detached worktree using existing Playwright/local Chromium:29/29 PASS, exit0. Viewed phone inventory/opening/scan and desktop combined inventory. Ready for Alon's visual review; Codex does not approve the look for him. Report: docs/ui-review/V0_CODEX_REVIEW.md.
+
+Integration gap against later C0b: the prototype confirms opened-at with day precision after the day-only checkbox, whereas confirmDateCandidate requires an explicit minute. This was introduced in parallel and is not a production write bug; fix/synchronize before V4/C1 integration. Date-only opening may remain unresolved, not applied as confirmed evidence. Existing synthetic DTOs remain compatible otherwise. No production deployment/main merge/provider or real-device recognition test. Recommendations for bottom opening action, density, urgency groups and collapsed optional scan are proposals for Alon's review.
+
+Review docs publish separately if GitHub rejects direct file writes to core; do not discard Claude work or force-push. Earlier runtime/source evidence remains valid and is not rerun for this prototype-only review.
 
 ## C0b/S0a integration verified — 2026-11-25
 

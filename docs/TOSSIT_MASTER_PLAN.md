@@ -1,12 +1,12 @@
 # TossIt — complete next-round work plan
 
-Date: 2026-11-25 (Asia/Jerusalem). Status: **IMPLEMENTATION STARTED; C0a published; C0b/S0a foundation prepared; Claude working V0**.
+Date: 2026-11-25 (Asia/Jerusalem). Status: **IMPLEMENTATION STARTED; C0a/C0b/S0a integrated; V0 visually approved; Claude starts V1 with dark mode**.
 
 ## Outcome and boundaries
 
 Ship a coherent Hebrew inventory tool that is quick to use during a real bar/kitchen shift, visually deliberate, reliable offline, and optionally assists with dates photographed from both packaging and handwritten staff labels. Camera use must save time compared with manual entry. Every scanned value requires human confirmation before inventory submission.
 
-Alon prefers the demonstrated flat, compact inventory direction: clear type, restrained green, thin separators, fewer enclosing cards, and color for meaningful status. He accepted this as closer to his goal, not as approval of every screen or behavior. Success means efficiency and easy execution without compromising quality or design. Build a realistic busy-inventory/form preview before committing the full visual implementation.
+Alon prefers the demonstrated flat, compact inventory direction: clear type, restrained green, thin separators, fewer enclosing cards, and color for meaningful status. He initially accepted this as closer to his goal; on2026-11-25 he approved Claude V0 and explicitly added dark mode through accessibility. This approval authorizes V1 implementation, not deployment or unresolved date-policy changes. Success means efficiency and easy execution without compromising quality or design. Build a realistic busy-inventory/form preview before committing the full visual implementation.
 
 Alon subsequently authorized implementation on2026-11-25. This does not start a production migration, activate billing, upload staff photos to a provider, enable push, or authorize another live release. Implementation checkpoints stay on separate branches until reviewed; a concrete tested release is presented for deployment approval. Existing authorized routine review/fixes do not require repeated permission.
 
@@ -170,3 +170,11 @@ Alon authorized both agents to begin on2026-11-25. Codex C0a adds isolated date-
 ### C0b/S0a progress — 2026-11-25
 
 Runtime result validation and explicit review are implemented without changing C0a DTOs. A provider-neutral recorded-output evaluator and runnable synthetic fixture are available; see SCAN_EVALUATION.md. Real OCR quality/provider access remains NOT RUN. These additive foundations do not write inventory or settle date-only/timezone policy. Claude can complete V0 independently. C0/S0 work is published on a Codex working branch and integrated into core through pinned development PRs if the ref-update connector is unavailable.
+
+### V0 approved; accessibility appearance added — 2026-11-25
+
+Alon approved Claude7668e62 and requested dark mode inside accessibility. V1 now includes light/dark/system choices, a saved per-device preference, graceful storage fallback, live system preference changes only in system mode, consistent semantic tokens across all screens/portals/states, and focused preference/accessibility checks. Default is system. Accessibility entry is available before login and to every role; dark mode is not a substitute for broader accessibility. Read the latest top section of CLAUDE_WORK_PLAN.md for exact ownership, actual production theme paths, evidence and boundaries. No additional general design approval is needed to start V1. The new scope is bounded to appearance; re-estimate if implementation reveals substantial extra work.
+
+### S1a lifecycle progress — 2026-11-25
+
+Added provider-neutral local scan request orchestration: cancellation, replacement/late-result suppression, auth/business context checks, timeout, size/type UX checks, safe errors and no automatic retry or photo persistence. Claude V4 can use this seam when the actual service is ready; visual V1/dark mode continues independently. See DATE_SCAN_TRANSPORT.md. S1b dedicated server body/auth/quota/sanitization/shared-validation/provider work is still pending. Real OCR accuracy and C1's explicit date-only/label-time policy are not completed by S1a.
