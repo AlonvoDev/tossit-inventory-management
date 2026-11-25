@@ -89,7 +89,7 @@ export const MultiColumnLayout: React.FC<MultiColumnLayoutProps> = ({
             padding: tokens.spacing.md,
             backgroundColor: tokens.colors.surface,
             borderRadius: tokens.radius,
-            border: `1px solid ${tokens.colors.text.muted}20`,
+            border: `1px solid ${tokens.colors.line}`,
           }}
         >
           {sidebar}

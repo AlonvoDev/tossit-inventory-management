@@ -48,6 +48,7 @@ import { useOffline } from '../offline/OfflineProvider';
 import { SyncStatus } from '../pwa/SyncStatus';
 import { NotificationControls } from '../pwa/NotificationControls';
 import tossitFavicon from '../assets/tossit-favicon.png';
+import { AccessibilityMenu } from '../features/appearance/AccessibilityMenu';
 
 import { addCustomCategory } from '../api/categoriesAPI';
 import { canAccessRoute, canManageBusiness, departmentLabel, ROLE_LABELS, toAppRole } from '../app/access';
@@ -213,8 +214,13 @@ const UnifiedNavigation: React.FC = () => {
     <AppBar 
       position="fixed" 
       elevation={0}
+      color="inherit"
       sx={{
-        background: theme.palette.primary.main,
+        // V1: flat bar on the page surface, separated by a thin line; same in light and dark.
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        borderBottom: 1,
+        borderColor: 'divider',
         zIndex: (theme) => theme.zIndex.appBar,
       }}
     >
@@ -228,8 +234,8 @@ const UnifiedNavigation: React.FC = () => {
           sx={{
             width: 44,
             height: 44,
-            '&:hover': { background: alpha(theme.palette.common.white, 0.15) },
-            '&:focus-visible': { outline: `3px solid ${theme.palette.secondary.main}` },
+            '&:hover': { bgcolor: 'action.hover' },
+            '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}` },
           }}
         >
           <MenuIcon />
@@ -262,14 +268,17 @@ const UnifiedNavigation: React.FC = () => {
           )}
 
 
+          {/* Appearance / accessibility (every role) */}
+          <AccessibilityMenu />
+
           {/* User Profile */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
             <Avatar 
               sx={{ 
                 width: { xs: 32, sm: 36 }, 
                 height: { xs: 32, sm: 36 },
-                background: alpha(theme.palette.common.white, 0.2),
-                border: `2px solid ${alpha(theme.palette.common.white, 0.3)}`,
+                bgcolor: alpha(theme.palette.primary.main, 0.14),
+                color: 'primary.main',
                 fontSize: { xs: '0.8rem', sm: '0.9rem' },
                 fontWeight: 600,
               }}
@@ -287,14 +296,14 @@ const UnifiedNavigation: React.FC = () => {
         onClose={handleMenuClose}
         sx={{
           '& .MuiPaper-root': {
-            borderRadius: 3,
+            borderRadius: 2,
             minWidth: 280,
             maxWidth: 320,
             mt: 1,
-            background: alpha(theme.palette.background.paper, 0.95),
-            backdropFilter: 'blur(20px)',
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            bgcolor: 'background.paper',
+            border: 1,
+            borderColor: 'divider',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
           },
         }}
         transformOrigin={{ horizontal: 'left', vertical: 'top' }}
@@ -379,8 +388,7 @@ const UnifiedNavigation: React.FC = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.95)} 100%)`,
-            backdropFilter: 'blur(20px)',
+            bgcolor: 'background.paper',
           }
         }}
       >
@@ -388,8 +396,8 @@ const UnifiedNavigation: React.FC = () => {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
+          borderBottom: 1,
+          borderColor: 'divider',
           m: 0,
         }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -397,7 +405,7 @@ const UnifiedNavigation: React.FC = () => {
           </Typography>
           <IconButton 
             onClick={handleCategoryModalClose}
-            sx={{ color: 'white' }}
+            aria-label="סגירה"
           >
             <CloseIcon />
           </IconButton>

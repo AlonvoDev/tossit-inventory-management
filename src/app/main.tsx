@@ -1,8 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { CssBaseline } from '@mui/material';
 import { BrowserRouter } from 'react-router-dom';
-import { theme } from './theme';
+import { AppearanceProvider } from '../features/appearance/AppearanceProvider';
 import { AuthProvider } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { ShiftProvider } from '../context/ShiftContext';
@@ -18,7 +18,8 @@ import '../index.css';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <ThemeProvider theme={theme}>
+      {/* V1: light/dark/system appearance; owns the MUI ThemeProvider. */}
+      <AppearanceProvider>
         <CssBaseline />
         <AuthProvider>
           {/* Codex C3: durable inventory queue + replay lifecycle; mounted once, inside AuthProvider. */}
@@ -32,7 +33,7 @@ createRoot(document.getElementById('root')!).render(
             </NotificationProvider>
           </OfflineProvider>
         </AuthProvider>
-      </ThemeProvider>
+      </AppearanceProvider>
     </BrowserRouter>
   </StrictMode>,
 );

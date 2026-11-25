@@ -35,7 +35,7 @@ Open `index.html` directly in a browser. It is one self-contained file: no netwo
     - packaging with a manufactured-at date (visible but cannot be selected), an expiry and an unknown batch code;
     - unreadable;
     - camera denied, which offers the gallery or manual entry.
-  - A missing year stays empty and blocks confirmation. A missing time stays empty: the user must enter it or explicitly tick "יום בלבד". Only the day and month actually written are carried over. There is no default year, no midnight and no expiry calculation.
+  - A missing year stays empty and blocks confirmation. A missing time stays empty. For an expiry date the user may explicitly tick "יום בלבד". An opening time ("זמן פתיחה") requires an explicit hour and minute and otherwise stays unconfirmed (V0-I1, matching C0b `confirmDateCandidate`). Only the day and month actually written are carried over. There is no default year, no midnight and no expiry calculation.
   - "אישור התאריך" is a separate explicit action. Cancel, the back arrow or Escape return to the unchanged draft.
   - Confirmed evidence appears in the form but **is not sent** and does not change expiry until C1/date policy exist.
 - **Closing:** item summary, then "נגמר" / "נזרק".
@@ -44,7 +44,7 @@ Open `index.html` directly in a browser. It is one self-contained file: no netwo
 
 ## Evidence
 
-`node docs/ui-review/v0/capture.cjs` regenerates all PNGs in this folder and runs 29 checks: 31 screenshots, overflow, touch-target size and interactions. 2026-11-25 result: **29/29 PASS** (exit 0).
+`node docs/ui-review/v0/capture.cjs` regenerates all PNGs in this folder and runs 30 checks: 31 screenshots, overflow, touch-target size and interactions. 2026-11-25 result after V0-I1: **30/30 PASS** (exit 0).
 
 - No horizontal overflow at 320, 390, 430 and 1280px across 14 states (inventory, offline, error, discarded, open form, close form, every scan fixture, capture, manual entry).
 - All interactive targets are at least 44px at 390px. Chips and segment buttons are 34–36px visually, with a hit area extended to 44px.
@@ -52,7 +52,7 @@ Open `index.html` directly in a browser. It is one self-contained file: no netwo
   - status filter; search keeps focus;
   - invalid amount; pending opening can't be dismissed;
   - scan cancel keeps the draft; no year or time is inferred;
-  - confirmation stays blocked until fields are complete; day-only must be explicit;
+  - confirmation stays blocked until fields are complete; day-only must be explicit and only for expiry dates, while an opening needs an explicit time;
   - ambiguous: no preselection; manufactured-at can't be selected; unreadable fallbacks;
   - discard needs a reason and a bounded amount;
   - department tags for duplicate names; no page errors.

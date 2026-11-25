@@ -201,9 +201,9 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
   const round = (n: number) => Math.round(n * 1000) / 1000;
   const reasonChips = (item: DiscardReportItem) => (
     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-      {item.reasons.expired > 0 && <Chip size="small" label={`פג תוקף: ${item.reasons.expired}`} sx={{ bgcolor: '#FFEDD5', color: '#7C2D12', fontWeight: 600 }} />}
-      {item.reasons.damaged > 0 && <Chip size="small" label={`נפגם: ${item.reasons.damaged}`} sx={{ bgcolor: '#FFE4E6', color: '#9F1239', fontWeight: 600 }} />}
-      {item.reasons.other > 0 && <Chip size="small" label={`אחר: ${item.reasons.other}`} sx={{ bgcolor: '#E5E7EB', color: '#374151', fontWeight: 600 }} />}
+      {item.reasons.expired > 0 && <Chip size="small" label={`פג תוקף: ${item.reasons.expired}`} sx={{ bgcolor: 'var(--tossit-warning-tint, #FDF4EA)', color: 'var(--tossit-text, #151A21)', fontWeight: 600 }} />}
+      {item.reasons.damaged > 0 && <Chip size="small" label={`נפגם: ${item.reasons.damaged}`} sx={{ bgcolor: 'var(--tossit-danger-tint, #FDF0EF)', color: 'var(--tossit-text, #151A21)', fontWeight: 600 }} />}
+      {item.reasons.other > 0 && <Chip size="small" label={`אחר: ${item.reasons.other}`} sx={{ bgcolor: 'var(--tossit-surface-soft, #F5F6F8)', color: 'var(--tossit-text, #151A21)', fontWeight: 600 }} />}
     </Box>
   );
   const stats: { label: string; value: string }[] = [

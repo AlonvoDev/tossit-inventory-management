@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--tossit-surface-soft, #F5F6F8);
   padding: 20px;
 }
 
@@ -21,8 +21,8 @@
 .spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #e3e3e3;
-  border-top: 4px solid #3498db;
+  border: 4px solid var(--tossit-line, #E3E6EA);
+  border-top: 4px solid var(--tossit-primary, #1D6A4E);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
@@ -39,13 +39,13 @@
 }
 
 .loading-message h3 {
-  color: #333;
+  color: var(--tossit-text, #151A21);
   margin-bottom: 10px;
   font-size: 1.5rem;
 }
 
 .loading-message p {
-  color: #666;
+  color: var(--tossit-text-muted, #58616F);
   font-size: 1rem;
 }
 
@@ -61,7 +61,7 @@
 
 .skeleton-line {
   height: 20px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--tossit-surface-soft, #F5F6F8) 25%, var(--tossit-line, #E3E6EA) 50%, var(--tossit-surface-soft, #F5F6F8) 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 4px;
@@ -91,7 +91,7 @@
 .skeleton-button {
   height: 40px;
   width: 120px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--tossit-surface-soft, #F5F6F8) 25%, var(--tossit-line, #E3E6EA) 50%, var(--tossit-surface-soft, #F5F6F8) 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 6px;
@@ -107,7 +107,7 @@
 
 .skeleton-card {
   height: 150px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--tossit-surface-soft, #F5F6F8) 25%, var(--tossit-line, #E3E6EA) 50%, var(--tossit-surface-soft, #F5F6F8) 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 8px;
@@ -123,7 +123,7 @@
 
 .skeleton-panel {
   height: 120px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--tossit-surface-soft, #F5F6F8) 25%, var(--tossit-line, #E3E6EA) 50%, var(--tossit-surface-soft, #F5F6F8) 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 8px;
@@ -138,7 +138,7 @@
 
 .skeleton-table-row {
   height: 50px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--tossit-surface-soft, #F5F6F8) 25%, var(--tossit-line, #E3E6EA) 50%, var(--tossit-surface-soft, #F5F6F8) 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 4px;
@@ -175,26 +175,4 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .loading-skeleton {
-    background-color: #1a1a1a;
-  }
-  
-  .loading-message h3 {
-    color: #ffffff;
-  }
-  
-  .loading-message p {
-    color: #cccccc;
-  }
-  
-  .skeleton-line,
-  .skeleton-button,
-  .skeleton-card,
-  .skeleton-panel,
-  .skeleton-table-row {
-    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
-    background-size: 200% 100%;
-  }
-} 
+/* Dark appearance: colours above follow --tossit-* variables (V1); no OS-only media query. */

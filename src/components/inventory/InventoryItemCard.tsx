@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Chip, Paper, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import {
   ErrorOutline as ExpiredIcon,
   Schedule as ExpiringIcon,
@@ -11,15 +11,19 @@ import {
 } from '@mui/icons-material';
 import type { DisplayStatus } from '../../features/presentation/inventoryDisplay';
 import { STATUS_LABEL } from '../../features/presentation/inventoryDisplay';
+import { tokens } from '../../app/theme';
 
-/** Text + icon + colour for each status (never colour alone). */
-const STATUS_STYLE: Record<DisplayStatus, { icon: React.ReactElement; fg: string; bg: string; edge: string }> = {
-  expired: { icon: <ExpiredIcon fontSize="small" />, fg: '#9F1239', bg: '#FFE4E6', edge: '#E11D48' },
-  expiring: { icon: <ExpiringIcon fontSize="small" />, fg: '#7C2D12', bg: '#FFEDD5', edge: '#EA580C' },
-  ok: { icon: <OkIcon fontSize="small" />, fg: '#14532D', bg: '#DCFCE7', edge: '#16A34A' },
-  finished: { icon: <FinishedIcon fontSize="small" />, fg: '#1E3A8A', bg: '#DBEAFE', edge: '#2563EB' },
-  discarded: { icon: <DiscardedIcon fontSize="small" />, fg: '#374151', bg: '#E5E7EB', edge: '#6B7280' },
+/** Text + icon + colour for each status (never colour alone). Colours are appearance-aware tokens. */
+const STATUS_STYLE: Record<DisplayStatus, { icon: React.ReactElement; fg: string; stripe: string }> = {
+  expired: { icon: <ExpiredIcon sx={{ fontSize: 16 }} />, fg: tokens.colors.danger, stripe: tokens.colors.danger },
+  expiring: { icon: <ExpiringIcon sx={{ fontSize: 16 }} />, fg: tokens.colors.warning, stripe: tokens.colors.warningStripe },
+  ok: { icon: <OkIcon sx={{ fontSize: 16 }} />, fg: tokens.colors.text.muted, stripe: 'transparent' },
+  finished: { icon: <FinishedIcon sx={{ fontSize: 16 }} />, fg: tokens.colors.info, stripe: 'transparent' },
+  discarded: { icon: <DiscardedIcon sx={{ fontSize: 16 }} />, fg: tokens.colors.text.muted, stripe: 'transparent' },
 };
+
+/** Desktop column template, shared with the list's column header row. */
+export const INVENTORY_ROW_COLUMNS = 'minmax(200px, 2.2fr) minmax(70px, 0.7fr) minmax(110px, 1.1fr) minmax(100px, 1fr) minmax(120px, 1.1fr) minmax(100px, 1fr) 132px';
 
 export interface InventoryItemCardProps {
   name: string;
@@ -47,6 +51,16 @@ const Ltr: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Box>
 );
 
+const Sep = () => (
+  <Box component="span" aria-hidden sx={{ color: 'text.disabled', display: { md: 'none' } }}>
+    ·
+  </Box>
+);
+
+/**
+ * One inventory batch as a flat list row (V1). Phone: three compact lines with the remaining time
+ * and the action at the end. Desktop (md+): the same cells align as table columns.
+ */
 export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   name,
   status,
@@ -63,90 +77,145 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   actionHint,
 }) => {
   const style = STATUS_STYLE[status];
-  const urgent = status === 'expired';
+  const urgent = status === 'expired' || status === 'expiring';
   return (
-    <Paper
+    <Box
       component="article"
-      variant="outlined"
       aria-label={`${name}, ${STATUS_LABEL[status]}`}
       sx={{
-        p: 1.5,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1,
-        borderRadius: 2,
-        borderInlineStartWidth: 4,
-        borderInlineStartColor: style.edge,
-        bgcolor: urgent ? '#FFF7F8' : 'background.paper',
-        minWidth: 0,
+        position: 'relative',
+        display: 'grid',
+        alignItems: 'center',
+        columnGap: { xs: 1.25, md: 1.5 },
+        rowGap: 0.25,
+        gridTemplateColumns: { xs: onAction ? 'minmax(0, 1fr) auto auto' : 'minmax(0, 1fr) auto', md: INVENTORY_ROW_COLUMNS },
+        gridTemplateAreas: {
+          xs: onAction ? '"name when act" "meta when act" "times times act"' : '"name when" "meta when" "times times"',
+          md: 'none',
+        },
+        px: { xs: 1.5, md: 2 },
+        py: { xs: 1.25, md: 1 },
+        minHeight: { md: 56 },
+        borderBottom: 1,
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        // Thin status stripe on the reading-start edge; meaning is also given in text.
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          insetInlineStart: 0,
+          top: 8,
+          bottom: 8,
+          width: 3,
+          borderRadius: 2,
+          bgcolor: style.stripe,
+        },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, justifyContent: 'space-between' }}>
-        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.35, overflowWrap: 'anywhere', minWidth: 0 }}>
-          {name}
-        </Typography>
-        <Chip
-          size="small"
-          icon={style.icon}
-          label={STATUS_LABEL[status]}
-          sx={{ flexShrink: 0, fontWeight: 700, color: style.fg, bgcolor: style.bg, '& .MuiChip-icon': { color: style.fg } }}
-        />
-      </Box>
-
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-        {/* Number + Hebrew unit read naturally in RTL; only dates/times need an LTR span. */}
-        <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', unicodeBidi: 'plaintext' }}>{quantity}</Typography>
+      <Typography
+        component="h3"
+        sx={{ gridArea: { xs: 'name', md: 'auto' }, fontWeight: 700, fontSize: '1rem', lineHeight: 1.3, overflowWrap: 'anywhere', minWidth: 0 }}
+      >
+        {name}
         {departmentName && (
-          <Chip data-testid="department" size="small" variant="outlined" label={departmentName} sx={{ fontWeight: 600 }} />
+          <Box
+            component="span"
+            data-testid="department"
+            sx={{ display: 'inline-block', marginInlineStart: '6px', px: 0.6, border: 1, borderColor: tokens.colors.lineStrong, borderRadius: 1, fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', verticalAlign: '2px', lineHeight: 1.5 }}
+          >
+            {departmentName}
+          </Box>
         )}
-        {fridgeName && (
-          <Typography variant="body2" color="text.secondary">
-            · {fridgeName}
-          </Typography>
+      </Typography>
+
+      {/* Phone: one line "qty · fridge"; desktop: two separate cells. */}
+      <Box sx={{ gridArea: { xs: 'meta', md: 'auto' }, display: { xs: 'flex', md: 'contents' }, flexWrap: 'wrap', columnGap: 0.75, fontSize: '0.875rem', color: 'text.secondary', minWidth: 0 }}>
+        {/* Number + Hebrew unit read naturally in RTL; only dates/times need an LTR span. */}
+        <Typography component="span" sx={{ fontWeight: 700, fontSize: { xs: '0.9rem', md: '0.95rem' }, color: 'text.primary', unicodeBidi: 'plaintext' }}>
+          {quantity}
+        </Typography>
+        {fridgeName ? (
+          <>
+            <Sep />
+            <Typography component="span" sx={{ fontSize: { xs: '0.875rem', md: '0.95rem' }, color: { xs: 'text.secondary', md: 'text.primary' } }}>
+              {fridgeName}
+            </Typography>
+          </>
+        ) : (
+          <Box component="span" sx={{ display: { xs: 'none', md: 'block' } }} />
         )}
       </Box>
 
-      <Box>
-        <Typography sx={{ fontSize: '0.9rem', color: urgent ? style.fg : 'text.primary', fontWeight: urgent ? 700 : 500 }}>
-          תוקף: <Ltr>{expiry}</Ltr>
-          {expiryRelative && <> · {expiryRelative}</>}
+      {/* Phone: small third line; desktop: "opened" and "expiry" are columns (expiry after remaining). */}
+      <Box sx={{ gridArea: { xs: 'times', md: 'auto' }, display: { xs: 'flex', md: 'contents' }, flexWrap: 'wrap', columnGap: 0.75, fontSize: '0.8125rem', color: 'text.secondary' }}>
+        <Typography component="span" sx={{ fontSize: { xs: '0.8125rem', md: '0.95rem' }, color: { xs: 'text.secondary', md: 'text.primary' }, order: { md: 1 } }}>
+          <Box component="span" sx={{ display: { md: 'none' } }}>נפתח: </Box>
+          <Ltr>{opened}</Ltr>
         </Typography>
-        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-          נפתח: <Ltr>{opened}</Ltr>
+        <Sep />
+        <Typography component="span" sx={{ fontSize: { xs: '0.8125rem', md: '0.95rem' }, color: { xs: 'text.secondary', md: 'text.primary' }, order: { md: 3 } }}>
+          <Box component="span" sx={{ display: { md: 'none' } }}>תוקף: </Box>
+          <Ltr>{expiry}</Ltr>
         </Typography>
         {details?.map(line => (
-          <Typography key={line} variant="body2" sx={{ fontSize: '0.8rem' }}>
+          <Typography key={line} component="span" sx={{ fontSize: '0.8125rem', color: 'text.secondary', width: { xs: '100%', md: 'auto' }, gridColumn: { md: '2 / -2' } }}>
             {line}
           </Typography>
         ))}
       </Box>
 
-      {sync && (
-        <Chip
-          size="small"
-          variant="outlined"
-          icon={sync === 'pending' ? <PendingIcon fontSize="small" /> : <FailedIcon fontSize="small" />}
-          label={sync === 'pending' ? 'ממתין לשליחה' : 'הפעולה נכשלה'}
-          title={sync === 'pending' ? 'נשמר במכשיר, עדיין לא נשמר בשרת' : 'השרת דחה את הפעולה; פרטים בכותרת'}
-          color={sync === 'pending' ? 'info' : 'error'}
-          sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
-        />
-      )}
+      <Box sx={{ gridArea: { xs: 'when', md: 'auto' }, order: { md: 2 }, textAlign: { xs: 'left', md: 'start' }, minWidth: 0 }}>
+        {expiryRelative && (
+          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.3, color: urgent ? style.fg : 'text.primary', whiteSpace: 'nowrap' }}>
+            {expiryRelative}
+          </Typography>
+        )}
+        <Typography
+          component="span"
+          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, fontSize: '0.8125rem', fontWeight: 700, color: style.fg, whiteSpace: 'nowrap' }}
+        >
+          {style.icon}
+          {STATUS_LABEL[status]}
+        </Typography>
+      </Box>
 
       {onAction && (
-        <Button
-          variant={urgent ? 'contained' : 'outlined'}
-          color={urgent ? 'error' : 'primary'}
-          onClick={onAction}
-          disabled={actionDisabled}
-          title={actionHint}
-          aria-label={`נגמר / נזרק — ${name}`}
-          sx={{ minHeight: 44, mt: 'auto' }}
-          fullWidth
-        >
-          נגמר / נזרק
-        </Button>
+        <Box sx={{ gridArea: { xs: 'act', md: 'auto' }, order: { md: 4 }, justifySelf: 'end' }}>
+          <Button
+            variant="outlined"
+            onClick={onAction}
+            disabled={actionDisabled}
+            title={actionHint}
+            aria-label={`נגמר / נזרק — ${name}`}
+            sx={{ minHeight: 44, px: 1.25, fontSize: '0.875rem', whiteSpace: 'nowrap', borderColor: tokens.colors.lineStrong, color: 'primary.main' }}
+          >
+            נגמר / נזרק
+          </Button>
+        </Box>
       )}
-    </Paper>
+
+      {sync && (
+        <Typography
+          title={sync === 'pending' ? 'נשמר במכשיר, עדיין לא נשמר בשרת' : 'השרת דחה את הפעולה; פרטים בכותרת'}
+          sx={{
+            gridColumn: '1 / -1',
+            order: { md: 5 },
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            mt: 0.5,
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            color: sync === 'pending' ? 'text.secondary' : 'error.main',
+          }}
+        >
+          {sync === 'pending' ? <PendingIcon sx={{ fontSize: 16 }} /> : <FailedIcon sx={{ fontSize: 16 }} />}
+          {sync === 'pending' ? 'ממתין לשליחה' : 'הפעולה נכשלה'}
+          <Box component="span" sx={{ fontWeight: 400 }}>
+            {sync === 'pending' ? '— נשמר במכשיר, עדיין לא בשרת' : '— לא נשמר בשרת'}
+          </Box>
+        </Typography>
+      )}
+    </Box>
   );
 };

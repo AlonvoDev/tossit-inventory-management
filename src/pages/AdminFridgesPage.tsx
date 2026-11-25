@@ -390,7 +390,7 @@ const AdminFridgesPage: React.FC = () => {
                   ))}
                 </Select>
                 {formErrors.department && (
-                  <p style={{ color: '#f44336', fontSize: '12px', marginTop: '4px' }}>
+                  <p style={{ color: 'var(--tossit-danger, #B42318)', fontSize: '12px', marginTop: '4px' }}>
                     {formErrors.department}
                   </p>
                 )}

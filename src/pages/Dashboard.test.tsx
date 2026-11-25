@@ -50,7 +50,7 @@ describe('Dashboard', () => {
     expect(screen.getByRole('tab', { name: /מטבח/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /^בר$/ })).not.toBeInTheDocument();
     expect(screen.getByText('ITEMS:kitchen')).toBeInTheDocument();
-    expect(screen.getByText('פתיחת פריט:kitchen:inline')).toBeInTheDocument();
+    expect(screen.getByText('פתיחת פריט:kitchen:responsive')).toBeInTheDocument();
     expect(screen.getByText('מטבח', { selector: '.MuiChip-label' })).toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe('Dashboard', () => {
     as('staff', 'bar');
     renderDashboard();
     expect(screen.queryByRole('tab', { name: /מטבח/ })).not.toBeInTheDocument();
-    const open = screen.getByText('פתיחת פריט:bar:inline');
+    const open = screen.getByText('פתיחת פריט:bar:responsive');
     const list = screen.getByText('ITEMS:bar');
     expect(open.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText(/פריטים פעילים|נזרק היום/)).not.toBeInTheDocument();

@@ -37,20 +37,29 @@ export const OfflineIndicator: React.FC = () => {
   return (
     <>
       {/* Offline Indicator */}
+      {/* V1: below dialogs (it covered the dialog close button and the app bar on phones), dismissible and
+          time-limited; the offline state stays visible in the inventory list and inside the forms. */}
       <Snackbar
         open={showOfflineMessage}
+        autoHideDuration={8000}
+        onClose={(_, reason) => {
+          if (reason !== 'clickaway') setShowOfflineMessage(false);
+        }}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ zIndex: 2000 }}
+        sx={{ zIndex: theme => theme.zIndex.modal - 1 }}
       >
         <Alert
+          onClose={() => setShowOfflineMessage(false)}
+          closeText="סגירת ההודעה"
           severity="warning"
           icon={<OfflineIcon />}
           sx={{
-            backgroundColor: tokens.colors.warning,
-            color: '#fff',
+            backgroundColor: tokens.colors.warningTint,
+            color: tokens.colors.text.primary,
+            border: `1px solid ${tokens.colors.warning}`,
             borderRadius: tokens.radius,
             '& .MuiAlert-icon': {
-              color: '#fff'
+              color: tokens.colors.warning
             }
           }}
         >
@@ -64,18 +73,20 @@ export const OfflineIndicator: React.FC = () => {
         autoHideDuration={3000}
         onClose={() => setShowOnlineMessage(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ zIndex: 2000 }}
+        sx={{ zIndex: theme => theme.zIndex.modal - 1 }}
       >
         <Alert
           onClose={() => setShowOnlineMessage(false)}
+          closeText="סגירת ההודעה"
           severity="success"
           icon={<OnlineIcon />}
           sx={{
-            backgroundColor: tokens.colors.success,
-            color: '#fff',
+            backgroundColor: tokens.colors.successTint,
+            color: tokens.colors.text.primary,
+            border: `1px solid ${tokens.colors.success}`,
             borderRadius: tokens.radius,
             '& .MuiAlert-icon': {
-              color: '#fff'
+              color: tokens.colors.success
             }
           }}
         >

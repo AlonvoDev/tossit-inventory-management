@@ -1,9 +1,87 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: **V0 — compact redesign prototype with optional date-scan review** (`docs/TOSSIT_MASTER_PLAN.md`)
-Status: **V0 READY FOR VISUAL REVIEW (Alon)**. Prototype only; no production source changed. Not deployed; `main` not touched.
-Integrated Codex SHA: `1c18c5c360c7e50bceab6402ed311e3bca155172` (`codex/tossit-date-foundation`, C0a), via `54840f6`; both fast-forward, no reset.
-Last previously confirmed remote SHA: 281083572e7e3272cdc7ce970ebdb8f4b36ca508
+Task / bounded subtask: **V1 — compact inventory/navigation + light/dark/system appearance in "נגישות"** (`docs/CLAUDE_WORK_PLAN.md` top section)
+Status: **V1 READY FOR CODEX REVIEW**. Not deployed; `main` not touched.
+Integrated Codex SHAs: `bc286be` (V0 review + C0b/S0a) and `fe470bf` (V1 approval). Both normal merges; no reset.
+Last previously confirmed remote SHA: 7668e623cb82ee6dd111e0c38bc8855f0b4b57a9 (V0)
+
+## V1 — 2026-11-25
+
+### Appearance (בהיר / כהה / לפי המכשיר)
+- **Theme** (`src/app/theme.tsx`):
+  - semantic `palettes.light|dark` and `createAppTheme(mode)` (MUI palette, flat surfaces, no dark elevation overlay, RTL icon spacing);
+  - `cssVariables(mode)`;
+  - `tokens.colors.*` are now `var(--tossit-*, <light fallback>)`, so existing static `sx`/CSS follows the active appearance;
+  - the `theme` export (light) is kept for imports and tests.
+- **Provider** (`src/features/appearance/`):
+  - `AppearanceProvider` owns the ThemeProvider and sets the `:root` variables, `data-appearance`, `color-scheme` and `theme-color`;
+  - it follows `prefers-color-scheme` live, but only in system mode;
+  - switching only swaps the theme object, so nothing below it remounts (drafts, dialogs, queue and provider lifecycles kept);
+  - `appearancePreference.ts` handles safe read/write of `localStorage['tossit.appearance']`: missing, malformed or blocked storage means system, and choosing system removes the key;
+  - `appearanceContext.ts` holds the hooks.
+- **"נגישות" entry** (`AccessibilityMenu`):
+  - an icon button with `aria-haspopup`/`aria-expanded`, opening a menu of `menuitemradio` items with `aria-checked`;
+  - MUI keyboard navigation, and focus returns to the button;
+  - if the choice could not be saved, the menu says so;
+  - placed in the app bar (every role), and on the login, register and not-authorized screens;
+  - renders nothing outside the provider (isolated tests).
+- **Pre-paint**: an inline script in `index.html` applies the saved appearance before React, so returning dark users get no bright flash. The `theme-color` meta tags are now light/dark.
+- **`src/app/main.tsx`**: only `ThemeProvider theme={theme}` → `AppearanceProvider`. The provider order, the single worker registration and the other providers are unchanged.
+- **Hard-coded colours** moved to tokens in every routed screen:
+  - global/CSS: `index.css` (Vite template dark defaults and OS-only colours removed), `LoadingSkeleton.css`, `responsive.css`;
+  - components: NotificationToast (tinted surface + status border), ProductManagement (including its unscoped global `<style>` rules), ShiftButton, DiscardReport chips, ItemActionModal, DateRangePicker, MultiColumnLayout;
+  - pages: LoginPage (flat card, readable inputs in dark), NotFound, AdminFridgesPage;
+  - OfflineIndicator; UnifiedNavigation (flat surface app bar, no gradients).
+  - Unrouted showcase/demo files were left as they are.
+- **Contrast** (`docs/ui-review/v1/contrast.md`, enforced by `src/app/theme.test.ts`):
+  - all text pairs ≥ 4.5:1, and status stripes, focus and input boundaries ≥ 3:1, in both modes;
+  - the light amber stripe was darkened to `#C46A15`;
+  - a new `control` token (≥ 3:1) is used for input borders.
+
+### Inventory / navigation (approved V0 direction)
+- **`InventoryItemCard`** is now a flat row:
+  - phone: three lines; desktop: table columns shared with a column header;
+  - thin status stripe, and the status always in text with an icon;
+  - remaining time is bold and coloured; exact expiry and opening time are kept;
+  - department tag in the combined view;
+  - pending/failed sync line;
+  - the action keeps "נגמר / נזרק — {name}" (44px).
+- **`ItemsList`**:
+  - urgency groups with text headers and counts when "הכל" is selected; a single status filter shows one plain list (Codex recommendation);
+  - search and fridge on one line; status chips scroll horizontally at a **real 44px** (UI1-R2 kept, no pseudo-element hit area);
+  - flat list with separators; desktop table with a divider-coloured outline.
+- **`Dashboard`**: no enclosing card; flat tabs. `FloatingActionButton variant="responsive"` is a full-width opening bar fixed to the bottom below md (safe-area padding) and the inline header button from md up, as one instance.
+- **`OpenItemForm`**: the footer uses the dialog surface. UI2-R1 busy lock, inline amount error, receipts and retry intent are unchanged.
+- **`OfflineIndicator`** (found during V1 phone checks; this predates V1): at phone width, the offline snackbar (z-index 2000, permanent) covered the dialog close button, the menu and "נגישות". It is now below modals, dismissible ("סגירת ההודעה") and hides after 8 seconds. The offline state stays shown in the list and inside forms.
+- **V0-I1** (Codex review):
+  - the prototype no longer confirms an opening at day precision: "זמן פתיחה" requires an explicit hour and minute and otherwise stays unconfirmed;
+  - "יום בלבד" applies only to expiry evidence;
+  - prototype checks: `node docs/ui-review/v0/capture.cjs` → **30/30 PASS**.
+
+### Evidence and checks (this tree)
+- `npm run test:run`: **47 files, 495/495 PASS** (was 442 after merging Codex's foundation work). New tests:
+  - appearance: 15 (storage, system follow, explicit override, reload, malformed and blocked storage, no-matchMedia, no remount and draft kept, menu semantics and keyboard, pre-paint script);
+  - theme contrast and palette: 48;
+  - ItemsList grouping: 2; responsive opening bar: 2; offline notice: 1.
+- `npm run lint`: 0 errors, 7 existing warnings. Type-check (`tsc -p tsconfig.app.json`) passes.
+- `npm run build`: PASS (`tsc -b` + vite + injectManifest; single `dist/service-worker.js`).
+- `npm run test:browser` with the config's existing `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium` (the container's Chromium build 1243 vs the project's Playwright 1254, as at V0): **5/5 PASS** (24.3s, exit 0).
+- **Emulator browser harness: 20/20 PASS**, light and dark (`docs/ui-review/v1/README.md`):
+  - login entry; no overflow at 320, 390, 430 and 1280px;
+  - an offline-queued opening survives an appearance switch and an offline reload; the preference persists;
+  - live system following; explicit override; back to system;
+  - dark first paint before the bundle runs.
+- **Screenshots**: 42 PNGs in `docs/ui-review/v1/`. Before = `8a7fdae` (light only); after = light and dark.
+- **NOT RUN**: real iPhone/Android, Safari or installed PWA, VoiceOver/TalkBack, real-device OS dark mode.
+
+### Remaining / dependencies
+- Older admin sub-tabs still use emoji labels (known UI3 item). V3 restyles the admin, catalog and reports screens further.
+- V2 date fields wait for C1; V4 uses C0b/S0a and the new scan lifecycle (`codex/tossit-core` `ac46bd2`, not merged here yet).
+- No Codex-owned files, packages or lockfiles changed.
+
+---
+
+# Previous: V0 (READY for visual review, approved by Alon)
 
 ## V0 — 2026-11-25
 - Preview: `docs/ui-review/v0/index.html`. One self-contained file, synthetic data, no network, no dependencies, not routed. How to use it and the full state list: `docs/ui-review/v0/README.md`.

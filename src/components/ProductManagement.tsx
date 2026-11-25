@@ -33,18 +33,19 @@ const fieldStyle = (hasError: boolean): React.CSSProperties => ({
   boxSizing: 'border-box',
   padding: '8px',
   marginTop: '5px',
-  border: hasError ? '2px solid #f44336' : '2px solid #333333',
-  color: '#000000',
+  border: hasError ? '2px solid var(--tossit-danger, #B42318)' : '1px solid var(--tossit-control, #858E9A)',
+  color: 'var(--tossit-text, #151A21)',
   fontSize: '16px',
   fontWeight: 'bold',
-  backgroundColor: '#ffffff',
+  backgroundColor: 'var(--tossit-surface, #FFFFFF)',
+  borderRadius: '8px',
 });
 
-const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000000' };
+const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'var(--tossit-text, #151A21)' };
 
 const FieldError: React.FC<{ text?: string }> = ({ text }) =>
   text ? (
-    <div role="alert" style={{ color: '#f44336', fontSize: '14px', marginTop: '5px', fontWeight: 'normal' }}>
+    <div role="alert" style={{ color: 'var(--tossit-danger, #B42318)', fontSize: '14px', marginTop: '5px', fontWeight: 'normal' }}>
       {text}
     </div>
   ) : null;
@@ -330,7 +331,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
             <div style={{ marginBottom: '15px' }}>
               <label style={labelStyle}>
                 מזהה מוצר:
-                <input type="text" value={editing ? editing.productId : nextCode} readOnly style={{ ...fieldStyle(false), background: '#f0f0f0' }} />
+                <input type="text" value={editing ? editing.productId : nextCode} readOnly style={{ ...fieldStyle(false), background: 'var(--tossit-surface-soft, #F5F6F8)' }} />
               </label>
             </div>
 
@@ -429,7 +430,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
                       type="button"
                       onClick={() => setShowAddCategoryForm(true)}
                       disabled={disabled}
-                      style={{ background: '#4CAF50', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
+                      style={{ background: 'var(--tossit-primary, #1D6A4E)', color: 'var(--tossit-primary-contrast, #FFFFFF)', padding: '8px 16px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
                     >
                       הוסף קטגוריה חדשה
                     </button>
@@ -446,7 +447,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
                         type="button"
                         onClick={handleAddCategory}
                         disabled={disabled || !newCategoryName.trim()}
-                        style={{ background: '#4CAF50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
+                        style={{ background: 'var(--tossit-primary, #1D6A4E)', color: 'var(--tossit-primary-contrast, #FFFFFF)', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
                       >
                         הוסף
                       </button>
@@ -456,7 +457,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
                           setShowAddCategoryForm(false);
                           setNewCategoryName('');
                         }}
-                        style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
+                        style={{ background: 'var(--tossit-surface-soft, #F5F6F8)', color: 'var(--tossit-text, #151A21)', outline: '1px solid var(--tossit-control, #858E9A)', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
                       >
                         ביטול
                       </button>
@@ -490,7 +491,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
               <button
                 type="submit"
                 disabled={disabled}
-                style={{ width: '65%', padding: '12px', background: disabled ? '#9E9E9E' : '#228B22', color: 'white', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                style={{ width: '65%', padding: '12px', background: disabled ? 'var(--tossit-line-strong, #C9CFD6)' : 'var(--tossit-primary, #1D6A4E)', color: disabled ? 'var(--tossit-text, #151A21)' : 'var(--tossit-primary-contrast, #FFFFFF)', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
               >
                 {saving ? 'שומר...' : editing ? 'עדכן מוצר' : 'הוסף מוצר'}
               </button>
@@ -498,7 +499,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
                 type="button"
                 onClick={closeForm}
                 disabled={saving}
-                style={{ width: '30%', padding: '12px', background: '#9E9E9E', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                style={{ width: '30%', padding: '12px', background: 'var(--tossit-surface-soft, #F5F6F8)', color: 'var(--tossit-text, #151A21)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
               >
                 ביטול
               </button>
@@ -567,20 +568,20 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         /* Base styles */
         .product-management {
           margin-top: 20px;
-          color: #000000;
+          color: var(--tossit-text, #151A21);
           text-align: right;
           font-family: sans-serif;
         }
         
         .product-management h2 {
-          color: #000000;
+          color: var(--tossit-text, #151A21);
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
         }
         
         .product-management h3 {
-          color: #000000;
+          color: var(--tossit-text, #151A21);
           font-size: 20px;
           margin-bottom: 15px;
           font-weight: bold;
@@ -592,7 +593,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         .product-management td,
         .product-management input,
         .product-management select {
-          color: #000000;
+          color: var(--tossit-text, #151A21);
           font-weight: bold;
         }
         
@@ -604,15 +605,15 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
           display: block;
           margin-bottom: 5px;
           font-weight: 500;
-          color: #000;
+          color: var(--tossit-text, #151A21);
         }
         
         input {
           width: 100%;
           padding: 10px;
-          border: 1px solid #ddd;
+          border: 1px solid var(--tossit-line-strong, #C9CFD6);
           border-radius: 4px;
-          color: #000;
+          color: var(--tossit-text, #151A21);
           font-size: 16px;
         }
         
@@ -629,21 +630,21 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         }
         
         .form-input {
-          border: 2px solid #2196F3;
-          background-color: white;
+          border: 1px solid var(--tossit-line-strong, #C9CFD6);
+          background-color: var(--tossit-surface, #FFFFFF);
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .form-input:focus {
           outline: none;
-          border-color: #1976D2;
-          box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.3);
+          border-color: var(--tossit-focus, #1D6A4E);
+          box-shadow: 0 0 0 2px var(--tossit-focus, #1D6A4E);
         }
         
         .readonly-input {
-          background-color: #f0f0f0;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
           cursor: not-allowed;
-          border: 1px solid #ccc;
+          border: 1px solid var(--tossit-line-strong, #C9CFD6);
           text-align: right;
           direction: rtl;
         }
@@ -657,7 +658,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
           display: flex;
           alignItems: center;
           font-weight: normal;
-          color: #000;
+          color: var(--tossit-text, #151A21);
         }
         
         .radio-group input {
@@ -676,33 +677,33 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         }
         
         .submit-button {
-          background-color: #4CAF50;
-          color: white;
+          background-color: var(--tossit-primary, #1D6A4E);
+          color: var(--tossit-primary-contrast, #FFFFFF);
           width: 100%;
         }
         
         .submit-button:hover {
-          background-color: #388E3C;
+          background-color: var(--tossit-primary-strong, #155239);
         }
         
         .action-button {
-          background-color: #2196F3;
-          color: white;
+          background-color: var(--tossit-primary, #1D6A4E);
+          color: var(--tossit-primary-contrast, #FFFFFF);
           margin-bottom: 20px;
         }
         
         .action-button:hover {
-          background-color: #1976D2;
+          background-color: var(--tossit-primary-strong, #155239);
         }
         
         .cancel-button {
-          background-color: #9E9E9E;
-          color: white;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
+          color: var(--tossit-text, #151A21);
           margin-right: 10px;
         }
         
         .cancel-button:hover {
-          background-color: #757575;
+          background-color: var(--tossit-line, #E3E6EA);
         }
         
         .form-actions {
@@ -719,41 +720,41 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         }
         
         .error {
-          background-color: #FFD2D2;
-          color: #D50000;
-          border: 1px solid #FF5252;
+          background-color: var(--tossit-danger-tint, #FDF0EF);
+          color: var(--tossit-text, #151A21);
+          border: 1px solid var(--tossit-danger, #B42318);
         }
         
         .success {
-          background-color: #C8E6C9;
-          color: #1B5E20;
-          border: 1px solid #4CAF50;
+          background-color: var(--tossit-success-tint, #EAF4EE);
+          color: var(--tossit-text, #151A21);
+          border: 1px solid var(--tossit-success, #1D6A4E);
         }
         
         .products-table {
           width: 100%;
           border-collapse: collapse;
           margin-top: 20px;
-          background-color: white;
-          border: 2px solid #444444;
+          background-color: var(--tossit-surface, #FFFFFF);
+          border: 1px solid var(--tossit-line-strong, #C9CFD6);
         }
         
         .products-table th, .products-table td {
           padding: 12px;
-          border: 1px solid #555555;
+          border: 1px solid var(--tossit-line, #E3E6EA);
           text-align: right;
-          color: #000000;
+          color: var(--tossit-text, #151A21);
           font-weight: bold;
         }
         
         .products-table th {
-          background-color: #333333;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
           font-weight: bold;
-          color: #ffffff;
+          color: var(--tossit-text, #151A21);
         }
         
         .products-table tr:nth-child(even) {
-          background-color: #f0f0f0;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
         }
         
         .actions-cell {
@@ -762,33 +763,33 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
         }
         
         .edit-button {
-          background-color: #FF9800;
-          color: white;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
+          color: var(--tossit-text, #151A21);
         }
         
         .edit-button:hover {
-          background-color: #F57C00;
+          background-color: var(--tossit-line, #E3E6EA);
         }
         
         .delete-button {
-          background-color: #F44336;
-          color: white;
+          background-color: var(--tossit-danger, #B42318);
+          color: var(--tossit-surface, #FFFFFF);
         }
         
         .delete-button:hover {
-          background-color: #D32F2F;
+          background-color: var(--tossit-danger, #B42318);
         }
         
         ::placeholder {
-          color: #555555;
+          color: var(--tossit-text-muted, #58616F);
           opacity: 1;
         }
         
         /* Fix for number input */
         input[type="number"] {
           -moz-appearance: textfield;
-          color: #000000 !important;
-          background-color: white !important;
+          color: var(--tossit-text, #151A21) !important;
+          background-color: var(--tossit-surface, #FFFFFF) !important;
         }
         
         input[type="number"]::-webkit-inner-spin-button, 
@@ -802,7 +803,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
           pointer-events: auto !important;
           cursor: text !important;
           user-select: auto !important;
-          color: #000000 !important;
+          color: var(--tossit-text, #151A21) !important;
         }
         
         /* Fix for possible interference */

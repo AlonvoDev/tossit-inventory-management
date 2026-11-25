@@ -116,7 +116,7 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
                     border: 1,
                     borderColor: draft.action === 'finished' ? 'primary.main' : 'divider',
                     borderRadius: 2,
-                    bgcolor: draft.action === 'finished' ? 'rgba(15, 118, 110, 0.06)' : 'transparent',
+                    bgcolor: draft.action === 'finished' ? tokens.colors.primaryTint : 'transparent',
                   }}
                   label={
                     <Box>
@@ -139,7 +139,7 @@ export const ItemActionModal: React.FC<ItemActionModalProps> = ({
                     border: 1,
                     borderColor: draft.action === 'discarded' ? 'primary.main' : 'divider',
                     borderRadius: 2,
-                    bgcolor: draft.action === 'discarded' ? 'rgba(15, 118, 110, 0.06)' : 'transparent',
+                    bgcolor: draft.action === 'discarded' ? tokens.colors.primaryTint : 'transparent',
                   }}
                   label={
                     <Box>

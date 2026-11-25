@@ -204,6 +204,32 @@ describe('ItemsList', () => {
     expect(screen.getByText('לימון')).toBeInTheDocument();
   });
 
+  it('V1: groups open items by urgency (expired → expiring → valid) with text headers and counts', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    push([
+      mk('3', 'לימון', 'bar'),
+      mk('1', 'שמנת', 'bar', { expiryTime: ts(Date.now() - 3600e3) }),
+      mk('2', 'נענע', 'bar', { expiryTime: ts(Date.now() + 5 * 3600e3) }),
+      mk('4', 'קצפת', 'bar', { expiryTime: ts(Date.now() + 6 * 3600e3) }),
+    ]);
+    await screen.findByText('לימון');
+    const groups = screen.getAllByRole('group').filter(g => g.getAttribute('aria-labelledby')?.startsWith('group-'));
+    expect(groups.map(g => g.querySelector('[id^="group-"]')!.textContent)).toEqual(['פג תוקף1', 'עומד לפוג2', 'בתוקף1']);
+    expect(within(groups[1]).getAllByRole('heading').map(h => h.textContent)).toEqual(['נענע', 'קצפת']);
+    // Each row still states its status in text, not colour alone.
+    expect(within(screen.getByRole('article', { name: 'שמנת, פג תוקף' })).getByText('פג תוקף')).toBeInTheDocument();
+  });
+
+  it('V1: a single status filter shows one plain list without group headers', async () => {
+    as('staff');
+    render(<ItemsList areaFilter="bar" />);
+    push([mk('1', 'שמנת', 'bar', { expiryTime: ts(Date.now() - 3600e3) }), mk('3', 'לימון', 'bar')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'פג תוקף (1)' }));
+    expect(document.querySelector('[id^="group-"]')).toBeNull();
+    expect(screen.getByRole('article', { name: 'שמנת, פג תוקף' })).toBeInTheDocument();
+  });
+
   it('R1: a status filter chosen in inventory does not hide discarded items after switching mode', async () => {
     as('admin');
     const { rerender } = render(<ItemsList areaFilter="bar" />);

@@ -17,13 +17,13 @@ const NotFound: React.FC = () => {
           display: flex;
           justify-content: center;
           align-items: center;
-          background-color: #f5f5f5;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
           padding: 20px;
           text-align: center;
         }
         
         .content {
-          background-color: white;
+          background-color: var(--tossit-surface, #FFFFFF);
           border-radius: 8px;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
           padding: 40px;
@@ -34,25 +34,25 @@ const NotFound: React.FC = () => {
         h1 {
           font-size: 80px;
           margin: 0;
-          color: #F44336;
+          color: var(--tossit-danger, #B42318);
           line-height: 1;
         }
         
         h2 {
           margin: 0 0 20px;
-          color: #333;
+          color: var(--tossit-text, #151A21);
         }
         
         p {
-          color: #757575;
+          color: var(--tossit-text-muted, #58616F);
           margin-bottom: 30px;
         }
         
         .back-link {
           display: inline-block;
           padding: 12px 24px;
-          background-color: #009688;
-          color: white;
+          background-color: var(--tossit-primary, #1D6A4E);
+          color: var(--tossit-primary-contrast, #FFFFFF);
           text-decoration: none;
           border-radius: 4px;
           font-weight: 500;
@@ -60,7 +60,7 @@ const NotFound: React.FC = () => {
         }
         
         .back-link:hover {
-          background-color: #00796b;
+          background-color: var(--tossit-primary-strong, #155239);
         }
       `}</style>
     </div>

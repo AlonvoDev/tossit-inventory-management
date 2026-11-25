@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent } from '@mui/material';
 import { Lock as LockIcon, Home as HomeIcon, Logout as LogoutIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { AccessibilityMenu } from '../features/appearance/AccessibilityMenu';
 
 /**
  * - role: signed in with a valid profile, but the role may not open this screen.
@@ -48,6 +49,9 @@ const NotAuthorized: React.FC<NotAuthorizedProps> = ({ reason = 'role' }) => {
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8, direction: 'rtl' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        <AccessibilityMenu />
+      </Box>
       <Card elevation={3}>
         <CardContent sx={{ textAlign: 'center', py: 6 }}>
           <Box sx={{ mb: 3 }}>

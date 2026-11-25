@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon-64.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-    <meta name="theme-color" content="#33AD92" />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="TossIt" />
@@ -14,6 +15,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Assistant&display=swap" rel="stylesheet" />
     <title>TossIt - ניהול מלאי</title>
+    <script>
+      /* Apply the saved appearance before first paint (key/colours mirror src/features/appearance and src/app/theme.tsx). */
+      (function () {
+        var pref = null;
+        try { pref = window.localStorage.getItem('tossit.appearance'); } catch (e) { pref = null; }
+        var dark = pref === 'dark' || (pref !== 'light' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
+        var root = document.documentElement;
+        root.setAttribute('data-appearance', dark ? 'dark' : 'light');
+        root.style.colorScheme = dark ? 'dark' : 'light';
+        root.style.backgroundColor = dark ? '#111418' : '#FFFFFF';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

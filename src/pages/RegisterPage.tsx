@@ -2,6 +2,7 @@ import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Container, Card, CardContent, Typography, Box, Button, List, ListItem, ListItemText } from '@mui/material';
 import tossitLogo from '../assets/tossit-logo.png';
+import { AccessibilityMenu } from '../features/appearance/AccessibilityMenu';
 
 /**
  * Public self-signup is intentionally not offered: accounts, business membership,
@@ -10,6 +11,9 @@ import tossitLogo from '../assets/tossit-logo.png';
  */
 const RegisterPage: React.FC = () => (
   <Container maxWidth="sm" sx={{ mt: 6, direction: 'rtl' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+      <AccessibilityMenu />
+    </Box>
     <Card elevation={3}>
       <CardContent sx={{ py: 5, px: { xs: 3, sm: 5 } }}>
         <Box sx={{ textAlign: 'center', mb: 3 }}>

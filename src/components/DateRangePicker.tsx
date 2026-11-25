@@ -24,6 +24,7 @@ import {
   Check as CheckIcon,
 } from '@mui/icons-material';
 import { fromDateInputValue, isValidRange, presetRange, PresetId, toDateInputValue } from './dateRange';
+import { tokens } from '../app/theme';
 
 interface DateRangePickerProps {
   startDate?: Date | null;
@@ -130,7 +131,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
           px: 3,
           borderRadius: 3,
           border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-          background: 'white',
+          background: tokens.colors.surface,
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {

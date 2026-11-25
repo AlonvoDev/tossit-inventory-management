@@ -55,32 +55,32 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
     switch (type) {
       case 'success':
         return {
-          backgroundColor: '#4CAF50',
-          borderColor: '#45A049',
+          backgroundColor: 'var(--tossit-success-tint, #EAF4EE)',
+          borderColor: 'var(--tossit-success, #1D6A4E)',
           icon: '✅'
         };
       case 'error':
         return {
-          backgroundColor: '#f44336',
-          borderColor: '#d32f2f',
+          backgroundColor: 'var(--tossit-danger-tint, #FDF0EF)',
+          borderColor: 'var(--tossit-danger, #B42318)',
           icon: '❌'
         };
       case 'warning':
         return {
-          backgroundColor: '#FF9800',
-          borderColor: '#F57C00',
+          backgroundColor: 'var(--tossit-warning-tint, #FDF4EA)',
+          borderColor: 'var(--tossit-warning, #9A4508)',
           icon: '⚠️'
         };
       case 'info':
         return {
-          backgroundColor: '#2196F3',
-          borderColor: '#1976D2',
+          backgroundColor: 'var(--tossit-info-tint, #EDF4FA)',
+          borderColor: 'var(--tossit-info, #1F5F8B)',
           icon: 'ℹ️'
         };
       default:
         return {
-          backgroundColor: '#757575',
-          borderColor: '#616161',
+          backgroundColor: 'var(--tossit-surface-soft, #F5F6F8)',
+          borderColor: 'var(--tossit-line-strong, #C9CFD6)',
           icon: '📋'
         };
     }
@@ -158,11 +158,12 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         }
 
         .toast-notification {
-          background: white;
-          border-radius: 12px;
+          background: var(--tossit-surface-raised, #FFFFFF);
+          border-radius: 8px;
           margin-bottom: 12px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-          border: 2px solid;
+          border: 1px solid;
+          border-inline-start-width: 4px;
           position: relative;
           overflow: hidden;
           transform: translateX(-120%);
@@ -180,7 +181,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
 
         .toast-content {
           padding: 16px;
-          color: white;
+          color: var(--tossit-text, #151A21);
         }
 
         .toast-header {
@@ -204,23 +205,25 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         .toast-title {
           margin: 0 0 4px 0;
           font-size: 16px;
-          font-weight: 600;
-          color: white;
+          font-weight: 700;
+          color: var(--tossit-text, #151A21);
         }
 
         .toast-message {
           margin: 0;
           font-size: 14px;
           line-height: 1.4;
-          color: rgba(255,255,255,0.9);
+          color: var(--tossit-text, #151A21);
         }
 
         .toast-close {
-          background: rgba(255,255,255,0.2);
+          background: transparent;
           border: none;
-          color: white;
-          width: 24px;
-          height: 24px;
+          color: var(--tossit-text-muted, #58616F);
+          width: 44px;
+          height: 44px;
+          min-height: 44px;
+          padding: 0;
           border-radius: 50%;
           cursor: pointer;
           display: flex;
@@ -232,19 +235,19 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         }
 
         .toast-close:hover {
-          background: rgba(255,255,255,0.3);
+          background: var(--tossit-surface-soft, #F5F6F8);
         }
 
         .toast-actions {
           padding-top: 8px;
-          border-top: 1px solid rgba(255,255,255,0.2);
+          border-top: 1px solid var(--tossit-line, #E3E6EA);
           text-align: center;
         }
 
         .toast-action-btn {
-          background: rgba(255,255,255,0.2);
-          border: 1px solid rgba(255,255,255,0.3);
-          color: white;
+          background: var(--tossit-surface, #FFFFFF);
+          border: 1px solid var(--tossit-line-strong, #C9CFD6);
+          color: var(--tossit-text, #151A21);
           padding: 8px 16px;
           border-radius: 6px;
           font-size: 14px;
@@ -254,7 +257,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         }
 
         .toast-action-btn:hover {
-          background: rgba(255,255,255,0.3);
+          background: var(--tossit-surface-soft, #F5F6F8);
           transform: translateY(-1px);
         }
 
@@ -264,12 +267,12 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           left: 0;
           right: 0;
           height: 3px;
-          background: rgba(255,255,255,0.2);
+          background: var(--tossit-line, #E3E6EA);
         }
 
         .toast-progress-bar {
           height: 100%;
-          background: rgba(255,255,255,0.6);
+          background: var(--tossit-line-strong, #C9CFD6);
           width: 100%;
           transform-origin: left;
           animation: toast-progress linear forwards;
@@ -280,22 +283,6 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           to { transform: scaleX(0); }
         }
 
-        /* Type-specific hover effects */
-        .toast-notification.success:hover {
-          box-shadow: 0 6px 25px rgba(76, 175, 80, 0.4);
-        }
-
-        .toast-notification.error:hover {
-          box-shadow: 0 6px 25px rgba(244, 67, 54, 0.4);
-        }
-
-        .toast-notification.warning:hover {
-          box-shadow: 0 6px 25px rgba(255, 152, 0, 0.4);
-        }
-
-        .toast-notification.info:hover {
-          box-shadow: 0 6px 25px rgba(33, 150, 243, 0.4);
-        }
 
         /* Mobile responsiveness */
         @media (max-width: 768px) {

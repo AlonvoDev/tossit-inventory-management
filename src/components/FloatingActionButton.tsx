@@ -1,5 +1,6 @@
 import React, { useCallback, useId, useState } from 'react';
 import {
+  Box,
   Fab,
   Button,
   useTheme,
@@ -22,8 +23,12 @@ interface FloatingActionButtonProps {
   department: Department;
   onItemAdded: () => void;
   disabled?: boolean;
-  /** 'inline' renders a labelled button in the page header (UI1); default keeps the floating button. */
-  variant?: 'fab' | 'inline';
+  /**
+   * 'inline' renders a labelled button in the page header (UI1). 'responsive' (V1) is the inline
+   * button from md up and a full-width bar fixed to the bottom of the screen on phones, within thumb
+   * reach and clear of the safe area. The default keeps the floating button.
+   */
+  variant?: 'fab' | 'inline' | 'responsive';
 }
 
 /**
@@ -67,10 +72,39 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const belowMd = useMediaQuery(theme.breakpoints.down('md'));
+  const phoneBar = variant === 'responsive' && belowMd;
 
   return (
     <>
-      {variant === 'inline' ? (
+      {phoneBar ? (
+        <Box
+          data-testid="open-item-bar"
+          sx={{
+            position: 'fixed',
+            insetInline: 0,
+            bottom: 0,
+            zIndex: theme.zIndex.appBar - 1,
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
+            px: 1.5,
+            pt: 1,
+            pb: 'max(8px, env(safe-area-inset-bottom))',
+          }}
+        >
+          <Button
+            variant="contained"
+            fullWidth
+            startIcon={<AddIcon />}
+            onClick={handleOpenModal}
+            disabled={isDisabled}
+            sx={{ minHeight: 48, fontSize: '1rem', fontWeight: 700 }}
+          >
+            פתיחת פריט
+          </Button>
+        </Box>
+      ) : variant === 'inline' || variant === 'responsive' ? (
         <Button
           variant="contained"
           startIcon={<AddIcon />}

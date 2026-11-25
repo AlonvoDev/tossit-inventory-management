@@ -19,6 +19,7 @@ import type { Product } from '../types/Product';
 import type { Fridge } from '../types/Fridge';
 import type { Department, WriteReceipt } from '../domain/contracts';
 import { departmentLabel, normalizeDepartment } from '../app/access';
+import { tokens } from '../app/theme';
 import { errorMessage } from '../features/common/errorMessage';
 import { amountError, Intent, nextIntent, parseAmount, shiftBlocksOpening, unitLabel } from '../features/inventory/openItem';
 
@@ -256,7 +257,7 @@ const OpenItemForm: React.FC<OpenItemFormProps> = ({ department, onItemAdded, di
           mt: 'auto',
           pt: 1.5,
           pb: 'max(8px, env(safe-area-inset-bottom))',
-          bgcolor: 'background.paper',
+          bgcolor: tokens.colors.surfaceRaised, // same surface as the dialog in both appearances
           borderTop: 1,
           borderColor: 'divider',
           display: 'flex',

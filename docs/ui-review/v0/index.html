@@ -730,11 +730,15 @@ function candidateProblem(c) {
   const [d, m, y] = [e.day, e.month, e.year].map(v => (v.trim() === '' ? NaN : Number(v)));
   if (!e.year.trim()) return 'חסרה שנה. יש להזין אותה (לא נקבעת אוטומטית)';
   if (!validCalendar(y, m, d)) return 'התאריך אינו תאריך קיים בלוח השנה';
+  if (e.meaning === 'opened-at') e.dayOnly = false;
   const hasTime = e.hour.trim() !== '' || e.minute.trim() !== '';
   if (hasTime) {
     const hh = Number(e.hour), mm = Number(e.minute);
     if (!Number.isInteger(hh) || hh < 0 || hh > 23 || !Number.isInteger(mm) || mm < 0 || mm > 59 || e.hour.trim() === '' || e.minute.trim() === '') return 'שעה לא תקינה (00:00–23:59)';
-  } else if ((c.issues.includes('missing-time') || e.meaning === 'opened-at') && !e.dayOnly) {
+  } else if (e.meaning === 'opened-at') {
+    // V0-I1 (C0b confirmDateCandidate): an opening needs an explicit minute; it stays unresolved otherwise.
+    return 'זמן פתיחה דורש שעה מפורשת. השעה לא נקבעת אוטומטית; בלי שעה התאריך נשאר לא מאושר.';
+  } else if (c.issues.includes('missing-time') && !e.dayOnly) {
     return 'חסרה שעה. הזן שעה או סמן "יום בלבד"';
   }
   return null;
@@ -773,12 +777,12 @@ function candidateHtml(c, single) {
           <label><span class="mini">שנה${c.issues.includes('missing-year') ? ' (חסרה)' : ''}</span><input id="y-${id}" class="input num" inputmode="numeric" dir="ltr" value="${esc(e.year)}" data-bind="edit.${id}.year" aria-label="שנה" placeholder="————" aria-invalid="${s.attempted && !e.year.trim()}" /></label>
         </div>
       </div>
-      <div class="field" style="margin-bottom:4px"><span class="label">שעה ${e.meaning === 'opened-at' || c.issues.includes('missing-time') ? '' : '(רשות)'}</span>
+      <div class="field" style="margin-bottom:4px"><span class="label">שעה ${e.meaning === 'opened-at' ? '(חובה לזמן פתיחה)' : c.issues.includes('missing-time') ? '' : '(רשות)'}</span>
         <div class="time-grid" dir="ltr">
           <label><span class="mini" dir="rtl">שעה</span><input id="h-${id}" class="input num" inputmode="numeric" value="${esc(e.hour)}" data-bind="edit.${id}.hour" aria-label="שעה" placeholder="--" ${e.dayOnly ? 'disabled' : ''} /></label>
           <label><span class="mini" dir="rtl">דקות</span><input id="mi-${id}" class="input num" inputmode="numeric" value="${esc(e.minute)}" data-bind="edit.${id}.minute" aria-label="דקות" placeholder="--" ${e.dayOnly ? 'disabled' : ''} /></label>
         </div>
-        ${e.meaning === 'opened-at' || c.issues.includes('missing-time') ? `<label class="check"><input type="checkbox" data-bind="edit.${id}.dayOnly" ${e.dayOnly ? 'checked' : ''} />אין שעה בתווית — יום בלבד, בלי לקבוע שעה</label>` : ''}
+        ${e.meaning !== 'opened-at' && c.issues.includes('missing-time') ? `<label class="check"><input type="checkbox" data-bind="edit.${id}.dayOnly" ${e.dayOnly ? 'checked' : ''} />אין שעה בתווית — יום בלבד, בלי לקבוע שעה</label>` : ''}
       </div>
       ${s.attempted && problem ? `<div class="err" role="alert">${esc(problem)}</div>` : ''}` : ''}
   </div>`;

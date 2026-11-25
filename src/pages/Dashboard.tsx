@@ -6,7 +6,6 @@ import {
   Box,
   Tab,
   Tabs,
-  Paper,
   Typography,
 
   Chip,
@@ -93,7 +92,8 @@ const Dashboard: React.FC = () => {
   const ownDepartment = profile.role !== 'admin' ? departmentLabel(profile.department) : null;
 
   return (
-    <Container maxWidth="lg" disableGutters sx={{ py: { xs: 1, sm: 2 }, px: { xs: 0, sm: 1 } }}>
+    // V1: flat page — no enclosing card; on phones the opening bar is fixed at the bottom, so leave room for it.
+    <Container maxWidth="lg" disableGutters sx={{ py: { xs: 0.5, sm: 2 }, px: { xs: 0, sm: 1 }, pb: { xs: 11, md: 2 } }}>
       {/* Compact identity + shift row (was a large greeting banner) */}
       <Box
         sx={{
@@ -102,7 +102,7 @@ const Dashboard: React.FC = () => {
           justifyContent: 'space-between',
           gap: 1,
           flexWrap: 'wrap',
-          mb: 1.5,
+          mb: 1,
         }}
       >
         <Box sx={{ minWidth: 0 }}>
@@ -118,7 +118,7 @@ const Dashboard: React.FC = () => {
         <ShiftButton />
       </Box>
 
-      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+      <Box>
         <Tabs
           value={activeTab}
           onChange={(_, newValue) => setActiveTab(newValue)}
@@ -144,7 +144,7 @@ const Dashboard: React.FC = () => {
           <Tab value="discarded" label="נזרקו" icon={<DiscardedIcon fontSize="small" />} iconPosition="start" />
         </Tabs>
 
-        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ pt: 1.5 }}>
           {activeTab === 'discarded' ? (
             <>
               <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 1.5 }}>
@@ -159,13 +159,13 @@ const Dashboard: React.FC = () => {
                 <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
                   מלאי {departmentLabel(activeTab)}
                 </Typography>
-                <FloatingActionButton variant="inline" department={activeTab} onItemAdded={handleItemAdded} />
+                <FloatingActionButton variant="responsive" department={activeTab} onItemAdded={handleItemAdded} />
               </Box>
               <ItemsList areaFilter={activeTab} refreshTrigger={refreshTrigger} isOffline={isOffline} onItemUpdated={handleItemUpdated} />
             </>
           )}
         </Box>
-      </Paper>
+      </Box>
     </Container>
   );
 };

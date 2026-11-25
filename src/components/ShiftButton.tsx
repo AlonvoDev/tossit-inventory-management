@@ -61,31 +61,31 @@ const ShiftButton: React.FC = () => {
           font-weight: 700;
           font-size: 15px;
           cursor: pointer;
-          border: 2px solid #0F766E;
-          background-color: #0F766E;
-          color: #fff;
+          border: 2px solid var(--tossit-primary, #1D6A4E);
+          background-color: var(--tossit-primary, #1D6A4E);
+          color: var(--tossit-primary-contrast, #FFFFFF);
         }
-        .shift-button:hover { background-color: #0d6660; }
-        .shift-button:focus-visible { outline: 3px solid #99F6E4; outline-offset: 2px; }
+        .shift-button:hover { background-color: var(--tossit-primary-strong, #155239); }
+        .shift-button:focus-visible { outline: 3px solid var(--tossit-focus, #1D6A4E); outline-offset: 2px; }
         .shift-button.active {
-          background-color: #fff;
-          color: #B91C1C;
-          border-color: #FCA5A5;
+          background-color: var(--tossit-surface, #FFFFFF);
+          color: var(--tossit-danger, #B42318);
+          border-color: var(--tossit-danger, #B42318);
         }
-        .shift-button.active:hover { background-color: #FEF2F2; }
+        .shift-button.active:hover { background-color: var(--tossit-danger-tint, #FDF0EF); }
         .shift-button:disabled {
-          background-color: #E5E7EB;
-          border-color: #E5E7EB;
-          color: #6B7280;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
+          border-color: var(--tossit-line-strong, #C9CFD6);
+          color: var(--tossit-text-muted, #58616F);
           cursor: not-allowed;
         }
         .shift-info p, p.shift-info {
           margin: 0;
           font-size: 12px;
-          color: #55607A;
+          color: var(--tossit-text-muted, #58616F);
         }
         .error-message {
-          color: #B91C1C;
+          color: var(--tossit-danger, #B42318);
           margin: 0;
           font-size: 13px;
         }

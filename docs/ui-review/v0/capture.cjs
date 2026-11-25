@@ -175,10 +175,16 @@ async function smallTargets(page) {
   check('confirm blocked while year is missing', (await page.getByRole('dialog', { name: 'בדיקת התאריכים שזוהו' }).count()) === 1 && (await page.locator('.err').textContent()).includes('חסרה שנה'));
   await year.fill('2026');
   await page.getByRole('button', { name: 'אישור התאריך' }).click({ force: true });
-  check('confirm blocked while time is missing and day-only not chosen', (await page.locator('.err').textContent()).includes('חסרה שעה'));
-  await page.getByRole('checkbox').check();
+  check('V0-I1: opening time cannot be confirmed day-only (no "יום בלבד" for opened-at)', (await page.locator('.err').textContent()).includes('זמן פתיחה דורש שעה מפורשת') && (await page.getByRole('checkbox').count()) === 0);
+  await page.getByRole('textbox', { name: 'שעה', exact: true }).fill('18');
+  await page.getByRole('textbox', { name: 'דקות' }).fill('30');
   await page.getByRole('button', { name: 'אישור התאריך' }).click({ force: true });
-  check('explicit confirmation adds day-only evidence to the form only', (await page.getByRole('dialog', { name: /פתיחת פריט/ }).count()) === 1 && (await page.locator('.ev-row').textContent()).includes('25.11.2026') && (await page.locator('.ev-row').textContent()).includes('יום בלבד'));
+  check('explicit opening time confirmed at minute precision', (await page.getByRole('dialog', { name: /פתיחת פריט/ }).count()) === 1 && (await page.locator('.ev-row').textContent()).includes('25.11.2026 18:30'));
+
+  // Expiry evidence may stay day precision (pending C1 cutoff policy).
+  await page.goto(`${URL}?bare=1&sheet=scan&pick=p1&fixture=packaging&step=review&source=packaging`);
+  await page.getByRole('button', { name: 'אישור התאריך' }).click({ force: true });
+  check('expiry evidence may remain day-only', (await page.locator('.ev-row').textContent()).includes('28.11.2026') && (await page.locator('.ev-row').textContent()).includes('יום בלבד'));
 
   await page.goto(`${URL}?bare=1&sheet=scan&pick=p1&fixture=ambiguous&step=review&source=staff-label`);
   check('ambiguous candidates: nothing preselected', (await page.locator('[role=radio][aria-checked=true]').count()) === 0 && (await page.getByRole('radio').count()) === 2);

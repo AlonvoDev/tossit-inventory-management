@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { departmentLabel } from '../app/access';
 import { Alert, Box, Button, Chip, InputAdornment, MenuItem, TextField, Typography } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
-import { InventoryItemCard } from './inventory/InventoryItemCard';
+import { InventoryItemCard, INVENTORY_ROW_COLUMNS } from './inventory/InventoryItemCard';
+import { tokens } from '../app/theme';
 import {
   displayStatus,
   formatDateTime,
@@ -276,16 +277,54 @@ const ItemsList: React.FC<ItemsListProps> = ({
     );
   };
 
+  // V1: urgency groups (text headers) when every status is shown in an open list; a single
+  // status filter or a closed-items tab shows one plain list.
+  const grouped = showStatusFilter && effectiveStatusFilter === 'all';
+  const groups: { status: DisplayStatus; items: Item[] }[] = [];
+  for (const item of visibleItems) {
+    const status = statusOf(item);
+    const last = groups[groups.length - 1];
+    if (grouped && last?.status === status) last.items.push(item);
+    else if (grouped || !last) groups.push({ status, items: [item] });
+    else last.items.push(item);
+  }
+
+  const columnHeader = (
+    <Box
+      aria-hidden
+      sx={{
+        display: { xs: 'none', md: 'grid' },
+        gridTemplateColumns: INVENTORY_ROW_COLUMNS,
+        columnGap: 1.5,
+        px: 2,
+        py: 1,
+        borderBottom: 1,
+        borderColor: 'divider',
+        fontSize: '0.8125rem',
+        fontWeight: 700,
+        color: 'text.secondary',
+      }}
+    >
+      <span>מוצר</span>
+      <span>כמות</span>
+      <span>מקרר</span>
+      <span>נפתח</span>
+      <span>נותר</span>
+      <span>תוקף</span>
+      <span />
+    </Box>
+  );
+
   return (
-    <Box dir="rtl" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      {/* Controls: search, fridge, status — before the list */}
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+    <Box dir="rtl" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {/* Controls: search + fridge on one line, compact status chips below */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         <TextField
           size="small"
-          label="חיפוש פריט"
+          placeholder="חיפוש פריט"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          sx={{ flex: '1 1 180px', minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}
+          sx={{ flex: '1 1 auto', minWidth: 0, maxWidth: { md: 340 }, '& .MuiInputBase-root': { minHeight: 44 } }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
           inputProps={{ 'aria-label': 'חיפוש פריט' }}
         />
@@ -293,10 +332,10 @@ const ItemsList: React.FC<ItemsListProps> = ({
           <TextField
             select
             size="small"
-            label="מקרר"
             value={fridgeFilter}
             onChange={e => setFridgeFilter(e.target.value)}
-            sx={{ flex: '0 1 170px', minWidth: 130, '& .MuiInputBase-root': { minHeight: 44 } }}
+            SelectProps={{ inputProps: { 'aria-label': 'מקרר' } }}
+            sx={{ flex: '0 1 170px', minWidth: 0, maxWidth: '46%', '& .MuiInputBase-root': { minHeight: 44 } }}
           >
             <MenuItem value="all">כל המקררים</MenuItem>
             {fridges.map(f => (
@@ -309,20 +348,34 @@ const ItemsList: React.FC<ItemsListProps> = ({
       </Box>
 
       {showStatusFilter && !isLoading && !error && scopeCount > 0 && (
-        <Box role="group" aria-label="סינון לפי מצב" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box
+          role="group"
+          aria-label="סינון לפי מצב"
+          sx={{ display: 'flex', gap: 0.75, overflowX: 'auto', py: 0.5, scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}
+        >
           {(['all', ...OPEN_STATUSES] as const).map(key => {
             const count = key === 'all' ? filteredItems.length : statusCounts[key];
             const label = key === 'all' ? 'הכל' : STATUS_LABEL[key];
+            const selected = statusFilter === key;
             return (
               <Chip
                 key={key}
                 component="button"
                 label={`${label} (${count})`}
                 onClick={() => setStatusFilter(key)}
-                color={statusFilter === key ? 'primary' : 'default'}
-                variant={statusFilter === key ? 'filled' : 'outlined'}
-                aria-pressed={statusFilter === key}
-                sx={{ minHeight: 44, height: 'auto', borderRadius: 22, px: 0.5, fontWeight: 600, fontSize: '0.875rem' }}
+                variant="outlined"
+                aria-pressed={selected}
+                sx={{
+                  flexShrink: 0,
+                  height: 'auto',
+                  minHeight: 44, // UI1-R2: real 44px target, not only a pseudo-element hit area
+                  borderRadius: 22,
+                  fontWeight: 700,
+                  fontSize: '0.875rem',
+                  borderColor: selected ? 'primary.main' : tokens.colors.lineStrong,
+                  bgcolor: selected ? tokens.colors.primaryTint : 'transparent',
+                  color: selected ? 'primary.main' : 'text.secondary',
+                }}
               />
             );
           })}
@@ -352,15 +405,15 @@ const ItemsList: React.FC<ItemsListProps> = ({
           {error}
         </Alert>
       ) : scopeCount === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4, px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+        <Box sx={{ textAlign: 'center', py: 5, px: 2, borderTop: 1, borderColor: 'divider' }}>
           <Typography sx={{ fontWeight: 700 }}>{scopeEmptyText}</Typography>
-          <Typography variant="body2">מוצג: {scopeLabel}</Typography>
+          <Typography variant="body2" color="text.secondary">מוצג: {scopeLabel}</Typography>
         </Box>
       ) : visibleItems.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4, px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+        <Box sx={{ textAlign: 'center', py: 5, px: 2, borderTop: 1, borderColor: 'divider' }}>
           <Typography sx={{ fontWeight: 700 }}>אין פריטים שתואמים לחיפוש או לסינון</Typography>
           {filtersActive && (
-            <Button onClick={clearFilters} sx={{ mt: 1, minHeight: 44 }}>
+            <Button onClick={clearFilters} variant="outlined" sx={{ mt: 1.5, minHeight: 44 }}>
               נקה חיפוש וסינון
             </Button>
           )}
@@ -368,12 +421,40 @@ const ItemsList: React.FC<ItemsListProps> = ({
       ) : (
         <Box
           sx={{
-            display: 'grid',
-            gap: 1.5,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
+            mx: { xs: -1.5, sm: 0 },
+            borderTop: 1,
+            border: { md: 1 },
+            borderColor: 'divider', // after the shorthand so it is not reset to currentColor
+            borderRadius: { md: 2 },
+            overflow: 'clip',
           }}
         >
-          {visibleItems.map(cardFor)}
+          {columnHeader}
+          {groups.map(group => (
+            <Box key={group.status + group.items[0].id} role={grouped ? 'group' : undefined} aria-labelledby={grouped ? `group-${group.status}` : undefined}>
+              {grouped && (
+                <Box
+                  id={`group-${group.status}`}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    px: { xs: 1.5, md: 2 },
+                    py: 0.75,
+                    bgcolor: tokens.colors.surfaceSoft,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    color: group.status === 'expired' ? 'error.main' : group.status === 'expiring' ? 'warning.main' : 'text.secondary',
+                  }}
+                >
+                  <span>{STATUS_LABEL[group.status]}</span>
+                  <span>{group.items.length}</span>
+                </Box>
+              )}
+              {group.items.map(cardFor)}
+            </Box>
+          ))}
         </Box>
       )}
 

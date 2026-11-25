@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { signIn, signInWithGoogle } from '../api/authAPI';
 import { Container, Grid } from '@mui/material';
 import tossitLogo from '../assets/tossit-logo.png';
+import { AccessibilityMenu } from '../features/appearance/AccessibilityMenu';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -102,6 +103,9 @@ const LoginPage: React.FC = () => {
   return (
     <Container maxWidth="md" sx={{ mt: 4 }} className="login-page" dir="rtl">
       <div className="login-container">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-12px -12px 0 0' }}>
+          <AccessibilityMenu />
+        </div>
         <div className="login-header">
           <div className="logo-container">
                                 <img
@@ -201,16 +205,16 @@ const LoginPage: React.FC = () => {
           display: flex;
           justify-content: center;
           align-items: center;
-          background-color: #f5f5f5;
+          background-color: transparent;
           padding: 20px;
           direction: rtl;
           text-align: right;
         }
         
         .login-container {
-          background-color: white;
+          background-color: var(--tossit-surface, #FFFFFF);
           border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+          border: 1px solid var(--tossit-line, #E3E6EA);
           width: 100%;
           max-width: 400px;
           padding: 30px;
@@ -233,7 +237,7 @@ const LoginPage: React.FC = () => {
         
         .app-description {
           margin: 5px 0 0;
-          color: #757575;
+          color: var(--tossit-text-muted, #58616F);
           font-size: 16px;
         }
         
@@ -251,7 +255,7 @@ const LoginPage: React.FC = () => {
           display: block;
           margin-bottom: 8px;
           font-weight: 500;
-          color: #555;
+          color: var(--tossit-text-muted, #58616F);
           text-align: right;
         }
         
@@ -260,9 +264,11 @@ const LoginPage: React.FC = () => {
           min-height: 48px;
           box-sizing: border-box;
           padding: 12px;
-          border: 1px solid #c7ccd6;
+          border: 1px solid var(--tossit-control, #858E9A);
           border-radius: 10px;
           font-size: 16px;
+          color: var(--tossit-text, #151A21);
+          background-color: var(--tossit-surface, #FFFFFF);
         }
         
         .ltr-input {
@@ -271,8 +277,8 @@ const LoginPage: React.FC = () => {
         }
         
         input:focus-visible {
-          border-color: #0F766E;
-          outline: 3px solid #99F6E4;
+          border-color: var(--tossit-primary, #1D6A4E);
+          outline: 3px solid var(--tossit-focus, #1D6A4E);
           outline-offset: 1px;
         }
         
@@ -290,32 +296,32 @@ const LoginPage: React.FC = () => {
         }
         
         .login-button {
-          background-color: #0F766E;
-          color: white;
+          background-color: var(--tossit-primary, #1D6A4E);
+          color: var(--tossit-primary-contrast, #FFFFFF);
           font-weight: 700;
         }
         
         .login-button:hover {
-          background-color: #0d6660;
+          background-color: var(--tossit-primary-strong, #155239);
         }
         
         .google-button {
-          background-color: #fff;
-          color: #0B1220;
-          border: 1px solid #c7ccd6;
+          background-color: var(--tossit-surface, #FFFFFF);
+          color: var(--tossit-text, #151A21);
+          border: 1px solid var(--tossit-line-strong, #C9CFD6);
         }
         
         .google-button:hover {
-          background-color: #F6F7F9;
+          background-color: var(--tossit-surface-soft, #F5F6F8);
         }
 
         .login-button:focus-visible, .google-button:focus-visible {
-          outline: 3px solid #99F6E4;
+          outline: 3px solid var(--tossit-focus, #1D6A4E);
           outline-offset: 2px;
         }
         
         button:disabled {
-          background-color: #B0BEC5;
+          background-color: var(--tossit-line-strong, #C9CFD6);
           cursor: not-allowed;
         }
         
@@ -332,7 +338,7 @@ const LoginPage: React.FC = () => {
           top: 50%;
           width: 45%;
           height: 1px;
-          background-color: #ddd;
+          background-color: var(--tossit-line, #E3E6EA);
         }
         
         .divider::before {
@@ -344,15 +350,15 @@ const LoginPage: React.FC = () => {
         }
         
         .divider span {
-          background-color: white;
+          background-color: var(--tossit-surface, #FFFFFF);
           padding: 0 10px;
           position: relative;
-          color: #757575;
+          color: var(--tossit-text-muted, #58616F);
         }
         
         .error-message {
-          color: #D32F2F;
-          background-color: #FFEBEE;
+          color: var(--tossit-danger, #B42318);
+          background-color: var(--tossit-danger-tint, #FDF0EF);
           padding: 10px;
           border-radius: 4px;
           margin-bottom: 15px;
@@ -362,12 +368,12 @@ const LoginPage: React.FC = () => {
         
         .login-footer {
           text-align: center;
-          color: #757575;
+          color: var(--tossit-text-muted, #58616F);
           direction: rtl;
         }
         
         .login-footer a {
-          color: #009688;
+          color: var(--tossit-primary, #1D6A4E);
           text-decoration: none;
           font-weight: 500;
         }
@@ -389,7 +395,7 @@ const LoginPage: React.FC = () => {
         .dev-controls {
           margin-top: 20px;
           padding-top: 15px;
-          border-top: 1px dashed #ddd;
+          border-top: 1px dashed var(--tossit-line-strong, #C9CFD6);
         }
         
         .emulator-toggle {
@@ -406,7 +412,7 @@ const LoginPage: React.FC = () => {
         .emulator-toggle label {
           margin: 0;
           font-size: 14px;
-          color: #666;
+          color: var(--tossit-text-muted, #58616F);
         }
         
       `}</style>

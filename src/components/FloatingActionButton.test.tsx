@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -25,5 +25,28 @@ describe('FloatingActionButton (inline)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'פתיחת פריט' }));
     await userEvent.click(await screen.findByRole('button', { name: 'סגירה' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+});
+
+describe('FloatingActionButton (responsive, V1)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const phone = (matches: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} }));
+
+  it('on phones renders one full-width bar fixed to the bottom that opens the same dialog', async () => {
+    phone(true);
+    render(<FloatingActionButton variant="responsive" department="bar" onItemAdded={() => {}} />);
+    const bar = screen.getByTestId('open-item-bar');
+    expect(getComputedStyle(bar).position).toBe('fixed');
+    expect(screen.getAllByRole('button', { name: 'פתיחת פריט' })).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: 'פתיחת פריט' }));
+    expect(await screen.findByRole('dialog', { name: 'פתיחת פריט — בר' })).toBeInTheDocument();
+  });
+
+  it('from md up renders the inline header button only', () => {
+    phone(false);
+    render(<FloatingActionButton variant="responsive" department="bar" onItemAdded={() => {}} />);
+    expect(screen.queryByTestId('open-item-bar')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'פתיחת פריט' })).toHaveLength(1);
   });
 });
