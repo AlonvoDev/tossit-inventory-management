@@ -1,6 +1,6 @@
 # TossIt — complete next-round work plan
 
-Date: 2026-11-25 (Asia/Jerusalem). Status: **PLAN PUBLISHED; IMPLEMENTATION NOT STARTED**.
+Date: 2026-11-25 (Asia/Jerusalem). Status: **IMPLEMENTATION STARTED; C0a published; C0b/S0a foundation prepared; Claude working V0**.
 
 ## Outcome and boundaries
 
@@ -8,7 +8,7 @@ Ship a coherent Hebrew inventory tool that is quick to use during a real bar/kit
 
 Alon prefers the demonstrated flat, compact inventory direction: clear type, restrained green, thin separators, fewer enclosing cards, and color for meaningful status. He accepted this as closer to his goal, not as approval of every screen or behavior. Success means efficiency and easy execution without compromising quality or design. Build a realistic busy-inventory/form preview before committing the full visual implementation.
 
-This request authorizes planning and publication. It does not start a production migration, activate billing, upload staff photos to a provider, enable push, or authorize another live release. Implementation checkpoints stay on separate branches until reviewed; a concrete tested release is presented for deployment approval. Existing authorized routine review/fixes do not require repeated permission.
+Alon subsequently authorized implementation on2026-11-25. This does not start a production migration, activate billing, upload staff photos to a provider, enable push, or authorize another live release. Implementation checkpoints stay on separate branches until reviewed; a concrete tested release is presented for deployment approval. Existing authorized routine review/fixes do not require repeated permission.
 
 ## Verified baseline, and what is not new work
 
@@ -42,7 +42,7 @@ Before starting, fetch, inspect status/AGENTS.md, preserve dirty work, and merge
 
 Every bounded task ends with relevant checks, explicit-path commit, push, remote-SHA verification and owner handoff. Handoff records task ID, commit SHA, commands/exit codes, screenshots/evidence, limitations, dependencies and READY/IN PROGRESS. Before context/token limits, publish a coherent IN PROGRESS checkpoint; do not label it READY. Do not commit secrets, personal/staff photos or real business fixtures. Requests go in docs/CLAUDE_REQUESTS.md or docs/CODEX_REQUESTS.md; no external messages are implied.
 
-Review one pinned SHA at a time; merge normally only after blockers are resolved. Keep evidence complete, including the full browser summary. Each owner fixes their own findings. Implementation starts only when Alon asks to start; the next concrete design checkpoint resolves visual questions without reopening the whole project.
+Review one pinned SHA at a time; merge normally only after blockers are resolved. Keep evidence complete, including the full browser summary. Each owner fixes their own findings. Implementation was authorized2026-11-25. C0a publishes shared date-evidence DTOs and calendar validation; Claude begins V0. The next concrete design checkpoint resolves visual questions without reopening the whole project.
 
 ## Task board
 
@@ -163,6 +163,10 @@ Optional push configuration/N0 targets another1–2agent-hours only if credentia
 - Updated README, RELEASE, PILOT, owner handoffs and short demo script. Explain architecture/tradeoffs and actual verified behavior for portfolio/interview use; do not market experimental OCR or disabled push as live capabilities.
 - Final report states deployed source/provider IDs, which tasks are complete, what remains NOT RUN, residual dependency findings, provider cost assumptions and owner follow-ups. Optional push is explicitly enabled-and-verified or still deferred, never silently counted as complete.
 
-## Immediate next step
+## Current execution checkpoint
 
-Plan publication is the checkpoint. When Alon starts implementation, Claude begins V0; Codex begins P0/C0 and the synthetic portion of S0. Request actual packaging/staff-label examples for the real evaluation when needed. Present one concrete date-policy decision record and visual checkpoint before introducing v2 writers or selecting a paid service. Push each completed task, even when a later task is blocked.
+Alon authorized both agents to begin on2026-11-25. Codex C0a adds isolated date-evidence DTOs and Gregorian/precision validation with targeted regression checks; no inventory persistence or expiry policy has changed. See DATE_SCAN_CONTRACT.md. Claude starts V0 now using CLAUDE_START_PROMPT.md and synthetic fixtures. Next Codex work is the remaining C0 policy/compatibility decision record and S0 evaluation harness; real OCR accuracy requires sample photos and an accessible provider. UI work proceeds independently. Each owner publishes coherent commits and verified remote SHAs per task.
+
+### C0b/S0a progress — 2026-11-25
+
+Runtime result validation and explicit review are implemented without changing C0a DTOs. A provider-neutral recorded-output evaluator and runnable synthetic fixture are available; see SCAN_EVALUATION.md. Real OCR quality/provider access remains NOT RUN. These additive foundations do not write inventory or settle date-only/timezone policy. Claude can complete V0 independently. C0/S0 work is published on a Codex working branch and integrated into core through pinned development PRs if the ref-update connector is unavailable.
