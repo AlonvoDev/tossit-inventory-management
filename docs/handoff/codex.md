@@ -1,8 +1,16 @@
 # Codex handoff
-Branch: codex/tossit-scan-lifecycle (S1a; integrates into core through a pinned PR)
+Branch: codex/tossit-core (S1a integrated through PR4)
 Task / bounded subtask: S1a scan lifecycle and server transport seam
-Status: S1a locally verified; publication/CI pending; Claude V1 with dark mode authorized and independently in progress; no live deployment.
+Status: S1a integrated; all4source/PR CI jobs PASS; Claude V1/dark mode independent; server/provider and date-policy work pending; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## S1a integration verified — 2026-11-25
+
+Source e11019023d77ce59abd221ae4596da86a8db1f5f published and remote-verified on codex/tossit-scan-lifecycle. All4PR CI jobs succeeded in run45653946539: build-and-unit, firebase-emulators, neon-host and browser. PR4 merged normally into core at848772f2651fccf85a21bbfff81469bb2c874a25; merged tree matches the locally verified source tree. The approved V0 review/V1 dark-mode instructions are included as documentation only. No Claude presentation/source files changed.
+
+Evidence: https://github.com/AlonvoDev/tossit-inventory-management/pull/4 and https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/45653946539 . This subsequent handoff update records observed results only; later core/doc reruns are separate from that verified source/PR run. Local evidence before publication:445 full client tests, then final19 lifecycle tests and TypeScript/changed-file lint after the extra context guard; CI then verified the complete final source.
+
+GitHub rejected a multi-entry tree request with an internal MCP error. Rebuilt the same unreferenced tree one entry at a time, verified its exact expected SHA, then created one commit/branch and verified its remote head. No partial application checkpoint or force-push was required. Main/live remains unchanged. Claude may merge the latest core at a safe boundary; S1a is a transport seam with safe lifecycle, not a working provider/backend route. Real image/model accuracy, target-device camera/HEIC checks and explicit day-only/label-time policy remain NOT RUN or unresolved as documented.
 
 ## S1a — cancellable scoped scan lifecycle, 2026-11-25
 
