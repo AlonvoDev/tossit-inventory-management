@@ -1,10 +1,10 @@
 # Claude — next TossIt round (2026-11-25)
 
-The current plan is [TOSSIT_MASTER_PLAN.md](TOSSIT_MASTER_PLAN.md). It supersedes the historical UI-round entry below for new work. Read the complete plan before starting. Publication is planning only; implementation has not started.
+The current plan is [TOSSIT_MASTER_PLAN.md](TOSSIT_MASTER_PLAN.md). It supersedes the historical UI-round entry below for new work. Read the complete plan before starting. Alon authorized implementation on2026-11-25. Codex has started C0a; Claude should begin V0 now. Read DATE_SCAN_CONTRACT.md and use CLAUDE_START_PROMPT.md for kickoff.
 
 Claude owns V0–V4: visual direction for busy inventory/forms, coherent compact UI, then optional camera/crop/date-confirmation UI. Codex owns P0/C0–C2/S0–S1 and integration: date contracts/policy, trusted validation, compatible offline queue/rules and OCR evaluation/service. See the task board for dependencies and acceptance. Preserve existing accepted fixes; do not repeat U1–U5/UI1–UI3.
 
-When Alon starts the round: preserve your worktree, fetch and merge the exact published Codex plan SHA normally into claude/tossit-ui. Begin V0 while Codex prepares contracts. Do not start a paid provider, deploy, alter shared contracts/rules/queue/worker/lockfiles independently, or upload real staff photos. Each completed task requires checks, commit, push, verified remote SHA and a precise handoff. Report blockers and IN PROGRESS checkpoints before context limits.
+Start the round now: preserve your worktree, fetch and merge the exact published Codex plan SHA normally into claude/tossit-ui. Begin V0 while Codex prepares contracts. Do not start a paid provider, deploy, alter shared contracts/rules/queue/worker/lockfiles independently, or upload real staff photos. Each completed task requires checks, commit, push, verified remote SHA and a precise handoff. Report blockers and IN PROGRESS checkpoints before context limits.
 
 ---
 

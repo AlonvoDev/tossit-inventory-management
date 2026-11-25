@@ -1,8 +1,18 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: complete next-round master plan
-Status: next-round plan published; implementation NOT STARTED; historical production evidence below.
+Task / bounded subtask: C0a date-evidence foundation and Claude kickoff
+Status: implementation authorized; C0a locally verified and READY for publication; Claude V0 kickoff prepared; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## C0a implementation started — 2026-11-25
+
+Alon explicitly requested the Claude kickoff and Codex to start. Added src/domain/dateEvidence.ts with scan/review DTOs, explicit user-confirmed evidence and strict date/precision parsers. An unknown/production date cannot type-check as a confirmed opening/expiry. Missing-year/time stays explicit in the synthetic adapter fixtures. Gregorian validation rejects impossible dates without JS Date rollover or silent timezone/precision assumptions. It returns detached copies. Local minute validation is not DST resolution or expiry policy.
+
+DATE_SCAN_CONTRACT.md provides imports, synthetic packaging/incomplete staff-label fixtures, limitations, ownership and pending C0/C1 decisions. CLAUDE_START_PROMPT.md starts V0 on Claude's own branch with persistent responsive local prototypes before production UI changes. Plan and entry point now record actual implementation authorization.
+
+No existing inventory contract, Firestore rules, queue format, runtime adapter, worker, lockfiles or production config/data changed. DTOs are not trusted provider-response validation or a deployed OCR feature. New-date writers wait for the coordinated C1 change and explicit date-policy decisions. OCR print/handwriting evaluation is NOT RUN without real examples/provider access. Next is remaining C0 and synthetic S0 harness; V0 can proceed independently.
+
+Verification results are recorded with the published checkpoint. The first build caught Object.hasOwn incompatibility with the repository's current TS library target; changed only the parser to the compatible own-property check, preserving compiler settings. Re-ran targeted calendar + existing inventory tests:40/40 PASS. Lint0errors/7existingwarnings PASS. Final production build PASS (including injectManifest worker generation). No server/rules/browser rerun is warranted for this isolated unimported foundation; no claims of those suites rerunning.
 
 ## Agent-time estimate corrected — 2026-11-25
 
