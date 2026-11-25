@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TossIt V0 — אב־טיפוס עיצוב קומפקטי</title>
+<!--
+  V0 visual prototype (Claude, 2026-11-25). Synthetic data only. Not a production route, no network,
+  no persistence, no OCR. Scan fixtures mirror the C0a DTOs in src/domain/dateEvidence.ts
+  (DateScanResult version 1). See README.md in this folder for states and URL parameters.
+-->
+<style>
+  :root {
+    --green: #1d6a4e;
+    --green-strong: #155239;
+    --green-tint: #edf5f0;
+    --text: #151a21;
+    --muted: #5a6371;
+    --faint: #8a929e;
+    --line: #e4e7eb;
+    --line-strong: #cfd4da;
+    --bg: #ffffff;
+    --bg-soft: #f6f7f8;
+    --red: #b42318;
+    --red-tint: #fdf1f0;
+    --amber: #a1480a;
+    --amber-tint: #fdf5ec;
+    --blue: #1f5f8b;
+    --blue-tint: #eef5fa;
+    --radius: 6px;
+    --tap: 44px;
+    --font: "Assistant", "Heebo", "Rubik", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 16px; line-height: 1.4; -webkit-text-size-adjust: 100%; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+  .num { font-variant-numeric: tabular-nums; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  svg.i { width: 20px; height: 20px; flex: none; fill: currentColor; }
+
+  /* ---------- prototype chrome (not part of the product) ---------- */
+  .proto { background: #20242b; color: #e9ecef; font-size: 13px; }
+  .proto summary { padding: 6px 12px; cursor: pointer; }
+  .proto-body { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 4px 12px 10px; }
+  .proto label { display: flex; gap: 6px; align-items: center; }
+  .proto select { background: #2e333b; color: #fff; border: 1px solid #4a515c; border-radius: 4px; padding: 2px 4px; font-size: 13px; }
+  .bare .proto { display: none; }
+
+  /* ---------- app bar ---------- */
+  .appbar { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .appbar-row { display: flex; align-items: center; gap: 4px; height: 52px; padding: 0 4px; max-width: 1180px; margin: 0 auto; }
+  .icon-btn { width: var(--tap); height: var(--tap); display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; border-radius: var(--radius); color: var(--text); }
+  .icon-btn:hover { background: var(--bg-soft); }
+  .icon-btn[aria-disabled="true"] { color: var(--faint); cursor: not-allowed; }
+  .brand { font-weight: 700; font-size: 18px; margin-inline-start: 4px; }
+  .page-title { font-size: 18px; font-weight: 700; margin: 0; }
+  .spacer { flex: 1; }
+  .shift { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 16px; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .shift .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .shift.off .dot { background: var(--faint); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--green-tint); color: var(--green-strong); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .nav { display: none; gap: 2px; margin-inline-start: 16px; }
+  .nav a { display: inline-flex; align-items: center; height: 52px; padding: 0 12px; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; font-weight: 600; }
+  .nav a[aria-current="page"] { color: var(--text); border-bottom-color: var(--green); }
+
+  .banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .banner.offline { background: var(--amber-tint); color: #6b3507; }
+  .banner .count { margin-inline-start: auto; font-weight: 700; white-space: nowrap; }
+
+  /* ---------- controls ---------- */
+  main { max-width: 1180px; margin: 0 auto; }
+  .controls { padding: 10px 12px 4px; display: grid; gap: 8px; }
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .toolbar h1 { font-size: 20px; margin: 0; font-weight: 700; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
+  .seg button { min-height: 36px; padding: 0 14px; border: 0; background: var(--bg); font-weight: 600; color: var(--muted); position: relative; }
+  .seg button + button { border-inline-start: 1px solid var(--line-strong); }
+  .seg button[aria-pressed="true"] { background: var(--green); color: #fff; }
+  /* 44px hit area around 36px visuals */
+  .seg button::after { content: ""; position: absolute; inset: -4px 0; }
+  .chip::after { content: ""; position: absolute; inset: -5px 0; }
+  .dept-label { font-weight: 700; font-size: 16px; }
+  .filters { display: flex; gap: 8px; align-items: center; }
+  .search { flex: 1; position: relative; min-width: 0; }
+  .search input { width: 100%; height: var(--tap); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 0 38px 0 36px; background: var(--bg); }
+  .search .i { position: absolute; right: 10px; top: 12px; color: var(--faint); }
+  .search .clear { position: absolute; left: 0; top: 0; }
+  .select { height: var(--tap); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--bg); padding: 0 8px; max-width: 46%; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 6px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { position: relative; flex: none; height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid var(--line-strong); background: var(--bg); font-size: 14px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .chip[aria-pressed="true"] { border-color: var(--green); background: var(--green-tint); color: var(--green-strong); }
+  .chip .n { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .chip.expired .n { color: var(--red); }
+  .chip.expiring .n { color: var(--amber); }
+
+  /* ---------- list ---------- */
+  .list { border-top: 1px solid var(--line); }
+  .group { position: sticky; top: 52px; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--bg-soft); border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--muted); }
+  .group.expired { color: var(--red); }
+  .group.expiring { color: var(--amber); }
+  .colhead { display: none; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "name when act" "meta when act"; column-gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); position: relative; }
+  .row::before { content: ""; position: absolute; inset-inline-start: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: transparent; }
+  .row.expired::before { background: var(--red); }
+  .row.expiring::before { background: #d9822b; }
+  .row .name { grid-area: name; font-weight: 700; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+  .row .tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 5px; margin-inline-start: 6px; vertical-align: 2px; }
+  .row .meta { grid-area: meta; font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0 6px; }
+  .row .meta .qty { color: var(--text); font-weight: 600; }
+  .row .meta .sep { color: var(--line-strong); }
+  .row .when { grid-area: when; text-align: left; white-space: nowrap; }
+  .row .left { font-weight: 700; font-size: 15px; }
+  .row .exact { font-size: 13px; color: var(--muted); }
+  .row.expired .left { color: var(--red); }
+  .row.expiring .left { color: var(--amber); }
+  .row.ok .left { color: var(--text); font-weight: 600; }
+  .row .act { grid-area: act; }
+  .row .sync { grid-column: 1 / -1; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .row .sync.pending { color: var(--muted); }
+  .row .sync.failed { color: var(--red); }
+  .row .sync .i { width: 16px; height: 16px; }
+  .link-btn { border: 0; background: none; color: inherit; text-decoration: underline; padding: 0 8px; min-height: 44px; font-weight: 700; }
+  .btn { min-height: var(--tap); padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--bg); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+  .btn:hover { background: var(--bg-soft); }
+  .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.primary:hover { background: var(--green-strong); }
+  .btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn.small { min-height: var(--tap); padding: 0 12px; font-size: 15px; }
+  .btn.block { width: 100%; }
+  .row .act .btn { color: var(--green-strong); }
+  .closed-line { grid-area: when; text-align: left; font-size: 14px; color: var(--muted); }
+
+  .state { padding: 40px 20px; text-align: center; color: var(--muted); }
+  .state h2 { color: var(--text); font-size: 18px; margin: 0 0 6px; }
+  .state p { margin: 0 0 16px; }
+  .state.error h2 { color: var(--red); }
+  .skel { height: 64px; border-bottom: 1px solid var(--line); padding: 12px; }
+  .skel span { display: block; height: 12px; background: #eceef1; border-radius: 4px; margin-bottom: 8px; }
+  @media (prefers-reduced-motion: no-preference) { .skel span { animation: pulse 1.2s ease-in-out infinite; } }
+  @keyframes pulse { 50% { opacity: .5; } }
+
+  /* bottom action bar (phone) */
+  .actionbar { position: sticky; bottom: 0; z-index: 15; background: var(--bg); border-top: 1px solid var(--line); padding: 8px 12px max(8px, env(safe-area-inset-bottom)); display: flex; gap: 8px; align-items: center; }
+  .actionbar .note { font-size: 14px; color: var(--muted); flex: 1; }
+  .open-inline { display: none; }
+
+  /* ---------- sheets / dialogs ---------- */
+  .scrim { position: fixed; inset: 0; background: rgba(15, 20, 25, .45); z-index: 40; display: flex; align-items: stretch; justify-content: center; }
+  .sheet { background: var(--bg); width: 100%; height: 100%; display: flex; flex-direction: column; }
+  .sheet-head { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 4px; border-bottom: 1px solid var(--line); min-height: 52px; }
+  .sheet-head h2 { font-size: 18px; margin: 0; flex: 1; padding-inline-start: 8px; }
+  .sheet-body { flex: 1; overflow-y: auto; padding: 12px 16px 16px; }
+  .sheet-foot { border-top: 1px solid var(--line); padding: 10px 16px max(10px, env(safe-area-inset-bottom)); display: grid; gap: 8px; background: var(--bg); }
+  .foot-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .foot-actions .btn { flex: 1 1 auto; }
+  .foot-actions .btn.primary, .foot-actions .btn.danger { flex: 2 1 auto; }
+  .field { display: grid; gap: 4px; margin-bottom: 16px; }
+  .field > .label, .field > label { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .help { font-size: 13px; color: var(--muted); }
+  .err { font-size: 13px; color: var(--red); font-weight: 600; }
+  .input { height: var(--tap); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 0 10px; background: var(--bg); width: 100%; }
+  .input[aria-invalid="true"] { border-color: var(--red); }
+  .pick-list { border: 1px solid var(--line); border-radius: var(--radius); max-height: 236px; overflow-y: auto; }
+  .pick { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--bg); text-align: start; }
+  .pick:last-child { border-bottom: 0; }
+  .pick .pn { font-weight: 700; flex: 1; }
+  .pick .pd { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .pick[aria-pressed="true"] { background: var(--green-tint); }
+  .picked { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--green); background: var(--green-tint); border-radius: var(--radius); }
+  .picked .pn { font-weight: 700; flex: 1; }
+  .stepper { display: flex; align-items: stretch; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; width: max-content; }
+  .stepper button { width: 48px; border: 0; background: var(--bg-soft); font-size: 22px; font-weight: 700; }
+  .stepper input { width: 84px; height: 46px; border: 0; border-inline: 1px solid var(--line-strong); text-align: center; font-weight: 700; font-size: 18px; }
+  .unit { align-self: center; padding: 0 12px; font-weight: 700; color: var(--muted); }
+  .opt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opt-chips .chip { height: 40px; }
+  .note-line { font-size: 14px; color: var(--muted); padding: 8px 0; border-top: 1px solid var(--line); }
+  .note-line strong { color: var(--text); }
+  .section-title { font-size: 15px; font-weight: 700; margin: 0 0 6px; }
+  .evidence { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+  .ev-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .ev-row .ev-main { flex: 1; }
+  .ev-row .ev-val { font-weight: 700; }
+  .ev-row .ev-src { font-size: 13px; color: var(--muted); }
+  .two { display: flex; gap: 8px; flex-wrap: wrap; }
+  .two .btn { flex: 1; min-width: 130px; }
+  .alert { border-radius: var(--radius); padding: 8px 12px; font-size: 14px; display: flex; gap: 8px; align-items: flex-start; }
+  .alert.error { background: var(--red-tint); color: #7a1a12; }
+  .alert.info { background: var(--blue-tint); color: #17445f; }
+  .alert.success { background: var(--green-tint); color: var(--green-strong); }
+  .alert.warn { background: var(--amber-tint); color: #6b3507; }
+  .alert .i { width: 18px; height: 18px; margin-top: 1px; }
+  .proto-note { font-size: 12px; color: var(--faint); margin-top: 8px; }
+
+  .summary { padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .summary .sn { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+  .summary dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 8px 0 0; font-size: 14px; }
+  .summary dt { color: var(--muted); }
+  .summary dd { margin: 0; }
+  .choice { display: flex; gap: 12px; align-items: center; width: 100%; min-height: 56px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--bg); text-align: start; margin-bottom: 8px; }
+  .choice[aria-checked="true"] { border-color: var(--green); background: var(--green-tint); }
+  .choice .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); flex: none; position: relative; }
+  .choice[aria-checked="true"] .radio { border-color: var(--green); }
+  .choice[aria-checked="true"] .radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--green); }
+  .choice .ct { font-weight: 700; display: block; }
+  .choice .cd { font-size: 14px; color: var(--muted); }
+  .choice[aria-disabled="true"] { opacity: .75; cursor: default; background: var(--bg-soft); }
+
+  /* scan */
+  .viewfinder { position: relative; background: #1b1f24; border-radius: var(--radius); aspect-ratio: 4 / 3; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .viewfinder svg.label { width: 72%; height: auto; }
+  .viewfinder .frame { position: absolute; inset: 14% 10%; border: 2px solid rgba(255,255,255,.85); border-radius: 6px; box-shadow: 0 0 0 999px rgba(0,0,0,.35); }
+  .viewfinder .vf-note { position: absolute; bottom: 8px; inset-inline: 0; text-align: center; color: #fff; font-size: 13px; }
+  .thumb { display: flex; gap: 12px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .thumb .tv { width: 112px; flex: none; background: #1b1f24; border-radius: 4px; padding: 6px; }
+  .thumb .tv svg { width: 100%; height: auto; display: block; }
+  .cand { border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; }
+  .cand[data-selected="true"] { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
+  .cand.blocked { background: var(--bg-soft); }
+  .cand-head { display: flex; gap: 10px; align-items: flex-start; }
+  .cand-head .choice { margin: 0; border: 0; padding: 0; min-height: 44px; background: none; flex: 1; }
+  .raw { font-size: 13px; color: var(--muted); }
+  .raw q { color: var(--text); font-weight: 700; quotes: "„" "”"; }
+  .issues { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .issue { font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--amber-tint); color: #6b3507; }
+  .date-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .date-grid .input { text-align: center; padding: 0 4px; }
+  .time-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 220px; }
+  .mini { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
+  .check input { width: 20px; height: 20px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--green); border-radius: 50%; margin: 0 auto 12px; }
+  @media (prefers-reduced-motion: no-preference) { .spinner { animation: spin 1s linear infinite; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- tablet / desktop ---------- */
+  @media (min-width: 600px) {
+    .scrim { align-items: center; padding: 24px; }
+    .sheet { width: 520px; height: auto; max-height: 88vh; border-radius: 8px; overflow: hidden; }
+    .sheet.wide { width: 720px; }
+  }
+  @media (min-width: 900px) {
+    .nav { display: flex; }
+    .appbar-row { padding: 0 16px; }
+    .menu-btn { display: none !important; }
+    .controls { padding: 18px 24px 8px; grid-template-columns: 1fr; }
+    .filters { gap: 10px; }
+    .filters .search { flex: 0 1 340px; }
+    .filters .chips { padding: 0; }
+    .open-inline { display: inline-flex; margin-inline-start: auto; }
+    .actionbar { display: none; }
+    .list { margin: 0 24px 24px; border: 1px solid var(--line); border-radius: 8px; overflow: clip; }
+    .op-word { display: none; }
+    .colhead { display: grid; position: sticky; top: 52px; z-index: 6; background: var(--bg); font-size: 13px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--line); }
+    .row, .colhead { grid-template-columns: minmax(220px, 2.2fr) 0.8fr 1.2fr 1.1fr 1.1fr 0.9fr 128px; grid-template-areas: none; padding: 0 16px; column-gap: 12px; }
+    .colhead > div { padding: 8px 0; }
+    .row { min-height: 52px; padding-block: 6px; }
+    .row .name, .row .meta, .row .when, .row .act { grid-area: auto; }
+    .row .meta { display: contents; font-size: 15px; }
+    .row .meta .sep { display: none; }
+    .row .meta > span { color: var(--text); }
+    .row .when { display: contents; }
+    .row .left, .row .exact { text-align: start; font-size: 15px; }
+    .row .exact { color: var(--text); }
+    .row .act { justify-self: end; }
+    .row .sync { grid-column: 1 / -1; margin: 0 0 4px; }
+    .group { top: 89px; padding: 6px 16px; }
+    .closed-line { grid-column: 2 / -1; text-align: start; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+/* =====================================================================================
+   Synthetic data. Fixed clock: 2026-11-25 19:00 Asia/Jerusalem (17:00Z).
+   ===================================================================================== */
+const NOW = Date.UTC(2026, 10, 25, 17, 0);
+const H = 3600e3, D = 24 * H;
+const EXPIRING_WINDOW = 72 * H; // mirrors the current selectItems window (policy follow-up UI1-1)
+
+const DEPTS = { bar: 'בר', kitchen: 'מטבח' };
+const FRIDGES = {
+  bar: ['מקרר בר ראשי', 'מקרר יין', 'מקפיא בר'],
+  kitchen: ['מקרר מטבח 1', 'מקרר מטבח 2'],
+};
+const PRODUCTS = {
+  bar: [
+    { id: 'p1', name: 'לימון חתוך', unit: 'units', days: 2, fridge: 'מקרר בר ראשי' },
+    { id: 'p2', name: 'נענע טרייה', unit: 'kg', days: 1, fridge: 'מקרר בר ראשי' },
+    { id: 'p3', name: 'שמנת מתוקה', unit: 'units', days: 3, fridge: 'מקרר בר ראשי' },
+    { id: 'p4', name: 'רוטב פסיפלורה ביתי עם וניל ומעט צ׳ילי לקוקטיילים של הערב', unit: 'kg', days: 3, fridge: 'מקרר יין' },
+    { id: 'p5', name: 'פירה תות', unit: 'kg', days: 5, fridge: 'מקפיא בר' },
+    { id: 'p6', name: 'מיץ תפוזים סחוט', unit: 'units', days: 2, fridge: 'מקרר בר ראשי' },
+    { id: 'p7', name: 'סירופ סוכר ביתי', unit: 'kg', days: 7, fridge: 'מקרר בר ראשי' },
+    { id: 'p8', name: 'חלב שקדים', unit: 'units', days: 7, fridge: 'מקרר יין' },
+  ],
+  kitchen: [
+    { id: 'k1', name: 'לימון חתוך', unit: 'units', days: 2, fridge: 'מקרר מטבח 1' },
+    { id: 'k2', name: 'עוף מבושל', unit: 'kg', days: 3, fridge: 'מקרר מטבח 1' },
+    { id: 'k3', name: 'אורז מבושל', unit: 'kg', days: 2, fridge: 'מקרר מטבח 2' },
+    { id: 'k4', name: 'רוטב עגבניות', unit: 'kg', days: 4, fridge: 'מקרר מטבח 2' },
+  ],
+};
+let seq = 0;
+const it = (dept, name, amount, unit, fridge, expiresIn, openedAgo, by, sync = 'synced') =>
+  ({ id: 'i' + (++seq), dept, name, amount, unit, fridge, expiry: NOW + expiresIn, openedAt: NOW - openedAgo, by, sync });
+const ITEMS = [
+  it('bar', 'שמנת מתוקה', 2, 'units', 'מקרר בר ראשי', -24 * H, 4 * D, 'דנה כהן'),
+  it('bar', 'סירופ סוכר ביתי', 1.5, 'kg', 'מקרר בר ראשי', -3 * H, 7 * D, 'יוסי לוי'),
+  it('bar', 'נענע טרייה', 0.5, 'kg', 'מקרר בר ראשי', 9 * H, 15 * H, 'נועה לוי'),
+  it('bar', 'מיץ תפוזים סחוט', 3, 'units', 'מקרר בר ראשי', 20 * H, 28 * H, 'נועה לוי', 'failed'),
+  it('bar', 'לימון חתוך', 6, 'units', 'מקרר בר ראשי', 35 * H, 13 * H, 'דנה כהן'),
+  it('bar', 'רוטב פסיפלורה ביתי עם וניל ומעט צ׳ילי לקוקטיילים של הערב', 1.25, 'kg', 'מקרר יין', 50 * H, 22 * H, 'יוסי לוי'),
+  it('bar', 'פירה תות', 0.75, 'kg', 'מקפיא בר', 60 * H, 2 * D, 'נועה לוי', 'pending'),
+  it('bar', 'מלפפון פרוס', 1, 'kg', 'מקרר בר ראשי', 84 * H, 12 * H, 'דנה כהן'),
+  it('bar', 'אננס חתוך', 2, 'kg', 'מקרר יין', 4 * D, 1 * D, 'יוסי לוי'),
+  it('bar', 'קצפת וניל', 1, 'units', 'מקרר בר ראשי', 5 * D, 2 * H, 'נועה לוי'),
+  it('bar', 'ג׳ינג׳ר מגורר', 0.25, 'kg', 'מקרר בר ראשי', 6 * D, 1 * D, 'דנה כהן'),
+  it('bar', 'חלב שקדים', 4, 'units', 'מקרר יין', 8 * D, 3 * H, 'יוסי לוי'),
+  it('bar', 'שוקולד מומס', 0.5, 'kg', 'מקרר בר ראשי', 10 * D, 4 * D, 'נועה לוי'),
+  it('bar', 'קרם קוקוס', 2, 'units', 'מקפיא בר', 12 * D, 2 * D, 'דנה כהן'),
+  it('kitchen', 'עוף מבושל', 3.5, 'kg', 'מקרר מטבח 1', -2 * H, 3 * D, 'אבי מזרחי'),
+  it('kitchen', 'אורז מבושל', 4, 'kg', 'מקרר מטבח 2', 14 * H, 34 * H, 'שירן אזולאי'),
+  it('kitchen', 'לימון חתוך', 10, 'units', 'מקרר מטבח 1', 30 * H, 18 * H, 'אבי מזרחי'),
+  it('kitchen', 'רוטב עגבניות', 2, 'kg', 'מקרר מטבח 2', 70 * H, 1 * D, 'שירן אזולאי'),
+  it('kitchen', 'שמנת מתוקה', 3, 'units', 'מקרר מטבח 1', 4 * D, 3 * H, 'אבי מזרחי'),
+  it('kitchen', 'בצל מטוגן', 1, 'kg', 'מקרר מטבח 1', 5 * D, 1 * D, 'שירן אזולאי'),
+];
+const CLOSED = [
+  { id: 'c1', dept: 'bar', name: 'נענע טרייה', amount: 0.3, unit: 'kg', fridge: 'מקרר בר ראשי', action: 'discarded', reason: 'expired', at: NOW - 2 * H, by: 'נועה לוי' },
+  { id: 'c2', dept: 'bar', name: 'לימון חתוך', amount: 4, unit: 'units', fridge: 'מקרר בר ראשי', action: 'discarded', reason: 'damaged', at: NOW - 26 * H, by: 'דנה כהן' },
+  { id: 'c3', dept: 'kitchen', name: 'לימון חתוך', amount: 6, unit: 'units', fridge: 'מקרר מטבח 1', action: 'discarded', reason: 'other', note: 'נפל על הרצפה', at: NOW - 5 * H, by: 'אבי מזרחי' },
+];
+const REASONS = { expired: 'פג תוקף', damaged: 'נפגם', other: 'אחר' };
+const USERS = {
+  staff: { name: 'נועה לוי', initials: 'נל', role: 'עובד', dept: 'bar' },
+  manager: { name: 'אבי מזרחי', initials: 'אמ', role: 'מנהל מחלקה', dept: 'kitchen' },
+  admin: { name: 'אלון', initials: 'א', role: 'מנהל מערכת', dept: null },
+};
+
+/* -------------------------------------------------------------------------------------
+   Scan fixtures. Shapes follow DateScanResult (version 1) from src/domain/dateEvidence.ts;
+   'packaging' and 'staffIncomplete' are the exact fixtures published in DATE_SCAN_CONTRACT.md.
+   They are synthetic: no image is read and no recognition quality is implied.
+   ------------------------------------------------------------------------------------- */
+const SCAN_FIXTURES = {
+  packaging: {
+    version: 1, source: 'packaging', outcome: 'candidates',
+    candidates: [{ id: 'candidate-1', rawText: 'לשימוש עד 28.11.2026', meaning: 'manufacturer-expiry',
+      reading: { precision: 'day', date: { year: 2026, month: 11, day: 28 } }, issues: [] }],
+  },
+  staffIncomplete: {
+    version: 1, source: 'staff-label', outcome: 'candidates',
+    candidates: [{ id: 'candidate-2', rawText: 'נפתח 25/11', meaning: 'opened-at', reading: null, issues: ['missing-year', 'missing-time'] }],
+  },
+  ambiguous: {
+    version: 1, source: 'staff-label', outcome: 'candidates',
+    candidates: [
+      { id: 'candidate-3', rawText: '03/04/27', meaning: 'label-expiry', reading: { precision: 'day', date: { year: 2027, month: 4, day: 3 } }, issues: ['ambiguous'] },
+      { id: 'candidate-4', rawText: '03/04/27', meaning: 'label-expiry', reading: { precision: 'day', date: { year: 2027, month: 3, day: 4 } }, issues: ['ambiguous'] },
+    ],
+  },
+  manufactured: {
+    version: 1, source: 'packaging', outcome: 'candidates',
+    candidates: [
+      { id: 'candidate-5', rawText: 'תאריך ייצור 20.11.2026', meaning: 'manufactured-at', reading: { precision: 'day', date: { year: 2026, month: 11, day: 20 } }, issues: [] },
+      { id: 'candidate-6', rawText: 'בתוקף עד 20.12.2026', meaning: 'manufacturer-expiry', reading: { precision: 'day', date: { year: 2026, month: 12, day: 20 } }, issues: [] },
+      { id: 'candidate-7', rawText: 'L2611 0425', meaning: 'unknown', reading: null, issues: ['unreadable'] },
+    ],
+  },
+  unreadable: { version: 1, source: 'packaging', outcome: 'unreadable', candidates: [] },
+};
+const MEANING = {
+  'opened-at': 'זמן פתיחה',
+  'manufacturer-expiry': 'תוקף יצרן',
+  'label-expiry': 'תוקף בתווית צוות',
+  'manufactured-at': 'תאריך ייצור',
+  unknown: 'משמעות לא ידועה',
+};
+const CONFIRMABLE = ['manufacturer-expiry', 'label-expiry', 'opened-at'];
+const ISSUE = { 'missing-year': 'חסרה שנה', 'missing-time': 'חסרה שעה', ambiguous: 'לא חד־משמעי', unreadable: 'לא קריא' };
+const SOURCE = { manual: 'הוזן ידנית', packaging: 'מהאריזה', 'staff-label': 'מתווית צוות' };
+
+/* Mirrors parseCalendarDate's rules for UI feedback only; the shared parser stays authoritative. */
+function validCalendar(y, m, d) {
+  if (![y, m, d].every(Number.isInteger) || y < 1 || y > 9999 || m < 1 || m > 12 || d < 1) return false;
+  const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  return d <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+}
+
+/* =====================================================================================
+   State
+   ===================================================================================== */
+const params = new URLSearchParams(location.search);
+const S = {
+  role: params.get('role') || 'staff',
+  dept: params.get('dept') || null,
+  mode: params.get('mode') || 'open',
+  data: params.get('data') || 'busy',
+  offline: params.get('offline') === '1',
+  shift: params.get('shift') !== 'off',
+  outcome: params.get('outcome') || 'synced', // synced | pending | error | slow
+  fixture: params.get('fixture') || 'packaging',
+  camera: params.get('camera') || 'granted',
+  q: params.get('q') || '',
+  status: params.get('status') || 'all',
+  fridge: 'all',
+  sheet: null,
+  open: null,
+  close: null,
+  scan: null,
+};
+const user = () => USERS[S.role];
+const allowedDepts = () => (S.role === 'admin' ? ['bar', 'kitchen', 'all'] : [user().dept]);
+if (!S.dept || !allowedDepts().includes(S.dept)) S.dept = allowedDepts()[0];
+
+/* =====================================================================================
+   Formatting
+   ===================================================================================== */
+const fmt = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const dt = ms => { const p = Object.fromEntries(fmt.formatToParts(ms).map(x => [x.type, x.value])); return `${p.day}.${p.month} ${p.hour}:${p.minute}`; };
+const UNIT = { kg: 'ק״ג', units: 'יח׳' };
+const qty = (a, u) => `${a} ${UNIT[u]}`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const readingText = r => r ? `${pad(r.date.day)}.${pad(r.date.month)}.${r.date.year}${r.precision === 'minute' ? ` ${pad(r.hour)}:${pad(r.minute)}` : ''}` : '';
+function span(ms) {
+  const a = Math.abs(ms);
+  if (a < H) return 'פחות משעה';
+  if (a < 48 * H) { const h = Math.floor(a / H); return h === 1 ? 'שעה' : `${h} שע׳`; }
+  const d = Math.floor(a / D); return `${d} ימים`;
+}
+const remaining = exp => exp <= NOW ? `פג לפני ${span(NOW - exp)}` : `נותרו ${span(exp - NOW)}`;
+const status = i => i.expiry <= NOW ? 'expired' : i.expiry - NOW <= EXPIRING_WINDOW ? 'expiring' : 'ok';
+const STATUS = { expired: 'פג תוקף', expiring: 'עומד לפוג', ok: 'בתוקף' };
+
+/* =====================================================================================
+   Icons (inline, single set)
+   ===================================================================================== */
+const P = {
+  menu: 'M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z',
+  search: 'M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 9.5 16a6.5 6.5 0 0 0 4.2-1.6l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z',
+  close: 'M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z',
+  plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z',
+  camera: 'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.2 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.2L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z',
+  edit: 'M3 17.2V21h3.8l11-11-3.8-3.8-11 11zM20.7 7a1 1 0 0 0 0-1.4l-2.3-2.3a1 1 0 0 0-1.4 0l-1.8 1.8 3.8 3.8L20.7 7z',
+  clock: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z',
+  alert: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+  info: 'M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z',
+  offline: 'M23.6 7C23.2 6.6 18.6 3 12 3c-1.5 0-2.8.2-4 .5L18.3 13.8 23.6 7zM3.4 1.5 2 2.9l2.1 2.1C1.8 6.1.6 7 .4 7.2l11.6 14.5 3.9-4.9 3.3 3.3 1.4-1.4L3.4 1.5z',
+  check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z',
+  back: 'M4 11h12.2l-5.6-5.6L12 4l8 8-8 8-1.4-1.4 5.6-5.6H4z',
+  image: 'M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z',
+};
+const icon = (n, extra = '') => `<svg class="i ${extra}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${P[n]}"/></svg>`;
+
+/* =====================================================================================
+   Inventory screen
+   ===================================================================================== */
+function scopeItems() {
+  return ITEMS.filter(i => S.dept === 'all' || i.dept === S.dept);
+}
+function visibleItems() {
+  const q = S.q.trim();
+  return scopeItems()
+    .filter(i => !q || i.name.includes(q) || i.fridge.includes(q))
+    .filter(i => S.fridge === 'all' || i.fridge === S.fridge)
+    .filter(i => S.status === 'all' || status(i) === S.status)
+    .sort((a, b) => a.expiry - b.expiry);
+}
+function counts() {
+  const base = scopeItems().filter(i => S.fridge === 'all' || i.fridge === S.fridge)
+    .filter(i => !S.q.trim() || i.name.includes(S.q.trim()) || i.fridge.includes(S.q.trim()));
+  const c = { all: base.length, expired: 0, expiring: 0, ok: 0 };
+  base.forEach(i => c[status(i)]++);
+  return c;
+}
+function appBar() {
+  const u = user();
+  const title = S.mode === 'open' ? 'מלאי' : 'נזרקו';
+  return `<header class="appbar"><div class="appbar-row">
+    <button class="icon-btn menu-btn" aria-label="פתיחת תפריט">${icon('menu')}</button>
+    <span class="brand" aria-hidden="true">TossIt</span>
+    <nav class="nav" aria-label="ניווט ראשי">
+      <a href="#" aria-current="page">מלאי</a><a href="#">דוחות</a>${S.role !== 'staff' ? '<a href="#">ניהול</a>' : ''}${S.role === 'admin' ? '<a href="#">הגדרות</a>' : ''}
+    </nav>
+    <span class="spacer"></span>
+    <span class="shift ${S.shift ? '' : 'off'}"><span class="dot" aria-hidden="true"></span>${S.shift ? 'במשמרת מ־16:00' : 'לא במשמרת'}</span>
+    <button class="icon-btn" aria-label="${esc(u.name)}, ${esc(u.role)}"><span class="avatar" aria-hidden="true">${esc(u.initials)}</span></button>
+  </div></header>
+  ${S.offline ? `<div class="banner offline" role="status">${icon('offline')}<span>אין חיבור. פעולות נשמרות במכשיר ויישלחו כשהחיבור יחזור.</span><span class="count">2 ממתינות</span></div>` : ''}`;
+}
+function controls() {
+  const depts = allowedDepts();
+  const deptCtl = depts.length > 1
+    ? `<div class="seg" role="group" aria-label="מחלקה">${depts.map(d => `<button data-act="dept" data-v="${d}" aria-pressed="${S.dept === d}">${d === 'all' ? 'הכל' : DEPTS[d]}</button>`).join('')}</div>`
+    : `<span class="dept-label">${DEPTS[depts[0]]}</span>`;
+  const modeCtl = `<div class="seg" role="group" aria-label="תצוגה"><button data-act="mode" data-v="open" aria-pressed="${S.mode === 'open'}">פתוחים</button><button data-act="mode" data-v="discarded" aria-pressed="${S.mode === 'discarded'}">נזרקו</button></div>`;
+  const fridges = S.dept === 'all' ? [...FRIDGES.bar, ...FRIDGES.kitchen] : FRIDGES[S.dept];
+  const c = counts();
+  const chips = S.mode === 'open' ? `<div class="chips" role="group" aria-label="סינון לפי מצב">
+      ${['all', 'expired', 'expiring', 'ok'].map(k => `<button class="chip ${k}" data-act="status" data-v="${k}" aria-pressed="${S.status === k}">${k === 'all' ? 'הכל' : STATUS[k]} <span class="n">${c[k]}</span></button>`).join('')}
+    </div>` : '';
+  return `<section class="controls" aria-label="סינון">
+    <div class="toolbar">
+      <h1 class="sr">${S.mode === 'open' ? 'מלאי פתוח' : 'פריטים שנזרקו'} — ${S.dept === 'all' ? 'כל המחלקות' : DEPTS[S.dept]}</h1>
+      ${deptCtl}${modeCtl}
+      ${S.mode === 'open' ? `<button class="btn primary open-inline" data-act="open-sheet" ${canOpen() ? '' : 'disabled'}>${icon('plus')}פתיחת פריט</button>` : ''}
+    </div>
+    <div class="filters">
+      <div class="search">${icon('search')}
+        <input id="q" type="search" aria-label="חיפוש פריט" placeholder="חיפוש פריט או מקרר" value="${esc(S.q)}" data-bind="q" autocomplete="off" />
+        ${S.q ? `<button class="icon-btn clear" data-act="clear-q" aria-label="ניקוי חיפוש">${icon('close')}</button>` : ''}
+      </div>
+      <select class="select" aria-label="מקרר" data-bind="fridge">
+        <option value="all">כל המקררים</option>
+        ${fridges.map(f => `<option ${S.fridge === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}
+      </select>
+      ${wide() ? chips : ''}
+    </div>
+    ${wide() ? '' : chips}
+  </section>`;
+}
+function rowHtml(i) {
+  const st = status(i);
+  const showTag = S.dept === 'all';
+  const sync = i.sync === 'pending'
+    ? `<div class="sync pending">${icon('clock')}ממתין לשליחה — נשמר במכשיר, עדיין לא בשרת</div>`
+    : i.sync === 'failed'
+      ? `<div class="sync failed">${icon('alert')}הפתיחה נכשלה ולא נשמרה בשרת <button class="link-btn" data-act="noop">נסה שוב</button></div>` : '';
+  return `<article class="row ${st}" aria-label="${esc(i.name)}${showTag ? ', ' + DEPTS[i.dept] : ''}, ${STATUS[st]}">
+    <h3 class="name" style="margin:0">${esc(i.name)}${showTag ? `<span class="tag">${DEPTS[i.dept]}</span>` : ''}</h3>
+    <div class="meta"><span class="qty num">${qty(i.amount, i.unit)}</span><span class="sep" aria-hidden="true">·</span><span>${esc(i.fridge)}</span><span class="sep" aria-hidden="true">·</span><span class="opened"><span class="op-word">נפתח </span><span class="ltr num">${dt(i.openedAt)}</span></span></div>
+    <div class="when"><div class="left">${remaining(i.expiry)}</div><div class="exact">עד <span class="ltr num">${dt(i.expiry)}</span></div></div>
+    <div class="act"><button class="btn small" data-act="close-sheet" data-id="${i.id}" aria-label="סגירה (נגמר / נזרק) — ${esc(i.name)}">סגירה</button></div>
+    ${sync}
+  </article>`;
+}
+function listHtml() {
+  if (S.data === 'loading') return `<div class="list" role="status" aria-label="טוען מלאי">${'<div class="skel"><span style="width:55%"></span><span style="width:35%"></span></div>'.repeat(6)}</div>`;
+  if (S.data === 'error') return `<div class="state error" role="alert"><h2>טעינת המלאי נכשלה</h2><p>לא התקבלה תשובה מהשרת. הנתונים לא נמחקו.</p><button class="btn" data-act="retry">נסה שוב</button></div>`;
+  if (S.mode === 'discarded') return discardedHtml();
+  if (S.data === 'empty') return `<div class="state"><h2>אין פריטים פתוחים</h2><p>פריטים שתפתחו יופיעו כאן, מסודרים לפי זמן התפוגה.</p>${canOpen() ? '<button class="btn primary" data-act="open-sheet">' + icon('plus') + 'פתיחת פריט</button>' : ''}</div>`;
+  const items = visibleItems();
+  if (!items.length) return `<div class="state"><h2>אין פריטים שתואמים לחיפוש או לסינון</h2><p>יש ${scopeItems().length} פריטים פתוחים בתצוגה הזו.</p><button class="btn" data-act="reset-filters">נקה חיפוש וסינון</button></div>`;
+  const head = `<div class="colhead" aria-hidden="true"><div>מוצר</div><div>כמות</div><div>מקרר</div><div>נפתח</div><div>נותר</div><div>תוקף</div><div></div></div>`;
+  let html = '', last = null;
+  items.forEach(i => {
+    const st = status(i);
+    if (st !== last) {
+      const n = items.filter(x => status(x) === st).length;
+      html += `<h2 class="group ${st}" style="margin:0">${STATUS[st]}<span class="num">${n}</span></h2>`;
+      last = st;
+    }
+    html += rowHtml(i);
+  });
+  return `<div class="list">${head}${html}</div>`;
+}
+function discardedHtml() {
+  const rows = CLOSED.filter(c => S.dept === 'all' || c.dept === S.dept).filter(c => !S.q || c.name.includes(S.q));
+  if (!rows.length) return `<div class="state"><h2>לא נזרקו פריטים</h2><p>אין זריקות בתצוגה הזו.</p></div>`;
+  return `<div class="list">${rows.map(c => `<article class="row" aria-label="${esc(c.name)}, נזרק">
+    <h3 class="name" style="margin:0">${esc(c.name)}${S.dept === 'all' ? `<span class="tag">${DEPTS[c.dept]}</span>` : ''}</h3>
+    <div class="meta"><span class="qty num">${qty(c.amount, c.unit)}</span><span class="sep" aria-hidden="true">·</span><span>${REASONS[c.reason]}${c.note ? ': ' + esc(c.note) : ''}</span><span class="sep" aria-hidden="true">·</span><span>${esc(c.by)}</span></div>
+    <div class="closed-line">נזרק <span class="ltr num">${dt(c.at)}</span></div>
+  </article>`).join('')}</div>`;
+}
+function actionBar() {
+  if (S.mode !== 'open') return '';
+  if (!S.shift && S.role === 'staff') return `<div class="actionbar"><span class="note">כדי לפתוח פריטים יש להתחיל משמרת.</span><button class="btn primary" data-act="start-shift">התחלת משמרת</button></div>`;
+  return `<div class="actionbar"><button class="btn primary block" data-act="open-sheet">${icon('plus')}פתיחת פריט</button></div>`;
+}
+const canOpen = () => S.shift || S.role !== 'staff';
+const wide = () => window.matchMedia('(min-width: 900px)').matches;
+
+/* =====================================================================================
+   Open sheet
+   ===================================================================================== */
+function newOpen() {
+  const dept = S.dept === 'all' ? 'bar' : S.dept;
+  return { dept, pq: '', product: null, amount: '1', fridge: '', phase: 'idle', error: null, notice: null, amountInvalid: false, evidence: [], operationId: null };
+}
+function productById(dept, id) { return PRODUCTS[dept].find(p => p.id === id); }
+function openSheet() {
+  const o = S.open;
+  const p = o.product && productById(o.dept, o.product);
+  const busy = o.phase === 'busy';
+  const list = PRODUCTS[o.dept].filter(x => !o.pq.trim() || x.name.includes(o.pq.trim()));
+  const productField = p
+    ? `<div class="picked"><span class="pn">${esc(p.name)}</span><span class="pd">${UNIT[p.unit]} · ${p.days} ימים</span><button class="btn small" data-act="change-product" ${busy ? 'disabled' : ''}>שינוי</button></div>`
+    : `<input id="pq" class="input" type="search" aria-label="חיפוש מוצר" placeholder="חיפוש מוצר" value="${esc(o.pq)}" data-bind="open.pq" autocomplete="off" />
+       <div class="pick-list" role="group" aria-labelledby="lbl-product">${list.length ? list.map(x => `<button class="pick" data-act="pick" data-id="${x.id}"><span class="pn">${esc(x.name)}</span><span class="pd">${UNIT[x.unit]} · ${x.days} ימים</span></button>`).join('') : '<div class="help" style="padding:12px">לא נמצא מוצר בקטלוג של המחלקה</div>'}</div>`;
+  const catalogExpiry = p ? dt(NOW + p.days * D) : null;
+  const evidence = o.evidence.map((e, n) => `<div class="ev-row"><div class="ev-main"><div><span class="ev-val">${MEANING[e.meaning]}: <span class="ltr num">${readingText(e.reading)}</span></span>${e.reading.precision === 'day' ? ' <span class="help">(יום בלבד)</span>' : ''}</div><div class="ev-src">${SOURCE[e.source]} · אושר ידנית</div></div><button class="icon-btn" data-act="remove-ev" data-n="${n}" aria-label="הסרת ${MEANING[e.meaning]}" ${busy ? 'aria-disabled="true"' : ''}>${icon('close')}</button></div>`).join('');
+  const footMsg = o.error ? `<div class="alert error" role="alert">${icon('alert')}<span>${esc(o.error)}</span></div>`
+    : o.notice ? `<div class="alert ${o.notice.kind}" role="status">${icon(o.notice.kind === 'success' ? 'check' : 'clock')}<span>${esc(o.notice.text)}</span></div>` : '';
+  return sheetFrame('open', `פתיחת פריט — ${DEPTS[o.dept]}`, busy, `
+    ${S.offline ? `<div class="alert info" style="margin-bottom:12px">${icon('offline')}<span>אין חיבור. הפריט יישמר במכשיר ויישלח לשרת כשהחיבור יחזור.</span></div>` : ''}
+    ${S.dept === 'all' ? `<div class="field"><span class="label">מחלקה</span><div class="seg" role="group" aria-label="מחלקה לפתיחה">${['bar', 'kitchen'].map(d => `<button data-act="open-dept" data-v="${d}" aria-pressed="${o.dept === d}" ${busy || p ? 'disabled' : ''}>${DEPTS[d]}</button>`).join('')}</div></div>` : ''}
+    <div class="field"><span class="label" id="lbl-product">מוצר</span>${productField}</div>
+    <div class="field"><label for="amount">כמות</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="stepper">
+          <button data-act="step" data-v="-1" aria-label="הפחתה" ${!p || busy ? 'disabled' : ''}>−</button>
+          <input id="amount" inputmode="${p && p.unit === 'kg' ? 'decimal' : 'numeric'}" dir="ltr" value="${esc(o.amount)}" data-bind="open.amount" aria-invalid="${o.amountInvalid}" aria-describedby="amount-help" ${!p || busy ? 'disabled' : ''} />
+          <button data-act="step" data-v="1" aria-label="הוספה" ${!p || busy ? 'disabled' : ''}>+</button>
+        </div>
+        ${p ? `<span class="unit">${UNIT[p.unit]}</span>` : ''}
+      </div>
+      <span id="amount-help" class="${o.amountInvalid ? 'err' : 'help'}">${o.amountInvalid ? (p.unit === 'kg' ? 'יש להזין משקל גדול מ־0, למשל 0.5' : 'יש להזין מספר שלם של יחידות, 1 ומעלה') : !p ? 'בחר מוצר כדי להזין כמות' : p.unit === 'kg' ? 'אפשר משקל עשרוני, למשל 0.5' : 'מספר שלם של יחידות'}</span>
+    </div>
+    <div class="field"><span class="label">מקרר</span>
+      <div class="opt-chips" role="radiogroup" aria-label="מקרר">${['', ...FRIDGES[o.dept]].map(f => `<button class="chip" role="radio" aria-checked="${o.fridge === f}" aria-pressed="${o.fridge === f}" data-act="open-fridge" data-v="${esc(f)}" ${busy ? 'disabled' : ''}>${f ? esc(f) : 'ללא מקרר'}</button>`).join('')}</div>
+    </div>
+    ${p ? `<div class="note-line">תוקף לפי הקטלוג: <strong><span class="ltr num">${catalogExpiry}</span></strong> (${p.days} ימים מרגע הפתיחה)</div>` : ''}
+    <div class="evidence">
+      <h3 class="section-title">תאריך מהאריזה או מהתווית <span class="help">(רשות)</span></h3>
+      ${evidence}
+      <div class="two" style="margin-top:8px">
+        <button class="btn" data-act="scan-start" ${busy ? 'disabled' : ''}>${icon('camera')}סריקת תאריך</button>
+        <button class="btn" data-act="manual-start" ${busy ? 'disabled' : ''}>${icon('edit')}הזנה ידנית</button>
+      </div>
+      <p class="proto-note">אב־טיפוס: התאריך המאושר מוצג בלבד. הוא אינו נשלח ואינו משנה את התוקף עד שחוזה C1 ומדיניות התאריכים יאושרו.</p>
+    </div>`,
+    `${footMsg}<button class="btn primary block" data-act="submit-open" ${!p || busy ? 'disabled' : ''}>${busy ? 'שולח...' : 'פתח פריט'}</button>`);
+}
+function submitOpen() {
+  const o = S.open, p = productById(o.dept, o.product);
+  o.error = null; o.notice = null;
+  const raw = o.amount.trim();
+  const ok = p.unit === 'kg' ? /^\d+(\.\d+)?$/.test(raw) && Number(raw) > 0 : /^\d+$/.test(raw) && Number(raw) >= 1;
+  if (!ok) { o.amountInvalid = true; render(); document.getElementById('amount')?.focus(); return; }
+  o.operationId = o.operationId || 'op-' + Math.random().toString(36).slice(2, 8); // one intent, reused on retry
+  o.phase = 'busy'; render();
+  const result = S.offline ? 'pending' : S.outcome;
+  setTimeout(() => {
+    if (result === 'error') {
+      o.phase = 'idle';
+      o.error = 'השליחה לא הושלמה והפריט לא נשמר. נסה שוב — ניסיון חוזר לא ייצור פריט כפול.';
+    } else {
+      o.phase = 'idle';
+      o.notice = result === 'pending'
+        ? { kind: 'info', text: `"${p.name}" נשמר במכשיר וממתין לשליחה לשרת. הוא עדיין לא נשמר בשרת.` }
+        : { kind: 'success', text: `"${p.name}" נפתח. תוקף עד ${dt(NOW + p.days * D)}.` };
+      Object.assign(o, { product: null, amount: '1', fridge: '', evidence: [], operationId: null, pq: '' });
+    }
+    render();
+  }, S.outcome === 'slow' ? 60000 : 900);
+}
+
+/* =====================================================================================
+   Date review (scan + manual) — returns to the unchanged draft on cancel
+   ===================================================================================== */
+function startScan() { S.scan = { step: 'source', source: null, selected: null, edits: {}, manual: false, attempted: false }; S.sheet = 'scan'; render(); focusSheet(); }
+function startManual() {
+  S.scan = { step: 'review', source: 'manual', manual: true, selected: 'manual', attempted: false,
+    result: { candidates: [{ id: 'manual', rawText: '', meaning: 'manufacturer-expiry', reading: null, issues: [] }] }, edits: {} };
+  S.sheet = 'scan'; render(); focusSheet();
+}
+function labelSvg(kind) {
+  const handwritten = kind === 'staff-label';
+  const fx = SCAN_FIXTURES[S.fixture];
+  const text = fx.candidates[0]?.rawText || '····';
+  const lines = fx.candidates.length > 1 ? fx.candidates.map(c => c.rawText).filter((v, n, a) => a.indexOf(v) === n) : [text];
+  return `<svg class="label" viewBox="0 0 240 120" role="img" aria-label="תמונה סינתטית לדוגמה, לא צילום אמיתי">
+    <rect x="4" y="4" width="232" height="112" rx="6" fill="${handwritten ? '#fff7cf' : '#f3f4f6'}"/>
+    ${handwritten ? '<line x1="16" y1="40" x2="224" y2="40" stroke="#e5d68a"/><line x1="16" y1="76" x2="224" y2="76" stroke="#e5d68a"/>' : '<rect x="16" y="14" width="80" height="10" fill="#c9ced6"/><rect x="16" y="94" width="120" height="12" fill="#1f2937" opacity=".85"/>'}
+    ${lines.map((l, n) => `<text x="120" y="${(handwritten ? 36 : 52) + n * 28}" text-anchor="middle" direction="rtl" font-size="${handwritten ? 22 : 17}" font-family="${handwritten ? 'cursive, serif' : 'monospace, sans-serif'}" fill="#1f2937" ${handwritten ? 'transform="rotate(-3 120 60)"' : ''}>${esc(l)}</text>`).join('')}
+    ${S.fixture === 'unreadable' ? '<rect x="4" y="4" width="232" height="112" rx="6" fill="#fff" opacity=".65"/>' : ''}
+  </svg>`;
+}
+function scanSheet() {
+  const s = S.scan;
+  const cancel = `<button class="btn" data-act="scan-cancel">ביטול</button>`;
+  if (s.step === 'source') {
+    return sheetFrame('scan', 'סריקת תאריך', false, `
+      <p style="margin:0 0 12px">מה מצלמים? הסריקה רק מציעה תאריכים. שום תאריך לא נשמר בלי אישור שלך.</p>
+      <button class="choice" data-act="scan-source" data-v="packaging"><span>${icon('camera')}</span><span><span class="ct">אריזה</span><span class="cd">תאריך מודפס של היצרן</span></span></button>
+      <button class="choice" data-act="scan-source" data-v="staff-label"><span>${icon('edit')}</span><span><span class="ct">תווית צוות</span><span class="cd">תאריך שנכתב ביד על המדבקה</span></span></button>
+      <p class="proto-note">אב־טיפוס: אין זיהוי אמיתי. התוצאה נבחרת ב"בקרי אב־טיפוס" מתוך תרחישים סינתטיים (C0a).</p>`,
+      `<div class="foot-actions">${cancel}<button class="btn" data-act="manual-start">הזנה ידנית במקום</button></div>`, true);
+  }
+  if (s.step === 'capture') {
+    if (S.camera === 'denied') {
+      return sheetFrame('scan', s.source === 'packaging' ? 'צילום אריזה' : 'צילום תווית צוות', false, `
+        <div class="alert warn" role="alert">${icon('alert')}<span>אין הרשאה למצלמה. אפשר לבחור תמונה מהגלריה, או להזין את התאריך ידנית. הטופס נשמר כפי שהיה.</span></div>`,
+        `<div class="foot-actions">${cancel}<button class="btn" data-act="scan-gallery">${icon('image')}בחירה מהגלריה</button><button class="btn primary" data-act="manual-start">הזנה ידנית</button></div>`, true);
+    }
+    return sheetFrame('scan', s.source === 'packaging' ? 'צילום אריזה' : 'צילום תווית צוות', false, `
+      <div class="viewfinder">${labelSvg(s.source)}<div class="frame" aria-hidden="true"></div><div class="vf-note">יש למקם את התאריך בתוך המסגרת</div></div>
+      <p class="help">התמונה משמשת לקריאה בלבד ואינה נשמרת במלאי.</p>`,
+      `<div class="foot-actions">${cancel}<button class="btn" data-act="scan-gallery">${icon('image')}גלריה</button><button class="btn primary" data-act="scan-capture">${icon('camera')}צילום</button></div>`, true);
+  }
+  if (s.step === 'processing') {
+    return sheetFrame('scan', 'קורא תאריכים', false, `<div class="state" role="status"><div class="spinner" aria-hidden="true"></div><h2>קורא תאריכים מהתמונה...</h2><p>אפשר לבטל ולחזור לטופס.</p></div>`,
+      `<div class="foot-actions">${cancel}</div>`, true);
+  }
+  return reviewSheet();
+}
+/* Editable fields per candidate: values are kept as typed strings; empty stays empty (never inferred). */
+function editsFor(c) {
+  const s = S.scan;
+  if (!s.edits[c.id]) {
+    const r = c.reading;
+    s.edits[c.id] = {
+      meaning: CONFIRMABLE.includes(c.meaning) ? c.meaning : '',
+      day: r ? String(r.date.day) : '', month: r ? String(r.date.month) : '', year: r ? String(r.date.year) : '',
+      hour: r && r.precision === 'minute' ? String(r.hour) : '', minute: r && r.precision === 'minute' ? String(r.minute) : '',
+      dayOnly: false,
+    };
+    // A staff label "25/11" provides day and month in its raw text; prefill only what is written, never the year.
+    if (!r && c.issues.includes('missing-year')) {
+      const m = c.rawText.match(/(\d{1,2})\s*[/.]\s*(\d{1,2})/);
+      if (m) { s.edits[c.id].day = String(Number(m[1])); s.edits[c.id].month = String(Number(m[2])); }
+    }
+  }
+  return s.edits[c.id];
+}
+function candidateProblem(c) {
+  if (c.meaning === 'manufactured-at') return 'blocked';
+  const e = editsFor(c);
+  if (!e.meaning) return 'בחר מה התאריך מייצג';
+  const [d, m, y] = [e.day, e.month, e.year].map(v => (v.trim() === '' ? NaN : Number(v)));
+  if (!e.year.trim()) return 'חסרה שנה. יש להזין אותה (לא נקבעת אוטומטית)';
+  if (!validCalendar(y, m, d)) return 'התאריך אינו תאריך קיים בלוח השנה';
+  const hasTime = e.hour.trim() !== '' || e.minute.trim() !== '';
+  if (hasTime) {
+    const hh = Number(e.hour), mm = Number(e.minute);
+    if (!Number.isInteger(hh) || hh < 0 || hh > 23 || !Number.isInteger(mm) || mm < 0 || mm > 59 || e.hour.trim() === '' || e.minute.trim() === '') return 'שעה לא תקינה (00:00–23:59)';
+  } else if ((c.issues.includes('missing-time') || e.meaning === 'opened-at') && !e.dayOnly) {
+    return 'חסרה שעה. הזן שעה או סמן "יום בלבד"';
+  }
+  return null;
+}
+function readingFrom(e) {
+  const date = { year: Number(e.year), month: Number(e.month), day: Number(e.day) };
+  return e.hour.trim() !== '' ? { precision: 'minute', date, hour: Number(e.hour), minute: Number(e.minute), timezone: 'Asia/Jerusalem' } : { precision: 'day', date };
+}
+function candidateHtml(c, single) {
+  const s = S.scan;
+  const blocked = c.meaning === 'manufactured-at';
+  const selected = s.selected === c.id;
+  const e = blocked ? null : editsFor(c);
+  const problem = blocked ? null : candidateProblem(c);
+  const fieldsShown = !blocked && (selected || single);
+  const id = c.id;
+  return `<div class="cand ${blocked ? 'blocked' : ''}" data-selected="${selected}">
+    <div class="cand-head">
+      ${blocked
+        ? `<div class="choice" aria-disabled="true"><span class="radio" aria-hidden="true" style="opacity:.3"></span><span><span class="ct">${MEANING[c.meaning]}: <span class="ltr num">${readingText(c.reading)}</span></span><span class="cd">זה תאריך הייצור, לא תאריך תפוגה. לא ניתן לאשר אותו כתוקף או כזמן פתיחה.</span></span></div>`
+        : `<button class="choice" role="radio" aria-checked="${selected}" data-act="select-cand" data-id="${id}"><span class="radio" aria-hidden="true"></span><span><span class="ct">${c.reading ? `${MEANING[c.meaning]}: <span class="ltr num">${readingText(c.reading)}</span>` : s.manual ? 'תאריך ידני' : MEANING[c.meaning] + ': תאריך חלקי'}</span>${c.issues.includes('ambiguous') ? '<span class="cd">אותו טקסט יכול להיקרא כך. בחר את הקריאה הנכונה.</span>' : ''}</span></button>`}
+    </div>
+    ${c.rawText ? `<div class="raw">טקסט שזוהה: <q dir="auto">${esc(c.rawText)}</q></div>` : ''}
+    ${c.issues.length ? `<div class="issues">${c.issues.map(x => `<span class="issue">${ISSUE[x]}</span>`).join('')}</div>` : ''}
+    ${fieldsShown ? `
+      <div class="field" style="margin:10px 0 8px"><label for="m-${id}">מה התאריך מייצג</label>
+        <select id="m-${id}" class="input" data-bind="edit.${id}.meaning" ${c.meaning === 'unknown' || s.manual ? '' : ''}>
+          <option value="" ${!e.meaning ? 'selected' : ''} disabled>בחירה</option>
+          ${CONFIRMABLE.map(m => `<option value="${m}" ${e.meaning === m ? 'selected' : ''}>${MEANING[m]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:8px"><span class="label">תאריך</span>
+        <div class="date-grid" dir="rtl">
+          <label><span class="mini">יום</span><input id="d-${id}" class="input num" inputmode="numeric" dir="ltr" value="${esc(e.day)}" data-bind="edit.${id}.day" aria-label="יום" /></label>
+          <label><span class="mini">חודש</span><input id="mo-${id}" class="input num" inputmode="numeric" dir="ltr" value="${esc(e.month)}" data-bind="edit.${id}.month" aria-label="חודש" /></label>
+          <label><span class="mini">שנה${c.issues.includes('missing-year') ? ' (חסרה)' : ''}</span><input id="y-${id}" class="input num" inputmode="numeric" dir="ltr" value="${esc(e.year)}" data-bind="edit.${id}.year" aria-label="שנה" placeholder="————" aria-invalid="${s.attempted && !e.year.trim()}" /></label>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:4px"><span class="label">שעה ${e.meaning === 'opened-at' || c.issues.includes('missing-time') ? '' : '(רשות)'}</span>
+        <div class="time-grid" dir="ltr">
+          <label><span class="mini" dir="rtl">שעה</span><input id="h-${id}" class="input num" inputmode="numeric" value="${esc(e.hour)}" data-bind="edit.${id}.hour" aria-label="שעה" placeholder="--" ${e.dayOnly ? 'disabled' : ''} /></label>
+          <label><span class="mini" dir="rtl">דקות</span><input id="mi-${id}" class="input num" inputmode="numeric" value="${esc(e.minute)}" data-bind="edit.${id}.minute" aria-label="דקות" placeholder="--" ${e.dayOnly ? 'disabled' : ''} /></label>
+        </div>
+        ${e.meaning === 'opened-at' || c.issues.includes('missing-time') ? `<label class="check"><input type="checkbox" data-bind="edit.${id}.dayOnly" ${e.dayOnly ? 'checked' : ''} />אין שעה בתווית — יום בלבד, בלי לקבוע שעה</label>` : ''}
+      </div>
+      ${s.attempted && problem ? `<div class="err" role="alert">${esc(problem)}</div>` : ''}` : ''}
+  </div>`;
+}
+function reviewSheet() {
+  const s = S.scan;
+  const fx = s.manual ? s.result : SCAN_FIXTURES[S.fixture];
+  const title = s.manual ? 'הזנת תאריך ידנית' : 'בדיקת התאריכים שזוהו';
+  if (!s.manual && fx.outcome === 'unreadable') {
+    return sheetFrame('scan', title, false, `
+      <div class="thumb"><div class="tv">${labelSvg(s.source).replace('class="label"', '')}</div><div><strong>לא זוהה תאריך בתמונה</strong><div class="help">אפשר לצלם שוב באור טוב יותר או להזין ידנית. הטופס לא השתנה.</div></div></div>`,
+      `<div class="foot-actions"><button class="btn" data-act="scan-cancel">ביטול</button><button class="btn" data-act="scan-retake">צילום מחדש</button><button class="btn primary" data-act="manual-start">הזנה ידנית</button></div>`, true);
+  }
+  const single = fx.candidates.filter(c => c.meaning !== 'manufactured-at').length === 1;
+  if (single && !s.selected) s.selected = fx.candidates.find(c => c.meaning !== 'manufactured-at').id; // only selection, never confirmation
+  const sel = fx.candidates.find(c => c.id === s.selected);
+  const problem = sel ? candidateProblem(sel) : 'בחר אחת מהאפשרויות';
+  return sheetFrame('scan', title, false, `
+    ${s.manual ? '' : `<div class="thumb"><div class="tv">${labelSvg(s.source).replace('class="label"', '')}</div><div><strong>${s.source === 'packaging' ? 'אריזה' : 'תווית צוות'}</strong><div class="help">${fx.candidates.length > 1 ? `זוהו ${fx.candidates.length} תאריכים. בדוק ובחר.` : 'בדוק את התאריך מול התמונה לפני האישור.'}</div></div></div>`}
+    <div role="radiogroup" aria-label="תאריכים לבחירה">${fx.candidates.map(c => candidateHtml(c, single)).join('')}</div>
+    ${s.attempted && !sel ? '<div class="err" role="alert">בחר אחת מהאפשרויות לפני האישור.</div>' : ''}
+    ${s.manual ? '' : '<p class="proto-note">הצעה מהסריקה אינה נשמרת. רק "אישור התאריך" מוסיף אותה לטופס, ועדיין צריך לשלוח את הטופס עצמו.</p>'}`,
+    `<div class="foot-actions"><button class="btn" data-act="scan-cancel">ביטול</button>${s.manual ? '' : '<button class="btn" data-act="scan-retake">צילום מחדש</button>'}<button class="btn primary" data-act="scan-confirm" aria-disabled="${!!problem}">אישור התאריך</button></div>`, true);
+}
+function confirmScan() {
+  const s = S.scan;
+  const fx = s.manual ? s.result : SCAN_FIXTURES[S.fixture];
+  const sel = fx.candidates.find(c => c.id === s.selected);
+  s.attempted = true;
+  if (!sel || candidateProblem(sel)) { render(); return; }
+  const e = editsFor(sel);
+  // ConfirmedDateEvidence: created only here, from an explicit user action.
+  S.open.evidence = S.open.evidence.filter(x => x.meaning !== e.meaning)
+    .concat({ source: s.manual ? 'manual' : s.source, meaning: e.meaning, reading: readingFrom(e), confirmed: true });
+  S.scan = null; S.sheet = 'open'; render(); focusSheet();
+}
+
+/* =====================================================================================
+   Close sheet
+   ===================================================================================== */
+function closeSheet() {
+  const c = S.close, i = ITEMS.find(x => x.id === c.id);
+  const busy = c.phase === 'busy';
+  const st = status(i);
+  const footMsg = c.error ? `<div class="alert error" role="alert">${icon('alert')}<span>${esc(c.error)}</span></div>`
+    : c.notice ? `<div class="alert ${c.notice.kind}" role="status">${icon(c.notice.kind === 'success' ? 'check' : 'clock')}<span>${esc(c.notice.text)}</span></div>` : '';
+  const done = !!c.notice;
+  return sheetFrame('close', 'סגירת פריט', busy, `
+    <div class="summary">
+      <div class="sn">${esc(i.name)}${S.dept === 'all' ? ` <span class="tag" style="font-size:12px;border:1px solid var(--line-strong);border-radius:4px;padding:0 5px;color:var(--muted)">${DEPTS[i.dept]}</span>` : ''}</div>
+      <dl>
+        <dt>כמות</dt><dd class="num">${qty(i.amount, i.unit)}</dd>
+        <dt>מקרר</dt><dd>${esc(i.fridge)}</dd>
+        <dt>נפתח</dt><dd><span class="ltr num">${dt(i.openedAt)}</span> · ${esc(i.by)}</dd>
+        <dt>תוקף</dt><dd><span class="ltr num">${dt(i.expiry)}</span> · <strong style="color:${st === 'expired' ? 'var(--red)' : st === 'expiring' ? 'var(--amber)' : 'inherit'}">${remaining(i.expiry)}</strong></dd>
+      </dl>
+    </div>
+    ${done ? '' : `
+    <div role="radiogroup" aria-label="מה קרה לפריט">
+      <button class="choice" role="radio" aria-checked="${c.action === 'finished'}" data-act="close-action" data-v="finished" ${busy ? 'disabled' : ''}><span class="radio" aria-hidden="true"></span><span><span class="ct">נגמר</span><span class="cd">נוצל במלואו, בלי פסולת</span></span></button>
+      <button class="choice" role="radio" aria-checked="${c.action === 'discarded'}" data-act="close-action" data-v="discarded" ${busy ? 'disabled' : ''}><span class="radio" aria-hidden="true"></span><span><span class="ct">נזרק</span><span class="cd">חלק מהכמות או כולה נזרקה</span></span></button>
+    </div>
+    ${c.action === 'discarded' ? `
+      <div class="field" style="margin-top:8px"><label for="dq">כמות שנזרקה</label>
+        <div style="display:flex;gap:8px;align-items:center"><input id="dq" class="input num" style="max-width:140px" inputmode="${i.unit === 'kg' ? 'decimal' : 'numeric'}" dir="ltr" value="${esc(c.amount)}" data-bind="close.amount" aria-invalid="${!!c.amountErr}" ${busy ? 'disabled' : ''} /><span class="unit">${UNIT[i.unit]}, מתוך ${qty(i.amount, i.unit)}</span></div>
+        ${c.amountErr ? `<span class="err">${esc(c.amountErr)}</span>` : '<span class="help">ברירת המחדל: כל הכמות. אם נשאר חלק, הוא נסגר כנגמר.</span>'}
+      </div>
+      <div class="field"><span class="label">סיבה</span>
+        <div class="opt-chips" role="radiogroup" aria-label="סיבת זריקה">${Object.entries(REASONS).map(([k, v]) => `<button class="chip" role="radio" aria-checked="${c.reason === k}" aria-pressed="${c.reason === k}" data-act="reason" data-v="${k}" ${busy ? 'disabled' : ''}>${v}</button>`).join('')}</div>
+        ${c.reasonErr ? `<span class="err">${esc(c.reasonErr)}</span>` : ''}
+      </div>
+      ${c.reason === 'other' ? `<div class="field"><label for="note">פירוט</label><input id="note" class="input" value="${esc(c.note)}" data-bind="close.note" ${busy ? 'disabled' : ''} /></div>` : ''}` : ''}`}`,
+    done ? `${footMsg}<button class="btn block" data-act="dismiss">סגירה</button>`
+      : `${footMsg}<div class="foot-actions"><button class="btn" data-act="dismiss" ${busy ? 'disabled' : ''}>ביטול</button><button class="btn ${c.action === 'discarded' ? 'danger' : 'primary'}" data-act="submit-close" ${!c.action || busy ? 'disabled' : ''}>${busy ? 'שולח...' : c.action === 'discarded' ? 'סמן כנזרק' : c.action === 'finished' ? 'סמן כנגמר' : 'בחר מה קרה'}</button></div>`);
+}
+function submitClose() {
+  const c = S.close, i = ITEMS.find(x => x.id === c.id);
+  c.error = null; c.amountErr = null; c.reasonErr = null;
+  if (c.action === 'discarded') {
+    const raw = String(c.amount).trim();
+    const n = Number(raw);
+    const ok = i.unit === 'kg' ? /^\d+(\.\d+)?$/.test(raw) && n > 0 : /^\d+$/.test(raw) && n >= 1;
+    if (!ok || n > i.amount) c.amountErr = `יש להזין כמות בין ${i.unit === 'kg' ? 'מעל 0' : '1'} ל־${i.amount}`;
+    if (!c.reason) c.reasonErr = 'בחר סיבה';
+    if (c.amountErr || c.reasonErr) { render(); return; }
+  }
+  c.phase = 'busy'; render();
+  const result = S.offline ? 'pending' : S.outcome;
+  setTimeout(() => {
+    c.phase = 'idle';
+    if (result === 'error') c.error = 'השליחה לא הושלמה והפריט לא עודכן. נסה שוב — ניסיון חוזר לא יכפיל את הפעולה.';
+    else c.notice = result === 'pending'
+      ? { kind: 'info', text: 'הסגירה נשמרה במכשיר וממתינה לשליחה. היא עדיין לא נשמרה בשרת.' }
+      : { kind: 'success', text: c.action === 'discarded' ? 'הפריט סומן כנזרק.' : 'הפריט סומן כנגמר.' };
+    render();
+  }, S.outcome === 'slow' ? 60000 : 900);
+}
+
+/* =====================================================================================
+   Sheet frame, focus and dismissal (busy blocks every dismissal path, as in UI2-R1)
+   ===================================================================================== */
+function sheetFrame(kind, title, busy, body, foot, isScan = false) {
+  return `<div class="scrim" data-scrim="1"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" data-kind="${kind}">
+    <div class="sheet-head">
+      ${isScan ? `<button class="icon-btn" data-act="scan-cancel" aria-label="חזרה לטופס">${icon('back')}</button>` : ''}
+      <h2 id="sheet-title" tabindex="-1">${esc(title)}</h2>
+      <button class="icon-btn" data-act="${isScan ? 'scan-cancel' : 'dismiss'}" aria-label="סגירה" ${busy ? 'aria-disabled="true" title="ממתין לתשובה מהשרת"' : ''}>${icon('close')}</button>
+    </div>
+    <div class="sheet-body">${body}</div>
+    <div class="sheet-foot">${foot}</div>
+  </div></div>`;
+}
+let opener = null;
+function focusSheet() { requestAnimationFrame(() => document.getElementById('sheet-title')?.focus()); }
+function isBusy() { return (S.sheet === 'open' && S.open?.phase === 'busy') || (S.sheet === 'close' && S.close?.phase === 'busy'); }
+function dismiss() {
+  if (isBusy()) return;
+  S.sheet = null; S.close = null;
+  if (S.open && !S.open.product && !S.open.evidence.length) S.open = null; // keep a started draft
+  render();
+  opener?.focus?.();
+}
+
+/* =====================================================================================
+   Render + events
+   ===================================================================================== */
+function protoBar() {
+  const sel = (key, label, opts) => `<label>${label}<select data-proto="${key}">${opts.map(([v, t]) => `<option value="${v}" ${String(S[key]) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+  return `<details class="proto" ${params.get('proto') === '1' ? 'open' : ''}><summary>בקרי אב־טיפוס (לא חלק מהמוצר)</summary><div class="proto-body">
+    ${sel('role', 'תפקיד', [['staff', 'עובד (בר)'], ['manager', 'מנהל מחלקה (מטבח)'], ['admin', 'מנהל מערכת']])}
+    ${sel('data', 'נתונים', [['busy', 'מלאי עמוס'], ['empty', 'ריק'], ['loading', 'טעינה'], ['error', 'שגיאת טעינה']])}
+    ${sel('offline', 'חיבור', [['false', 'מחובר'], ['true', 'לא מחובר']])}
+    ${sel('shift', 'משמרת', [['true', 'במשמרת'], ['false', 'לא במשמרת']])}
+    ${sel('outcome', 'תוצאת שליחה', [['synced', 'נשמר בשרת'], ['pending', 'ממתין (במכשיר)'], ['error', 'נכשל'], ['slow', 'תקוע (בדיקת חסימת סגירה)']])}
+    ${sel('fixture', 'תוצאת סריקה', [['packaging', 'אריזה — תאריך אחד'], ['staffIncomplete', 'תווית — חסרים שנה ושעה'], ['ambiguous', 'תווית — דו־משמעי'], ['manufactured', 'אריזה — ייצור + תוקף + לא ידוע'], ['unreadable', 'לא קריא']])}
+    ${sel('camera', 'מצלמה', [['granted', 'מותרת'], ['denied', 'נדחתה']])}
+  </div></details>`;
+}
+function render() {
+  const a = document.activeElement;
+  const focusId = a && a.id ? a.id : null;
+  const selStart = a && 'selectionStart' in a ? a.selectionStart : null;
+  const bodyScroll = document.querySelector('.sheet-body')?.scrollTop ?? 0;
+  document.body.classList.toggle('bare', params.get('bare') === '1');
+  const sheet = S.sheet === 'open' ? openSheet() : S.sheet === 'close' ? closeSheet() : S.sheet === 'scan' ? scanSheet() : '';
+  document.getElementById('root').innerHTML = `${protoBar()}<div class="app" ${S.sheet ? 'aria-hidden="true" inert' : ''}>${appBar()}<main>${controls()}${listHtml()}</main>${actionBar()}</div>${sheet}`;
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el) { el.focus(); if (selStart != null && 'setSelectionRange' in el) { try { el.setSelectionRange(selStart, selStart); } catch (_) {} } }
+  }
+  const sb = document.querySelector('.sheet-body'); if (sb) sb.scrollTop = bodyScroll;
+}
+function setPath(path, value) {
+  const parts = path.split('.');
+  if (parts[0] === 'edit') { S.scan.edits[parts[1]][parts[2]] = value; return; }
+  let o = S; for (let n = 0; n < parts.length - 1; n++) o = o[parts[n]];
+  o[parts[parts.length - 1]] = value;
+}
+document.addEventListener('input', ev => {
+  const b = ev.target.dataset.bind; if (!b) return;
+  setPath(b, ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value);
+  if (b === 'open.amount') S.open.amountInvalid = false;
+  if (b.endsWith('.dayOnly') && ev.target.checked) { const id = b.split('.')[1]; S.scan.edits[id].hour = ''; S.scan.edits[id].minute = ''; }
+  render();
+});
+document.addEventListener('change', ev => {
+  const k = ev.target.dataset.proto;
+  if (k) {
+    const v = ev.target.value;
+    S[k] = v === 'true' ? true : v === 'false' ? false : v;
+    if (k === 'role') { S.dept = allowedDepts()[0]; S.fridge = 'all'; S.sheet = null; S.open = null; S.close = null; }
+    render(); return;
+  }
+  const b = ev.target.dataset.bind;
+  if (b && ev.target.tagName === 'SELECT') { setPath(b, ev.target.value); render(); }
+});
+document.addEventListener('click', ev => {
+  const scrim = ev.target.dataset && ev.target.dataset.scrim;
+  if (scrim) { if (S.sheet === 'scan') return; dismiss(); return; }
+  const btn = ev.target.closest('[data-act]'); if (!btn || btn.disabled) return;
+  const { act, v, id } = btn.dataset;
+  switch (act) {
+    case 'dept': S.dept = v; S.fridge = 'all'; break;
+    case 'mode': S.mode = v; S.status = 'all'; break;
+    case 'status': S.status = v; break;
+    case 'clear-q': S.q = ''; break;
+    case 'reset-filters': S.q = ''; S.status = 'all'; S.fridge = 'all'; break;
+    case 'retry': S.data = 'busy'; break;
+    case 'start-shift': S.shift = true; break;
+    case 'open-sheet': if (!canOpen()) return; opener = btn; S.open = S.open || newOpen(); S.sheet = 'open'; render(); focusSheet(); return;
+    case 'close-sheet': opener = btn; S.close = { id, action: null, amount: String(ITEMS.find(x => x.id === id).amount), reason: null, note: '', phase: 'idle' }; S.sheet = 'close'; render(); focusSheet(); return;
+    case 'dismiss': dismiss(); return;
+    case 'open-dept': S.open.dept = v; S.open.fridge = ''; break;
+    case 'pick': { const p = productById(S.open.dept, id); Object.assign(S.open, { product: id, amount: '1', fridge: p.fridge, error: null, notice: null, amountInvalid: false }); break; }
+    case 'change-product': S.open.product = null; S.open.operationId = null; break;
+    case 'step': { const p = productById(S.open.dept, S.open.product); const st = p.unit === 'kg' ? 0.25 : 1; const n = Math.max(p.unit === 'kg' ? 0.25 : 1, (Number(S.open.amount) || 0) + st * Number(v)); S.open.amount = String(Math.round(n * 100) / 100); S.open.amountInvalid = false; break; }
+    case 'open-fridge': S.open.fridge = v; break;
+    case 'submit-open': submitOpen(); return;
+    case 'remove-ev': if (isBusy()) return; S.open.evidence.splice(Number(btn.dataset.n), 1); break;
+    case 'scan-start': startScan(); return;
+    case 'manual-start': startManual(); return;
+    case 'scan-source': S.scan.source = v; S.scan.step = 'capture'; break;
+    case 'scan-capture': case 'scan-gallery':
+      S.scan.step = 'processing'; render();
+      setTimeout(() => { if (S.scan && S.scan.step === 'processing') { S.scan.step = 'review'; render(); focusSheet(); } }, 700);
+      return;
+    case 'scan-retake': Object.assign(S.scan, { step: 'capture', selected: null, edits: {}, attempted: false, manual: false, source: S.scan.source === 'manual' ? 'packaging' : S.scan.source }); break;
+    case 'scan-cancel': S.scan = null; S.sheet = 'open'; render(); focusSheet(); return; // draft untouched
+    case 'select-cand': S.scan.selected = id; S.scan.attempted = false; break;
+    case 'scan-confirm': confirmScan(); return;
+    case 'close-action': S.close.action = v; S.close.error = null; break;
+    case 'reason': S.close.reason = v; S.close.reasonErr = null; break;
+    case 'submit-close': submitClose(); return;
+    default: return;
+  }
+  render();
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key !== 'Escape' || !S.sheet) return;
+  if (S.sheet === 'scan') { S.scan = null; S.sheet = 'open'; render(); focusSheet(); return; }
+  dismiss();
+});
+window.matchMedia('(min-width: 900px)').addEventListener('change', render);
+
+/* Deep links for screenshots/review: ?sheet=open|close|scan&step=...&pick=p1 */
+(function deepLink() {
+  const sheet = params.get('sheet');
+  if (sheet === 'open' || sheet === 'scan' || sheet === 'manual') {
+    S.open = newOpen();
+    const pick = params.get('pick');
+    if (pick && productById(S.open.dept, pick)) { const p = productById(S.open.dept, pick); Object.assign(S.open, { product: pick, fridge: p.fridge, amount: params.get('amount') || '1' }); }
+    if (params.get('ev') === '1') S.open.evidence = [{ source: 'packaging', meaning: 'manufacturer-expiry', reading: { precision: 'day', date: { year: 2026, month: 11, day: 28 } }, confirmed: true }];
+    S.sheet = 'open';
+    if (params.get('phase') === 'busy') { S.outcome = 'slow'; }
+    if (sheet === 'scan') { S.scan = { step: params.get('step') || 'source', source: params.get('source') || SCAN_FIXTURES[S.fixture].source, selected: null, edits: {}, manual: false, attempted: params.get('attempted') === '1' }; S.sheet = 'scan'; }
+    if (sheet === 'manual') { startManual(); return; }
+  }
+  if (sheet === 'close') {
+    const target = ITEMS.find(x => x.id === (params.get('item') || 'i1'));
+    S.close = { id: target.id, action: params.get('action') || null, amount: String(target.amount), reason: params.get('reason') || null, note: '', phase: 'idle' };
+    S.sheet = 'close';
+  }
+  render();
+  if (params.get('phase') === 'busy' && S.sheet === 'open' && S.open.product) submitOpen();
+  if (params.get('phase') === 'busy' && S.sheet === 'close' && S.close.action) { S.outcome = 'slow'; submitClose(); }
+})();
+</script>
+</body>
+</html>

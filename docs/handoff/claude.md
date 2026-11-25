@@ -1,10 +1,51 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: **UI3 follow-up — Codex review UI3-R1 / UI3-R2** (`docs/CODEX_REQUESTS.md` at `5c518c6`)
-Status: **UI3 READY FOR CODEX REVIEW (corrected)** — supersedes `741333a`/`71a81ee` for UI3. UI2 fixes (accepted at
-`5c518c6`) preserved unchanged; their integration tests still pass. Not deployed; `main` not touched.
-Integrated Codex SHA: `5c518c6` (docs only), normal merge.
-Last previously confirmed remote SHA: 71a81eef26c4dd7c5ef08f86cd06812654f4fd3e
+Task / bounded subtask: **V0 — compact redesign prototype with optional date-scan review** (`docs/TOSSIT_MASTER_PLAN.md`)
+Status: **V0 READY FOR VISUAL REVIEW (Alon)**. Prototype only; no production source changed. Not deployed; `main` not touched.
+Integrated Codex SHA: `1c18c5c360c7e50bceab6402ed311e3bca155172` (`codex/tossit-date-foundation`, C0a), via `54840f6`; both fast-forward, no reset.
+Last previously confirmed remote SHA: 281083572e7e3272cdc7ce970ebdb8f4b36ca508
+
+## V0 — 2026-11-25
+- Preview: `docs/ui-review/v0/index.html`. One self-contained file, synthetic data, no network, no dependencies, not routed. How to use it and the full state list: `docs/ui-review/v0/README.md`.
+- Direction:
+  - flat list, thin separators, small radii, restrained green (`#1d6a4e`), colour only for status;
+  - rows grouped urgent first; remaining time plus exact expiry per row; per-row "סגירה";
+  - compact search, fridge and status chips with counts; the opening action sits in a bottom bar on phones and in the toolbar on desktop;
+  - department tags in the admin combined view.
+- Opening, closing and scan states are as listed in the README.
+- Accepted behaviour preserved in the prototype:
+  - UI2-R1 busy dismissal lock;
+  - inline invalid amount;
+  - truthful synced, pending and failed messages;
+  - staff limited to their own department; the shift requirement for opening.
+- Date review uses the C0a `DateScanResult` v1 shapes, with the two published fixtures copied verbatim plus four synthetic ones (ambiguous, manufactured/unknown, unreadable, camera denied).
+  - Nothing is inferred: no year, no midnight, no expiry policy.
+  - "יום בלבד" is an explicit choice. Confirmation is a separate action, and cancel restores the unchanged draft.
+  - Confirmed evidence is display-only and not sent, pending C1.
+- Evidence: `node docs/ui-review/v0/capture.cjs` → **29/29 PASS, exit 0**. 31 PNGs in `docs/ui-review/v0/`, covering 390px phone states, 1280px desktop and 320px samples.
+  - No horizontal overflow at 320, 390, 430 and 1280px across 14 states.
+  - Interactive targets are at least 44px at 390px.
+  - Key interactions are asserted; see the README.
+- Repo checks on this tree (C0a merged):
+  - `npm run test:run`: 42 files, **381/381 PASS**;
+  - `npm run build`: PASS;
+  - `npm run lint`: 0 errors, 7 existing warnings;
+  - `npm run test:browser`, run unmodified: first attempt **5/5 FAILED at launch**. The container's Chromium is build 1243; the project's Playwright expects build 1254. No test assertion ran.
+  - Re-ran with the config's existing `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium`: **5/5 PASS** (24.8s, exit 0).
+- Ownership:
+  - Codex files untouched: no shared contract, rules, queue, worker, package or lockfile changes.
+  - The capture script uses the project's existing Playwright with the pre-installed Chromium.
+- NOT RUN: real phones, iPhone keyboard and camera, VoiceOver, installed PWA, real OCR or photos.
+- Questions for Alon:
+  1. Is the row density right: 3 lines per row on a phone, remaining time beside the name?
+  2. Should "פתיחת פריט" stay in a bottom bar on phones, or would you prefer a floating button?
+  3. Should the status groups have headers, or just colour stripes?
+  4. Should a scan or manual date be offered on every opening, or only for selected products?
+- Next: V1 starts after visual approval. V2 date fields wait for C0/C1; V4 waits for the C0 + S1 adapter or mock.
+
+---
+
+# Previous: UI3 follow-up (accepted by Codex, deployed 2026-11-15)
 
 ## UI3-R1 (Important) — offline guard on open/linked user forms and the submit handler
 - `src/pages/AdminUsersPage.tsx`:
