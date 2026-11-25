@@ -131,22 +131,28 @@ Use existing npm scripts: test:run, build, lint; test:functions/build:functions 
 4. Recheck runtime/dev dependency audits and current provider/free-plan settings before release; address reachable blockers with focused updates, not force upgrades. Auth domain configuration is needed only for selected popup/redirect flows; do not claim it blocks email/password independently.
 5. Optional N0 separately verifies VAPID matching, supported phone install requirements, per-device opt-in/off/account binding, authentic scheduler identity/retries, timezone slots and actual delivery/clicks. Enable narrowly only after evidence and owner approval. Preserve the current disabled trigger until then.
 
-## Effort estimate and dependency gates
+## Agent execution estimate — revised 2026-11-25
 
-These are initial cumulative engineering-hour ranges, including review/fixes, not promised AI wall-clock time. Re-estimate after V0/S0; provider access, photo collection, owner decisions and real shifts are elapsed-time dependencies.
+The previous46–74 cumulative engineering-hour estimate was a generic staffing estimate. It overstated the incremental work and did not answer Alon's question about elapsed work by Codex and Claude on an existing, tested application. It is superseded by the estimate below.
 
-| Work package | Estimated hours |
-| --- | --- |
-| Baseline, detailed visual/date decisions and contracts | 4–6 |
-| Visual implementation across daily/admin/report flows | 12–18 |
-| Manual date semantics, validation and compatible persistence/queue | 8–14 |
-| OCR/handwriting feasibility experiment | 4–8 |
-| Extraction service + capture/confirmation integration, if feasible | 10–16 |
-| Integrated review, pilot fixes, documentation and release | 8–12 |
-| **Core total A–C** | **46–74** |
-| Optional real push/schedule configuration and pilot | +4–8 |
+Observed Git timestamps from the previous round (all converted consistently): Claude's initial UI1 checkpoint a8ed3b3 was2026-11-15T14:06:52Z; corrected UI3 checkpoint2810835 was17:44:49Z, an interval of3h37m57s containing UI2/UI3 implementation, corrections and coordination. The final Codex integration f29a276 followed at17:59:48Z, about15minutes later. Narrow correction windows from Claude's feedback-merge commits to corrected commits were6m08s(UI1),7m15s(UI2) and8m51s(UI3). These are checkpoint intervals, not telemetry of active model time: tests may overlap and interruptions/earlier work are not measured. Do not extrapolate them as guaranteed throughput or claim the whole previous project took that long.
 
-Two owners can overlap visual work and date/OCR work; do not divide the total by two and promise a delivery date. First estimate checkpoint is after P0/V0/C0/S0. UI release A need not wait for payment/provider access or handwriting quality.
+**Planning target:5–8 elapsed hours of coordinated agent work for A–C**, with both agents running and prompt handoffs, assuming a usable existing extraction provider is accessible, the agreed small scope stays fixed, date conventions are resolved promptly and the photo experiment shows the feature is feasible. This is an estimate, not a delivery guarantee; it does not guarantee arbitrary handwriting recognition quality.
+
+| Work package | Owner | Agent working interval | Parallelism |
+| --- | --- | --- | --- |
+| Lock visual/date decisions and adapter contract | Both | 15–30min | First checkpoint; use existing design and code |
+| Compact UI across existing inventory/forms/admin/report components | Claude | 2–3h | In parallel with date/OCR work |
+| Optional dates + trusted domain/rules/queue compatibility | Codex | 1–2h | In parallel with visual implementation |
+| Existing-model print/handwriting feasibility check | Codex | 30–60min | Uses provided examples and existing provider access; no training |
+| Connect capture/crop/confirmation UI to extraction and stable opening intents | Both | 1–2h | After contracts/probe; can overlap remaining visual work |
+| Integrated review, necessary tests, focused fixes and release preparation | Both | 1–2h | After each coherent checkpoint; overlap CI where possible |
+
+Intervals overlap; adding every row is not the elapsed estimate. UI release A alone targets2–3hours of implementation, then30–60minutes of review/verification, and can ship independently. Provider setup or additional safety-critical policy changes require a revised estimate before more scope is added.
+
+Not counted as agent work: waiting for sample photos, provider/payment access, owner feedback, real phone handling or two live shifts. Real device/staff pilot is still required and is recorded separately; waiting for it must not be presented as model development time. Provider/CI outages and unmeasured handwriting quality are explicit uncertainties.
+
+Optional push configuration/N0 targets another1–2agent-hours only if credentials/provider prerequisites are available, plus separate real-device/scheduler delivery verification. Do not imply activation/delivery is complete within that estimate. Re-estimate after the first30–60minutes of implementation using actual completed checkpoints and blockers; avoid repeated exploratory rounds or rebuilding accepted functionality.
 
 ## Deliverables and final definition of done
 
