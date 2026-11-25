@@ -10,6 +10,10 @@ This supersedes C0a's earlier statement that whole-result validation is not impl
 
 `src/features/dateScan/evaluation.ts`, the synthetic dataset and `scripts/scan-evaluation.test.ts` provide aggregate scoring for recorded outputs; see SCAN_EVALUATION.md. Synthetic checks do not establish real print/handwriting accuracy. The existing C0a DTO/mocks are unchanged, so Claude can continue V0 without a forced mid-task contract migration.
 
+## S1a request lifecycle available
+
+The controller in src/features/dateScan/controller.ts now provides start/cancel/dispose, observable idle/scanning/ready/error states, account/business generation guards, deadlines and source-matched validation. Hebrew bounded messages are in errorMessages.ts. See DATE_SCAN_TRANSPORT.md for the adapter seam and cleanup obligations. No provider/backend endpoint is installed by S1a; the current server32KiB reader must not be reused for large photo payloads. This does not change the review DTOs or inventory writers.
+
 ## Available now
 
 Import from `src/domain/dateEvidence.ts`:

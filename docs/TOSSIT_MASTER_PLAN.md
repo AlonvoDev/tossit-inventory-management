@@ -174,3 +174,7 @@ Runtime result validation and explicit review are implemented without changing C
 ### V0 approved; accessibility appearance added — 2026-11-25
 
 Alon approved Claude7668e62 and requested dark mode inside accessibility. V1 now includes light/dark/system choices, a saved per-device preference, graceful storage fallback, live system preference changes only in system mode, consistent semantic tokens across all screens/portals/states, and focused preference/accessibility checks. Default is system. Accessibility entry is available before login and to every role; dark mode is not a substitute for broader accessibility. Read the latest top section of CLAUDE_WORK_PLAN.md for exact ownership, actual production theme paths, evidence and boundaries. No additional general design approval is needed to start V1. The new scope is bounded to appearance; re-estimate if implementation reveals substantial extra work.
+
+### S1a lifecycle progress — 2026-11-25
+
+Added provider-neutral local scan request orchestration: cancellation, replacement/late-result suppression, auth/business context checks, timeout, size/type UX checks, safe errors and no automatic retry or photo persistence. Claude V4 can use this seam when the actual service is ready; visual V1/dark mode continues independently. See DATE_SCAN_TRANSPORT.md. S1b dedicated server body/auth/quota/sanitization/shared-validation/provider work is still pending. Real OCR accuracy and C1's explicit date-only/label-time policy are not completed by S1a.
