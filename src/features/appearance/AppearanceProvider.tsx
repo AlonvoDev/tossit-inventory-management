@@ -50,7 +50,9 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     root.dataset.appearance = mode;
     root.style.colorScheme = mode;
     root.style.backgroundColor = palettes[mode].bg;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', palettes[mode].bg);
+    // Every theme-color tag (index.html has light/dark media variants): an explicit in-app choice must
+    // win over the OS-matched tag, so all of them follow the resolved appearance (V1 follow-up).
+    document.querySelectorAll('meta[name="theme-color"]').forEach(meta => meta.setAttribute('content', palettes[mode].bg));
   }, [mode]);
 
   const setPreference = useCallback((next: AppearancePreference) => {

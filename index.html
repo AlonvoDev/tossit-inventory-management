@@ -25,6 +25,8 @@
         root.setAttribute('data-appearance', dark ? 'dark' : 'light');
         root.style.colorScheme = dark ? 'dark' : 'light';
         root.style.backgroundColor = dark ? '#111418' : '#FFFFFF';
+        var metas = document.querySelectorAll('meta[name="theme-color"]');
+        for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', dark ? '#111418' : '#FFFFFF');
       })();
     </script>
   </head>

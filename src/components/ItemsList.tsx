@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { departmentLabel } from '../app/access';
 import { Alert, Box, Button, Chip, InputAdornment, MenuItem, TextField, Typography } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
-import { InventoryItemCard, INVENTORY_ROW_COLUMNS } from './inventory/InventoryItemCard';
+import { InventoryItemCard, INVENTORY_ROW_COLUMNS, INVENTORY_TABLE_MIN_WIDTH } from './inventory/InventoryItemCard';
 import { tokens } from '../app/theme';
 import {
   displayStatus,
@@ -39,6 +39,25 @@ interface ItemsListProps {
 }
 
 const LINE = `1px solid ${tokens.colors.line}`;
+
+/**
+ * V1-R1: the table layout is chosen from the list's own width (not the viewport), so a narrow
+ * container (e.g. two admin panels side by side) or a 900–1000px window gets the stacked rows
+ * instead of a clipped table. No ResizeObserver (old browsers/tests) → stacked, which fits anywhere.
+ */
+function useFitsTable(ref: React.RefObject<HTMLElement | null>) {
+  const [fits, setFits] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => setFits(el.clientWidth >= INVENTORY_TABLE_MIN_WIDTH);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return fits;
+}
 
 const ItemsList: React.FC<ItemsListProps> = ({ 
   areaFilter, 
@@ -275,9 +294,13 @@ const ItemsList: React.FC<ItemsListProps> = ({
         onAction={closed || showDiscardedOnly || showFinishedOnly ? undefined : () => openActionModal(item)}
         actionDisabled={offShift}
         actionHint={offShift ? 'יש להתחיל משמרת' : undefined}
+        layout={tableLayout ? 'table' : 'stacked'}
       />
     );
   };
+
+  const listRef = useRef<HTMLDivElement>(null);
+  const tableLayout = useFitsTable(listRef);
 
   // V1: urgency groups (text headers) when every status is shown in an open list; a single
   // status filter or a closed-items tab shows one plain list.
@@ -291,11 +314,12 @@ const ItemsList: React.FC<ItemsListProps> = ({
     else last.items.push(item);
   }
 
-  const columnHeader = (
+  const columnHeader = tableLayout && (
     <Box
       aria-hidden
+      data-testid="inventory-column-header"
       sx={{
-        display: { xs: 'none', md: 'grid' },
+        display: 'grid',
         gridTemplateColumns: INVENTORY_ROW_COLUMNS,
         columnGap: 1.5,
         px: 2,
@@ -318,7 +342,7 @@ const ItemsList: React.FC<ItemsListProps> = ({
   );
 
   return (
-    <Box dir="rtl" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Box ref={listRef} dir="rtl" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {/* Controls: search + fridge on one line, compact status chips below */}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         <TextField
@@ -426,8 +450,8 @@ const ItemsList: React.FC<ItemsListProps> = ({
             mx: { xs: -1.5, sm: 0 },
             // Explicit colour in every breakpoint: a responsive `border: 1` resets the colour to currentColor.
             borderTop: LINE,
-            border: { md: LINE },
-            borderRadius: { md: 2 },
+            border: tableLayout ? LINE : undefined,
+            borderRadius: tableLayout ? 2 : undefined,
             overflow: 'clip',
           }}
         >

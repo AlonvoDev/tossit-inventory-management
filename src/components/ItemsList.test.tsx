@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -228,6 +228,33 @@ describe('ItemsList', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'פג תוקף (1)' }));
     expect(document.querySelector('[id^="group-"]')).toBeNull();
     expect(screen.getByRole('article', { name: 'שמנת, פג תוקף' })).toBeInTheDocument();
+  });
+
+  describe('V1-R1: table layout is chosen from the list width, not the viewport', () => {
+    const observe = (width: number) => {
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(width);
+      vi.stubGlobal('ResizeObserver', class { constructor(private cb: () => void) {} observe() { this.cb(); } disconnect() {} });
+    };
+    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+    it.each([[899, 'stacked'], [959, 'stacked'], [960, 'table'], [1280, 'table']] as const)('%ipx list → %s rows', async (width, layout) => {
+      observe(width);
+      as('staff');
+      render(<ItemsList areaFilter="bar" />);
+      push([mk('1', 'רוטב פסיפלורה ביתי עם וניל ומעט צ׳ילי לקוקטיילים של הערב', 'bar')]);
+      const row = (await screen.findByRole('article', { name: /רוטב פסיפלורה/ })) as HTMLElement;
+      expect(row).toHaveAttribute('data-layout', layout);
+      expect(!!screen.queryByTestId('inventory-column-header')).toBe(layout === 'table');
+      expect(within(row).getByRole('button', { name: /נגמר \/ נזרק/ })).toBeInTheDocument();
+    });
+
+    it('without ResizeObserver the list stays stacked (fits any width)', async () => {
+      vi.stubGlobal('ResizeObserver', undefined);
+      as('staff');
+      render(<ItemsList areaFilter="bar" />);
+      push([mk('1', 'לימון', 'bar')]);
+      expect(await screen.findByRole('article', { name: /לימון/ })).toHaveAttribute('data-layout', 'stacked');
+    });
   });
 
   it('R1: a status filter chosen in inventory does not hide discarded items after switching mode', async () => {

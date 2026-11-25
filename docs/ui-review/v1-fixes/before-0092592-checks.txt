@@ -1,0 +1,21 @@
+PASS  light 899px: dashboard actions fully visible + clickable (10, )
+PASS  light 899px: discarded rows stacked (0 table rows)
+PASS  light 899px: admin inventory actions fully visible + clickable
+PASS  light 899px: side-by-side expired/discarded panels never clip actions ()
+FAIL  light 900px: dashboard actions fully visible + clickable (10, ) — — שמנת מתוקה x=-45..48 clip=24..876 h=44 | — לימון חתוך x=-45..48 clip=24..876 h=44 | — רוטב פסיפלורה בי x=-45..48 clip=24..876 h=44
+PASS  light 900px: discarded rows stacked (0 table rows)
+FAIL  light 900px: admin inventory actions fully visible + clickable — — רוטב פסיפלורה בי x=-54..39 clip=33..867 h=44 | — לימון חתוך x=-54..39 clip=33..867 h=44 | — נענע טרייה x=-54..39 clip=33..867 h=44
+FAIL  light 900px: side-by-side expired/discarded panels never clip actions () — — שמנת מתוקה x=-71..22 clip=475..850 h=44 | — לימון חתוך x=-71..22 clip=475..850 h=44
+FAIL  light 960px: dashboard actions fully visible + clickable (10, ) — — שמנת מתוקה x=15..108 clip=24..936 h=44 | — לימון חתוך x=15..108 clip=24..936 h=44 | — רוטב פסיפלורה בי x=15..108 clip=24..936 h=44
+PASS  light 960px: discarded rows stacked (0 table rows)
+FAIL  light 960px: admin inventory actions fully visible + clickable — — רוטב פסיפלורה בי x=6..99 clip=33..927 h=44 | — לימון חתוך x=6..99 clip=33..927 h=44 | — נענע טרייה x=6..99 clip=33..927 h=44
+FAIL  light 960px: side-by-side expired/discarded panels never clip actions () — — שמנת מתוקה x=-11..82 clip=505..910 h=44 | — לימון חתוך x=-11..82 clip=505..910 h=44
+PASS  light 1024px: dashboard actions fully visible + clickable (10, )
+FAIL  light 1024px: discarded rows aligned under headings (0 table rows)
+PASS  light 1024px: admin inventory actions fully visible + clickable
+FAIL  light 1024px: side-by-side expired/discarded panels never clip actions () — — שמנת מתוקה x=53..146 clip=537..974 h=44 | — לימון חתוך x=53..146 clip=537..974 h=44
+PASS  light 1280px: dashboard actions fully visible + clickable (10, )
+FAIL  light 1280px: discarded rows aligned under headings (0 table rows)
+PASS  light 1280px: admin inventory actions fully visible + clickable
+FAIL  light 1280px: side-by-side expired/discarded panels never clip actions () — — שמנת מתוקה x=285..378 clip=862..1206 h=44 | — לימון חתוך x=285..378 clip=862..1206 h=44
+10/20 checks passed

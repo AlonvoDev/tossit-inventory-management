@@ -148,6 +148,25 @@ describe('AppearanceProvider', () => {
     expect(await screen.findByText('הבחירה פעילה עכשיו, אך לא נשמרה במכשיר הזה.')).toBeInTheDocument();
   });
 
+  it('V1 follow-up: every theme-color tag follows the resolved appearance (explicit light on a dark OS)', async () => {
+    mockSystem(true);
+    const metas = ['(prefers-color-scheme: light)', '(prefers-color-scheme: dark)'].map(media => {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.media = media;
+      document.head.appendChild(meta);
+      return meta;
+    });
+    try {
+      render(app());
+      expect(metas.map(m => m.content)).toEqual([palettes.dark.bg, palettes.dark.bg]);
+      await choose('בהיר');
+      expect(metas.map(m => m.content)).toEqual([palettes.light.bg, palettes.light.bg]);
+    } finally {
+      metas.forEach(m => m.remove());
+    }
+  });
+
   it('works without matchMedia (older browsers): system resolves to light', () => {
     vi.stubGlobal('matchMedia', undefined);
     render(app());
@@ -235,6 +254,13 @@ describe('pre-paint script in index.html', () => {
     expect(run('light', true)).toBe('light');
     expect(run(null, true)).toBe('dark');
     expect(run('garbage', false)).toBe('light');
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.content = '#111418';
+    document.head.appendChild(meta);
+    expect(run('light', true)).toBe('light');
+    expect(meta.content).toBe('#FFFFFF'); // pre-paint also syncs the browser chrome colour
+    meta.remove();
     expect(run(null, true, true)).toBe('dark');
   });
 });

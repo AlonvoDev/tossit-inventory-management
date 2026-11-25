@@ -1,9 +1,41 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: **V3 — the same visual language on admin, catalog, fridges, settings, reports and PWA controls** (`docs/TOSSIT_MASTER_PLAN.md` V3)
-Status: **V3 READY FOR CODEX REVIEW**. Not deployed; `main` not touched.
-Integrated Codex SHA: none new since V1 (`codex/tossit-core` `ac46bd2` date-scan lifecycle not merged; needed for V4).
-Last previously confirmed remote SHA: 009259223fad42ce7678ee3f018975b8445c2121 (V1)
+Task / bounded subtask: **V1-R1 / V1-R2 / theme-color follow-up** (Codex review `docs/ui-review/V1_CODEX_REVIEW.md`, `0418c5a`), on top of V3
+Status: **V1 fixes READY FOR CODEX REVIEW**. V3 (`56eaaec`) is unchanged apart from these fixes. Not deployed; `main` not touched.
+Integrated Codex SHA: `0418c5a` (V1 review notes, including core `ac46bd2` scan lifecycle), normal merge `ef05b18`.
+Last previously confirmed remote SHA: 56eaaecf40ecc0e088ddbb0d114c65e53de2735f (V3)
+
+## V1 review fixes — 2026-11-25
+- **R1 — actions clipped at medium widths.**
+  - `ItemsList` now picks the table layout from **its own width** (ResizeObserver), not the viewport: table only when the list is at least `INVENTORY_TABLE_MIN_WIDTH` = 960px (832 columns + 6×12 gaps + 32 padding).
+  - Otherwise it uses stacked rows, which fit any width. Without ResizeObserver it is also stacked.
+  - This also covers narrow containers such as the side-by-side admin panels, which clipped at every width in V1.
+  - The column header and the table outline render only in table layout. Nothing is hidden by overflow.
+- **R2 — details displaced dates.**
+  - `InventoryItemCard` has explicit `layout: 'stacked' | 'table'`.
+  - In table layout every cell has an explicit `gridRow: 1` and its own column: name 1, quantity 2, fridge 3 (kept even when empty), opened 4, remaining/status 5, expiry 6, action 7.
+  - Closure details form one full-width secondary row (`gridRow 2`), followed by the sync row. Quantity/reason, actor/time and status all stay visible. The phone (stacked) layout is unchanged.
+- **theme-color.**
+  - `AppearanceProvider` and the `index.html` pre-paint script now set **every** `meta[name=theme-color]` to the resolved appearance. Before, only the first tag was updated, so an explicit light choice on a dark OS could leave the dark-media tag active.
+  - Unit-tested only (DOM); not observed on a device.
+
+### Evidence and checks
+- **Unit tests:** `npm run test:run` 48 files, **528/528 PASS** (includes Codex's merged scan-lifecycle tests). New tests:
+  - list-width layout at 899, 959, 960 and 1280px, plus no ResizeObserver;
+  - table cell placement for discarded rows with 0, 1 and 2 detail lines, and an empty fridge cell;
+  - theme-color from the provider and from the pre-paint script.
+- **Real-app browser harness** (`docs/ui-review/v1-fixes/`):
+  - **after: 40/40 PASS**, light and dark, at 899, 900, 960, 1024 and 1280px: every action inside its clip and viewport, hit-tested and 44px; discarded dates under their headings;
+  - **before (`0092592`): 10/20**, R1 reproduced at the same coordinates as the review.
+- **Lint:** `npm run lint` 0 errors, 7 existing warnings.
+- **Build:** `npm run build` PASS.
+- **Browser suite:** `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` **5/5 PASS** (22.4s).
+- Earlier V1 checks (320/390/430/1280 overflow, appearance persistence, queue) still pass in the V1/V3 harness runs. No Codex-owned files changed.
+- NOT RUN: real devices, Safari, screen readers.
+
+---
+
+# Previous: V3 (READY for Codex review at 56eaaec)
 
 ## V3 — 2026-11-25
 - **Shared management rows** (`src/components/layout/ManagementList.tsx`, new): `ManagementList`, `ManagementRow` and `Tag`. These are flat rows with thin separators, small bordered text tags and compact named actions, matching the inventory rows. They replace the card grids on:
