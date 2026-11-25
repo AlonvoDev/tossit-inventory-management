@@ -23,6 +23,16 @@ The user supplied real sample photos. They are qualitative examples, not a compl
 
 ## C0b / S0a extension available
 
+### C1a staff-label calendar review
+
+`src/domain/staffLabelUsage.ts` now provides `calculateLastUsableDate(openingDate, usageDays)` and `reviewStaffLabelUsage(decision)` for the confirmed inclusive-day convention. Both require a complete Gregorian date and an integer usage-day count between 1 and 3650 (the existing catalog bound). OCR strings such as `+3` are not silently coerced; the UI presents an editable numeric value for review.
+
+The separate review decision is exactly `{ confirmed: true, openingDate: { year, month, day }, usageDays: 3 }`. Its result contains `source: 'staff-label'`, `confirmed`, `openingDate`, `usageDays`, and derived `lastUsableDate`. It accepts date-only preparation/opening evidence without inventing a time. It does not relax `confirmDateCandidate` or extend version 1 provider output. Call it only for the explicit review action, never directly on provider JSON. Confirmation-shaped data does not authenticate a user or authorize a write.
+
+Claude can use these helpers for the staff-label review draft and show the final calendar date beside the opening/preparation date and usage days. Keep this draft separate from the existing scan DTO and opening payload until C1 persistence lands. No provider, inventory writer, rules, queue format or deployed behavior changes in C1a.
+
+Integration checklist: `src/domain/inventory.ts` and `firestore.rules` must agree on a versioned expiry policy; `src/domain/contracts.ts` and `normalizeItem.ts` must preserve old records; `src/offline/inventoryController.ts` intent identity and `queueStore.ts` payload validation must include any new reviewed inputs; `src/offline/replay.ts` must preserve the original policy/evidence on retry. Audit online idempotency too. Existing stored expiries and queued operations must retain their original interpretation; do not clear queues or recalculate historical items. Calendar dates are not expiry instants: implement the Jerusalem day boundary separately and test DST before making this live.
+
 `src/domain/dateScanReview.ts` adds `parseDateScanResult(value, expectedSource)` and `confirmDateCandidate(rawResult, expectedSource, candidateId, decision)`. Unknown provider output is runtime-validated, source is matched to the caller, results are bounded/detached, and confirmation is a separate explicit action. Stable DateScanError codes are invalid-scan-result, confirmation-required, candidate-not-found and opening-time-required.
 
 This supersedes C0a's earlier statement that whole-result validation is not implemented. It does not supply authentication, a provider endpoint, request-generation binding or trusted inventory persistence. The UI must discard outdated async responses after cancel/account/source changes; a candidate ID only identifies a candidate in the supplied result. Do not interpret this parser as account authorization or calibrated recognition certainty.
