@@ -1,8 +1,32 @@
 # Codex handoff
-Branch: codex/tossit-core
-Task / bounded subtask: C0a date-evidence foundation and Claude kickoff
-Status: implementation authorized; C0a locally verified and READY for publication; Claude V0 kickoff prepared; no live deployment.
+Branch: codex/tossit-core (C0a/C0b/S0a integrated through PR3)
+Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
+Status: C0a/C0b/S0a integrated; local427client/build/lint and all4PR CI jobs PASS; Claude independently working V0; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## Claude V0 reviewed — 2026-11-25
+
+Pinned7668e623cb82ee6dd111e0c38bc8855f0b4b57a9, based on C0a1c18c5c. No production files changed. Independently ran capture.cjs in a detached worktree using existing Playwright/local Chromium:29/29 PASS, exit0. Viewed phone inventory/opening/scan and desktop combined inventory. Ready for Alon's visual review; Codex does not approve the look for him. Report: docs/ui-review/V0_CODEX_REVIEW.md.
+
+Integration gap against later C0b: the prototype confirms opened-at with day precision after the day-only checkbox, whereas confirmDateCandidate requires an explicit minute. This was introduced in parallel and is not a production write bug; fix/synchronize before V4/C1 integration. Date-only opening may remain unresolved, not applied as confirmed evidence. Existing synthetic DTOs remain compatible otherwise. No production deployment/main merge/provider or real-device recognition test. Recommendations for bottom opening action, density, urgency groups and collapsed optional scan are proposals for Alon's review.
+
+Review docs publish separately if GitHub rejects direct file writes to core; do not discard Claude work or force-push. Earlier runtime/source evidence remains valid and is not rerun for this prototype-only review.
+
+## C0b/S0a integration verified — 2026-11-25
+
+Source checkpoint e3faac2f476f0b997a3877a65837d27ba9c0c790 was published and verified on codex/tossit-scan-review-c0b. All four PR CI jobs in run45650594524 succeeded: neon-host, browser, firebase-emulators and build-and-unit. PR3 was merged normally into codex/tossit-core at c2a0ba9f8913112e0af2d53738ff150188eb4347; merged tree exactly matches the locally tested source tree. Merge timeout was checked against fresh state before retrying. No force-push, main update or production deployment.
+
+Evidence: https://github.com/AlonvoDev/tossit-inventory-management/pull/3 and https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/45650594524 . This follow-up changes only this handoff to record observed results; it is not new application code. Do not confuse later docs/core reruns with the verified source/PR run. Claude can merge this core checkpoint at a safe task boundary; existing C0a mocks/types remain compatible. Remaining real-image/provider evaluation and explicit day-only/label-time policy are not completed by this merge.
+
+## C0b / S0a — runtime review and evaluation foundation, 2026-11-25
+
+Alon confirmed Claude is working and asked Codex to continue. Added strict parseDateScanResult and explicit confirmDateCandidate in src/domain/dateScanReview.ts. The parser bounds candidates/text, matches expected source, rejects invalid dates/extra authority fields/duplicate IDs or issues/contradictions/coercion, and detaches accepted data. Review requires an explicit selected candidate and corrected complete fields; opening requires minute precision. Raw image instructions remain literal text. The pure parser does not provide Auth/request-generation binding, DST/cutoff resolution, persistence or an OCR provider; orchestration must handle these separately. C0a DTOs are unchanged for Claude V0.
+
+Added provider-neutral evaluation with separate print/handwriting/source groups, exact/wrong/abstained/invalid/no-date counts and paired end-to-end timing metrics. Multiple/unresolved candidates are not credited as precise suggestions. Missing timings remain null. scripts/scan-evaluation.test.ts reads a private recorded dataset only when explicitly requested; otherwise it uses an explicitly synthetic fixture and never claims recognition quality. No photos/credentials/providers/network calls. docs/SCAN_EVALUATION.md documents reproduction and limits.
+
+Verification: all427 client tests in45 files PASS; standalone synthetic evaluation PASS; lint0errors/7existingwarnings. Build verification caught TypeScript return-type inference in two intentionally coercive test objects; explicit string annotations fix the fixtures without relaxing compiler/parser rules. Final production build PASS, including injectManifest worker generation. No changed contracts/rules/queue/server/worker production behavior; server/rules/browser suites were not rerun locally for unimported pure foundations. Real OCR/provider/phone pilot NOT RUN. Date-only cutoff/label-time policy and real-image access remain pending C0/C1/S0 work.
+
+C0a was published and remote-verified at1c18c5c360c7e50bceab6402ed311e3bca155172 on codex/tossit-date-foundation. GraphQL ref updates repeatedly failed although commit objects were created; create_branch succeeded. For this checkpoint, preserve that history and publish through a new bounded branch/PR into core if direct ref updates remain unavailable. Never force-push or move main. No live deployment or changes to Claude's active work.
 
 ## C0a implementation started — 2026-11-25
 

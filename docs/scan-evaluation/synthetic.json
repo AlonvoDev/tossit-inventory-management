@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "mode": "synthetic",
+  "label": "adapter-fixture-only",
+  "samples": [
+    {
+      "id": "print-complete",
+      "source": "packaging",
+      "writing": "printed",
+      "expected": { "meaning": "manufacturer-expiry", "reading": { "precision": "day", "date": { "year": 2026, "month": 11, "day": 28 } } },
+      "result": {
+        "version": 1, "source": "packaging", "outcome": "candidates",
+        "candidates": [{ "id": "candidate-1", "rawText": "לשימוש עד 28.11.2026", "meaning": "manufacturer-expiry", "reading": { "precision": "day", "date": { "year": 2026, "month": 11, "day": 28 } }, "issues": [] }]
+      }
+    },
+    {
+      "id": "handwritten-incomplete",
+      "source": "staff-label",
+      "writing": "handwritten",
+      "expected": { "meaning": "opened-at", "reading": { "precision": "minute", "date": { "year": 2026, "month": 11, "day": 25 }, "hour": 10, "minute": 30, "timezone": "Asia/Jerusalem" } },
+      "result": {
+        "version": 1, "source": "staff-label", "outcome": "candidates",
+        "candidates": [{ "id": "candidate-2", "rawText": "נפתח 25/11", "meaning": "opened-at", "reading": null, "issues": ["missing-year", "missing-time"] }]
+      }
+    },
+    {
+      "id": "print-no-date",
+      "source": "packaging",
+      "writing": "printed",
+      "expected": null,
+      "result": { "version": 1, "source": "packaging", "outcome": "unreadable", "candidates": [] }
+    }
+  ]
+}

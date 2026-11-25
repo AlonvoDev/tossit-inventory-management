@@ -1,6 +1,6 @@
 # TossIt — complete next-round work plan
 
-Date: 2026-11-25 (Asia/Jerusalem). Status: **IMPLEMENTATION STARTED; C0a foundation prepared; V0 assigned to Claude**.
+Date: 2026-11-25 (Asia/Jerusalem). Status: **IMPLEMENTATION STARTED; C0a published; C0b/S0a foundation prepared; Claude working V0**.
 
 ## Outcome and boundaries
 
@@ -166,3 +166,7 @@ Optional push configuration/N0 targets another1–2agent-hours only if credentia
 ## Current execution checkpoint
 
 Alon authorized both agents to begin on2026-11-25. Codex C0a adds isolated date-evidence DTOs and Gregorian/precision validation with targeted regression checks; no inventory persistence or expiry policy has changed. See DATE_SCAN_CONTRACT.md. Claude starts V0 now using CLAUDE_START_PROMPT.md and synthetic fixtures. Next Codex work is the remaining C0 policy/compatibility decision record and S0 evaluation harness; real OCR accuracy requires sample photos and an accessible provider. UI work proceeds independently. Each owner publishes coherent commits and verified remote SHAs per task.
+
+### C0b/S0a progress — 2026-11-25
+
+Runtime result validation and explicit review are implemented without changing C0a DTOs. A provider-neutral recorded-output evaluator and runnable synthetic fixture are available; see SCAN_EVALUATION.md. Real OCR quality/provider access remains NOT RUN. These additive foundations do not write inventory or settle date-only/timezone policy. Claude can complete V0 independently. C0/S0 work is published on a Codex working branch and integrated into core through pinned development PRs if the ref-update connector is unavailable.
