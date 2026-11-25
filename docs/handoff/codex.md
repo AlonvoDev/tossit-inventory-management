@@ -1,8 +1,26 @@
 # Codex handoff
-Branch: codex/tossit-core (C0a/C0b/S0a integrated through PR3)
-Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
-Status: C0a/C0b/S0a integrated; local427client/build/lint and all4PR CI jobs PASS; Claude independently working V0; no live deployment.
+Branch: codex/tossit-core (S1a integrated through PR4)
+Task / bounded subtask: S1a scan lifecycle and server transport seam
+Status: S1a integrated; all4source/PR CI jobs PASS; Claude V1/dark mode independent; server/provider and date-policy work pending; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## S1a integration verified — 2026-11-25
+
+Source e11019023d77ce59abd221ae4596da86a8db1f5f published and remote-verified on codex/tossit-scan-lifecycle. All4PR CI jobs succeeded in run45653946539: build-and-unit, firebase-emulators, neon-host and browser. PR4 merged normally into core at848772f2651fccf85a21bbfff81469bb2c874a25; merged tree matches the locally verified source tree. The approved V0 review/V1 dark-mode instructions are included as documentation only. No Claude presentation/source files changed.
+
+Evidence: https://github.com/AlonvoDev/tossit-inventory-management/pull/4 and https://github.com/AlonvoDev/tossit-inventory-management/actions/runs/45653946539 . This subsequent handoff update records observed results only; later core/doc reruns are separate from that verified source/PR run. Local evidence before publication:445 full client tests, then final19 lifecycle tests and TypeScript/changed-file lint after the extra context guard; CI then verified the complete final source.
+
+GitHub rejected a multi-entry tree request with an internal MCP error. Rebuilt the same unreferenced tree one entry at a time, verified its exact expected SHA, then created one commit/branch and verified its remote head. No partial application checkpoint or force-push was required. Main/live remains unchanged. Claude may merge the latest core at a safe boundary; S1a is a transport seam with safe lifecycle, not a working provider/backend route. Real image/model accuracy, target-device camera/HEIC checks and explicit day-only/label-time policy remain NOT RUN or unresolved as documented.
+
+## S1a — cancellable scoped scan lifecycle, 2026-11-25
+
+Alon relayed V1/dark-mode kickoff to Claude and asked Codex to continue. Added createDateScanController and bounded Hebrew errors under src/features/dateScan. Scope/source/request identity is captured per scan, checked before dispatch and before exposing a result. Cancel/replacement/dispose settles promptly even when transport ignores abort; timeout aborts and releases timers/listeners; old results cannot overwrite a new scan. refreshContext clears ready results on account/business changes and aborts in-flight scans offline. No automatic retries, photo persistence, confirmation or inventory writes. Blob MIME/size checks are client UX only, not server image validation.
+
+DATE_SCAN_TRANSPORT.md documents observable store/transport API, React/auth/StrictMode cleanup, image-preview ownership, server Auth/scope/quota requirements and the current32768-byte host JSON limitation. A dedicated future image path must preserve existing callable limits. No provider or endpoint has been configured, no credential/real photo read, and no actual OCR inference has run. Actual provider/image/camera/HEIC accuracy remains NOT RUN. Date-only cutoff/staff-label time semantics still need resolution before C1 applies new dates; no silent default or persistence schema change was introduced.
+
+Verification: full client suite445/445 PASS before the final additional synchronous context-change guard. Final lifecycle suite19/19 PASS after that guard; final TypeScript build check PASS and changed-file ESLint PASS. Production bundle build PASS earlier in this checkpoint; full lint0errors/7existingwarnings. CI on the actual published source will rerun complete client/build/server/emulator/browser checks before integration. Focused tests include cancellation, late response, replacement/source, scope changes, offline/reconnect, image limits, safe failures, timeout, disposal, reentrant observer cancellation and synchronous transport failure. The initial orchestration test exposed deferred dispatch assumptions; final implementation dispatches synchronously inside the protected try path and suppresses cancelled/context-changed work before transport.
+
+V1 theme/presentation files, shared domain persistence, Firestore rules, queue, server routes, worker, dependencies and main/live are untouched. The pending changes from the approval/review branch are documentation only and may be integrated with this checkpoint. Each checkpoint remains a verified remote Git commit; no external message to Claude was sent.
 
 ## Alon approved V0 + dark mode through accessibility — 2026-11-25
 

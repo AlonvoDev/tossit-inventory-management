@@ -2,6 +2,25 @@
 
 2026-11-25. Implementation authorized by Alon. C0a is an additive foundation, not a v2 inventory writer or a deployed scanner. Read with TOSSIT_MASTER_PLAN.md.
 
+## Confirmed staff-label business rule — 2026-11-25
+
+Alon explicitly confirmed: the handwritten date on staff labels is the opening/preparation date, including when the printed field says תאריך יצור. The +N notation is the total number of permitted calendar days, with the opening/preparation day counted as day 1.
+
+- Last usable calendar date = opening/preparation calendar date + (N - 1) calendar days.
+- Opening on 25/11/2026: +1 ends on 25/11; +2 on 26/11; +3 on 27/11.
+- +2 does not mean 48 hours from the opening timestamp. Add calendar days, not fixed 24-hour millisecond durations.
+- Show the identified opening/preparation date, N, and calculated last usable date together for explicit review. Preserve corrections and source meaning.
+- A factory production date remains distinct from a staff preparation date. The printed field name alone must not determine this meaning without label/source context.
+- Missing year remains unresolved until supplied explicitly; screenshot timestamps and wine vintages cannot fill it. Missing time must not be invented.
+- Version 1 has no structured relative-day field, and confirmed opened-at currently requires minute precision. Do not smuggle +N into an absolute expiry reading or bypass confirmation validation. Codex must extend the contract deliberately before Claude wires persistence.
+- This settles inclusive day counting, not the exact end-of-day timestamp, DST conversion, or the relation between staff N and catalog/manufacturer limits.
+
+Claude: use this rule in review copy and examples; request the additive duration/date-only adapter from Codex rather than changing queue payloads or date validators independently.
+
+Codex: the existing inventory builder uses openedAtMs + shelfLifeDays * 86400000, so current production expiry does not implement this convention. C1 must coordinate the calendar-day policy, trusted writer/rules, reader/status boundaries, offline fingerprints/replay and old-record compatibility. Do not retroactively reinterpret stored expiries without an explicit migration design.
+
+The user supplied real sample photos. They are qualitative examples, not a completed OCR benchmark or verified ground truth. Keep originals and messaging UI/personal details out of public Git. More images are not required to start; later evaluation should include independent camera originals and difficult cases.
+
 ## C0b / S0a extension available
 
 `src/domain/dateScanReview.ts` adds `parseDateScanResult(value, expectedSource)` and `confirmDateCandidate(rawResult, expectedSource, candidateId, decision)`. Unknown provider output is runtime-validated, source is matched to the caller, results are bounded/detached, and confirmation is a separate explicit action. Stable DateScanError codes are invalid-scan-result, confirmation-required, candidate-not-found and opening-time-required.
@@ -9,6 +28,10 @@
 This supersedes C0a's earlier statement that whole-result validation is not implemented. It does not supply authentication, a provider endpoint, request-generation binding or trusted inventory persistence. The UI must discard outdated async responses after cancel/account/source changes; a candidate ID only identifies a candidate in the supplied result. Do not interpret this parser as account authorization or calibrated recognition certainty.
 
 `src/features/dateScan/evaluation.ts`, the synthetic dataset and `scripts/scan-evaluation.test.ts` provide aggregate scoring for recorded outputs; see SCAN_EVALUATION.md. Synthetic checks do not establish real print/handwriting accuracy. The existing C0a DTO/mocks are unchanged, so Claude can continue V0 without a forced mid-task contract migration.
+
+## S1a request lifecycle available
+
+The controller in src/features/dateScan/controller.ts now provides start/cancel/dispose, observable idle/scanning/ready/error states, account/business generation guards, deadlines and source-matched validation. Hebrew bounded messages are in errorMessages.ts. See DATE_SCAN_TRANSPORT.md for the adapter seam and cleanup obligations. No provider/backend endpoint is installed by S1a; the current server32KiB reader must not be reused for large photo payloads. This does not change the review DTOs or inventory writers.
 
 ## Available now
 
@@ -58,7 +81,7 @@ This fixture is deliberately missing a year/time. Show editable missing fields, 
 
 parseDateReading validates calendar/time components only. A Jerusalem local minute during a DST gap/repeated hour is not thereby a resolved instant. There is no default date-only expiry cutoff, missing-year inference or local-time-to-epoch conversion in C0a.
 
-Before C1 introduces writers, settle the business convention for date-only expiry, missing label time, DST ambiguity and later corrections. The proposed effective expiry is the earliest applicable manufacturer/label cap and catalog-derived expiry. This policy is not implemented here. Staff-written expiry cannot lengthen catalog policy. Preserve original separate source meanings and audit metadata.
+The inclusive staff-label day-count convention is confirmed above. Before C1 introduces writers, settle the exact date-only cutoff, missing label time, DST ambiguity and later corrections. The proposed effective expiry is the earliest applicable manufacturer/label cap and catalog-derived expiry. This policy is not implemented here. Staff-written expiry cannot lengthen catalog policy. Preserve original separate source meanings and audit metadata.
 
 Existing OpenInventoryItemInput, InventoryItem, inventory builders/readers, Firestore rules and offline schema are untouched. Do not place these new DTOs into inventory writes or queue previews and assume they persist. C1 must implement readers/rules/fingerprints/replay/idempotency/version compatibility together. Until then a prototype may show date evidence, but actual production saves use the existing contract.
 
