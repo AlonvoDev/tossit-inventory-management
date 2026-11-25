@@ -1,8 +1,18 @@
 # Codex handoff
 Branch: codex/tossit-core
-Task / bounded subtask: approved UI1–UI3/security production rollout
-Status: merged and deployed; main CI and unsigned live smoke PASS; owner/phone/staff pilot NOT RUN.
+Task / bounded subtask: complete next-round master plan
+Status: next-round plan published; implementation NOT STARTED; historical production evidence below.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## Next-round master plan published — 2026-11-25
+
+Alon requested a complete work plan after favoring the compact visual direction and requesting scanning of both packaging dates and handwritten staff labels. The current work is documentation only: docs/TOSSIT_MASTER_PLAN.md and the Claude entry point. No implementation, provider activation or production mutation was performed.
+
+Remote main/core baseline84522ea and Claude2810835 were read directly from GitHub. Existing source review identified the required coordinated change: current rules enforce openingTime + shelfLifeDays, and input fingerprints/replay/idempotency omit manufacturer/label dates. The plan therefore includes explicit date policy/contracts, trusted caps, legacy queue compatibility and version-overlap rollout before new writers. UI can ship independently of OCR. The approved direction is not a full design sign-off, and the previous conversation-only HTML preview is absent locally.
+
+Plan covers two-owner branches, per-task push/verified SHA/handoff, visual prototype and implementation, manual dates, print/handwriting feasibility, optional protected extraction service, camera/correction UI, regression/device/staff pilot, known follow-ups, optional push, rollout/rollback and portfolio docs. Initial core effort46–74 cumulative engineering hours, re-estimate after feasibility/design; optional push+4–8. Provider cost/payment/data-policy and actual label conventions remain explicit decisions, not assumed approvals.
+
+Validation: documentation links/task/dependency/estimate review and git diff --check. No code tests rerun for this docs-only task; previous release counts are labeled historical. Implementation NOT STARTED; live configuration/records/rules/billing/push remain untouched by this task. Publish to codex/tossit-core only, then relay the exact SHA to Alon for Claude.
 
 ## UI/security refresh deployed — 2026-11-15
 
