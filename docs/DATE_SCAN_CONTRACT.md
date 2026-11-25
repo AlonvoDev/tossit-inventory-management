@@ -2,6 +2,14 @@
 
 2026-11-25. Implementation authorized by Alon. C0a is an additive foundation, not a v2 inventory writer or a deployed scanner. Read with TOSSIT_MASTER_PLAN.md.
 
+## C0b / S0a extension available
+
+`src/domain/dateScanReview.ts` adds `parseDateScanResult(value, expectedSource)` and `confirmDateCandidate(rawResult, expectedSource, candidateId, decision)`. Unknown provider output is runtime-validated, source is matched to the caller, results are bounded/detached, and confirmation is a separate explicit action. Stable DateScanError codes are invalid-scan-result, confirmation-required, candidate-not-found and opening-time-required.
+
+This supersedes C0a's earlier statement that whole-result validation is not implemented. It does not supply authentication, a provider endpoint, request-generation binding or trusted inventory persistence. The UI must discard outdated async responses after cancel/account/source changes; a candidate ID only identifies a candidate in the supplied result. Do not interpret this parser as account authorization or calibrated recognition certainty.
+
+`src/features/dateScan/evaluation.ts`, the synthetic dataset and `scripts/scan-evaluation.test.ts` provide aggregate scoring for recorded outputs; see SCAN_EVALUATION.md. Synthetic checks do not establish real print/handwriting accuracy. The existing C0a DTO/mocks are unchanged, so Claude can continue V0 without a forced mid-task contract migration.
+
 ## Available now
 
 Import from `src/domain/dateEvidence.ts`:
@@ -14,7 +22,7 @@ Import from `src/domain/dateEvidence.ts`:
 - `ConfirmedDateEvidence`: separate explicit user confirmation with a permitted meaning. A production/unknown reading cannot directly become confirmed opening/expiry evidence.
 - `parseCalendarDate` and `parseDateReading`: validate explicit calendar components, preserve precision, reject coercion/missing fields/impossible dates/extra fields and return detached copies.
 
-These types are a UI/adapter contract. They do not validate an entire provider response or establish authorization. S1 must validate candidate text/count/IDs/meanings, issues, response shape and request scope before exposing a provider response. Never cast unknown model JSON directly to DateScanResult. A confirmed DTO is not a security capability; later trusted validation still checks every inventory write.
+These types are a UI/adapter contract. Types alone do not validate a provider response or establish authorization. C0b validates result shape/content through parseDateScanResult; S1 still validates request scope, file limits and access before exposing a provider response. Never cast unknown model JSON directly to DateScanResult. A confirmed DTO is not a security capability; later trusted validation still checks every inventory write.
 
 ## Synthetic fixture for Claude V0/V4
 

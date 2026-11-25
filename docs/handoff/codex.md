@@ -1,8 +1,18 @@
 # Codex handoff
-Branch: codex/tossit-core
-Task / bounded subtask: C0a date-evidence foundation and Claude kickoff
-Status: implementation authorized; C0a locally verified and READY for publication; Claude V0 kickoff prepared; no live deployment.
+Branch: codex/tossit-date-foundation (C0/S0 working branch; integrates into core through PR)
+Task / bounded subtask: C0b runtime scan review / S0a evaluation harness
+Status: C0b/S0a locally READY; full client/build/lint verified; publication/CI pending; Claude independently working V0; no live deployment.
 Last confirmed released code SHA: 15788028fffb90d4e057259a7169ab51a2c4b52e (main merge; later evidence-only commits may follow)
+
+## C0b / S0a — runtime review and evaluation foundation, 2026-11-25
+
+Alon confirmed Claude is working and asked Codex to continue. Added strict parseDateScanResult and explicit confirmDateCandidate in src/domain/dateScanReview.ts. The parser bounds candidates/text, matches expected source, rejects invalid dates/extra authority fields/duplicate IDs or issues/contradictions/coercion, and detaches accepted data. Review requires an explicit selected candidate and corrected complete fields; opening requires minute precision. Raw image instructions remain literal text. The pure parser does not provide Auth/request-generation binding, DST/cutoff resolution, persistence or an OCR provider; orchestration must handle these separately. C0a DTOs are unchanged for Claude V0.
+
+Added provider-neutral evaluation with separate print/handwriting/source groups, exact/wrong/abstained/invalid/no-date counts and paired end-to-end timing metrics. Multiple/unresolved candidates are not credited as precise suggestions. Missing timings remain null. scripts/scan-evaluation.test.ts reads a private recorded dataset only when explicitly requested; otherwise it uses an explicitly synthetic fixture and never claims recognition quality. No photos/credentials/providers/network calls. docs/SCAN_EVALUATION.md documents reproduction and limits.
+
+Verification: all427 client tests in45 files PASS; standalone synthetic evaluation PASS; lint0errors/7existingwarnings. Build verification caught TypeScript return-type inference in two intentionally coercive test objects; explicit string annotations fix the fixtures without relaxing compiler/parser rules. Final production build PASS, including injectManifest worker generation. No changed contracts/rules/queue/server/worker production behavior; server/rules/browser suites were not rerun locally for unimported pure foundations. Real OCR/provider/phone pilot NOT RUN. Date-only cutoff/label-time policy and real-image access remain pending C0/C1/S0 work.
+
+C0a was published and remote-verified at1c18c5c360c7e50bceab6402ed311e3bca155172 on codex/tossit-date-foundation. GraphQL ref updates repeatedly failed although commit objects were created; create_branch succeeded. For this checkpoint, preserve that history and publish through a new bounded branch/PR into core if direct ref updates remain unavailable. Never force-push or move main. No live deployment or changes to Claude's active work.
 
 ## C0a implementation started — 2026-11-25
 
