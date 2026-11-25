@@ -13,14 +13,13 @@ import {
   InputLabel,
   Alert,
   Box,
-  Chip,
   CircularProgress,
   Container,
-  Paper,
   Typography,
 } from '@mui/material';
 import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { PageHeader } from '../components/layout/PageHeader';
+import { ManagementList, ManagementRow, Tag } from '../components/layout/ManagementList';
 import { useAuth } from '../context/AuthContext';
 import {
   getBusinessFridges,
@@ -306,39 +305,34 @@ const AdminFridgesPage: React.FC = () => {
           <Typography sx={{ mt: 1 }}>טוען נתונים...</Typography>
         </Box>
       ) : fridges.length === 0 ? (
-        <Box sx={{ py: 4, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+        <Box sx={{ py: 5, textAlign: 'center', borderTop: 1, borderColor: 'divider' }}>
           <Typography sx={{ fontWeight: 700 }}>אין מקררים במערכת</Typography>
           <Typography variant="body2">הוסף מקרר כדי לשייך אליו מוצרים ופריטים.</Typography>
         </Box>
       ) : (
-        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
+        <ManagementList>
           {fridges.map(fridge => (
-            <Paper
+            <ManagementRow
               key={fridge.id}
-              component="article"
-              variant="outlined"
-              aria-label={fridge.name}
-              sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>
-                  {fridge.name}
-                </Typography>
-                <Chip size="small" variant="outlined" label={departmentLabel(fridge.department) ?? 'לא הוגדרה'} sx={{ flexShrink: 0 }} />
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button variant="outlined" startIcon={<EditIcon />} onClick={() => openEditModal(fridge)} disabled={!!isOffline}
-                  aria-label={`עריכה — ${fridge.name}`} sx={{ minHeight: 44, flex: 1 }}>
-                  עריכה
-                </Button>
-                <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(fridge)} disabled={!!isOffline}
-                  aria-label={`מחיקה — ${fridge.name}`} sx={{ minHeight: 44, flex: 1 }}>
-                  מחיקה
-                </Button>
-              </Box>
-            </Paper>
+              label={fridge.name}
+              headingComponent="h2"
+              title={fridge.name}
+              tags={<Tag>{departmentLabel(fridge.department) ?? 'לא הוגדרה'}</Tag>}
+              actions={
+                <>
+                  <Button variant="outlined" startIcon={<EditIcon />} onClick={() => openEditModal(fridge)} disabled={!!isOffline}
+                    aria-label={`עריכה — ${fridge.name}`} sx={{ minHeight: 44 }}>
+                    עריכה
+                  </Button>
+                  <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(fridge)} disabled={!!isOffline}
+                    aria-label={`מחיקה — ${fridge.name}`} sx={{ minHeight: 44 }}>
+                    מחיקה
+                  </Button>
+                </>
+              }
+            />
           ))}
-        </Box>
+        </ManagementList>
       )}
 
       {/* Modal for adding/editing fridges using Material UI components */}

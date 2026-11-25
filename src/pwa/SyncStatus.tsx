@@ -22,6 +22,9 @@ import { errorMessage } from '../features/common/errorMessage';
  * pending = saved on this device, not yet acknowledged by the server;
  * failed = rejected by the server and retained until reviewed/retried. Never called "synced".
  */
+/** V3: tappable queue chips meet the 44px target (were 24px). */
+const CHIP = { fontWeight: 700, height: 'auto', minHeight: 44, borderRadius: 22, px: 0.5 } as const;
+
 export const SyncStatus: React.FC<{ itemNames?: Record<string, string> }> = ({ itemNames = {} }) => {
   const { operations, pendingCount, failedCount, error, retry } = useOffline();
   const [open, setOpen] = useState(false);
@@ -54,7 +57,8 @@ export const SyncStatus: React.FC<{ itemNames?: Record<string, string> }> = ({ i
             icon={<PendingIcon />}
             label={`${pendingCount} ממתינות לשליחה`}
             onClick={() => setOpen(true)}
-            sx={{ fontWeight: 600 }}
+            variant="outlined"
+            sx={CHIP}
           />
         )}
         {failedCount > 0 && (
@@ -64,11 +68,12 @@ export const SyncStatus: React.FC<{ itemNames?: Record<string, string> }> = ({ i
             icon={<FailedIcon />}
             label={`${failedCount} נכשלו`}
             onClick={() => setOpen(true)}
-            sx={{ fontWeight: 600 }}
+            variant="outlined"
+            sx={CHIP}
           />
         )}
         {error && !pendingCount && !failedCount && (
-          <Chip size="small" color="warning" label="שמירה במכשיר לא זמינה" onClick={() => setOpen(true)} />
+          <Chip size="small" color="warning" variant="outlined" label="שמירה במכשיר לא זמינה" onClick={() => setOpen(true)} sx={CHIP} />
         )}
       </Stack>
 

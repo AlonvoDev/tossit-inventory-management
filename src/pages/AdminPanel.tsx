@@ -12,13 +12,9 @@ import {
   Container,
   Box,
   Typography,
-  Paper,
-  Card,
-  CardContent,
+  Button,
   Tab,
   Tabs,
-  useTheme,
-  alpha,
   Chip,
   Stack,
 } from '@mui/material';
@@ -34,7 +30,6 @@ const AdminPanel: React.FC = () => {
   const { profile, isAdmin, isManager, loading: isLoading, isOffline, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
   const [activeTab, setActiveTab] = useState<'users' | 'products' | 'inventory' | 'reports'>('inventory');
   const [inventorySubTab, setInventorySubTab] = useState<'active' | 'expiring' | 'discarded' | 'finished'>('active');
   const [networkError, setNetworkError] = useState<string | null>(null);
@@ -105,55 +100,18 @@ const AdminPanel: React.FC = () => {
       {/* Access denied overlay for non-admins */}
       {!isLoading && !canAccessAdminPanel && (
         <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
-          <Card sx={{ p: 4 }}>
-            <CardContent>
-              <Typography variant="h4" sx={{ mb: 2, color: 'error.main', fontWeight: 600 }}>
-                גישה נדחתה
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary' }}>
-                אין לך הרשאות להגיע לעמוד זה.
-              </Typography>
-              <Stack spacing={2} direction="row" justifyContent="center">
-                <button 
-                  onClick={() => navigate('/dashboard')} 
-                  className="admin-button primary"
-                >
-                  חזרה לדף הבית
-              </button>
-                <button 
-                  onClick={handleSignOut}
-                  className="admin-button secondary"
-                >
-                התנתק
-              </button>
-                
-                <style>{`
-                  .admin-button {
-                    padding: 12px 24px;
-                    border: none;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: background-color 0.2s;
-                  }
-                  .admin-button.primary {
-                    background-color: ${theme.palette.primary.main};
-                    color: white;
-                  }
-                  .admin-button.primary:hover {
-                    background-color: ${theme.palette.primary.dark};
-                  }
-                  .admin-button.secondary {
-                    background-color: ${theme.palette.grey[300]};
-                    color: ${theme.palette.text.primary};
-                  }
-                  .admin-button.secondary:hover {
-                    background-color: ${theme.palette.grey[400]};
-                  }
-                `}</style>
-              </Stack>
-            </CardContent>
-          </Card>
+          <Typography component="h1" sx={{ mb: 1, color: 'error.main', fontWeight: 700, fontSize: '1.375rem' }}>
+            גישה נדחתה
+          </Typography>
+          <Typography sx={{ mb: 3, color: 'text.secondary' }}>אין לך הרשאות להגיע לעמוד זה.</Typography>
+          <Stack spacing={1.5} direction="row" justifyContent="center">
+            <Button variant="contained" onClick={() => navigate('/dashboard')}>
+              חזרה לדף הבית
+            </Button>
+            <Button variant="outlined" onClick={handleSignOut}>
+              התנתק
+            </Button>
+          </Stack>
         </Container>
       )}
 
@@ -186,240 +144,104 @@ const AdminPanel: React.FC = () => {
         </Alert>
       )}
       
-          {/* Main Content */}
-          <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            {/* Modern Tabs */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: { xs: 0, sm: 1 } }}>
-              <Tabs 
-                value={activeTab} 
-                onChange={(_, newValue) => {
-                  setActiveTab(newValue);
-                  // Update URL to reflect active tab
-                  const newSearchParams = new URLSearchParams(location.search);
-                  newSearchParams.set('tab', newValue);
-                  navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-                }}
-                variant="scrollable"
-                scrollButtons="auto"
-                aria-label="אזורי ניהול"
-                sx={{ minHeight: 48, '& .MuiTab-root': { minHeight: 48, fontWeight: 600, fontSize: '0.95rem', px: 2 } }}
-              >
-                <Tab 
-                  value="inventory" 
-                  label="מלאי מוצרים" 
-                  icon={<CatalogIcon />} 
-                  iconPosition="start"
-                />
-                {/* User management is admin-only (see src/app/access.ts); managers never see a dead-end tab. */}
-                {isAdmin && (
-                  <Tab
-                    value="users"
-                    label="ניהול משתמשים"
-                    icon={<UsersIcon />}
-                    iconPosition="start"
-                    onClick={handleUsersTab}
-                  />
+          {/* Main content — V3: flat tabs and sections, no enclosing card (same language as the inventory). */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_, newValue) => {
+                setActiveTab(newValue);
+                // Update URL to reflect active tab
+                const newSearchParams = new URLSearchParams(location.search);
+                newSearchParams.set('tab', newValue);
+                navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+              }}
+              variant="scrollable"
+              scrollButtons={false}
+              aria-label="אזורי ניהול"
+              sx={{ minHeight: 48, '& .MuiTab-root': { minHeight: 48, fontWeight: 700, fontSize: '0.95rem', px: 2 } }}
+            >
+              <Tab value="inventory" label="מלאי" icon={<CatalogIcon fontSize="small" />} iconPosition="start" />
+              {/* User management is admin-only (see src/app/access.ts); managers never see a dead-end tab. */}
+              {isAdmin && (
+                <Tab value="users" label="ניהול משתמשים" icon={<UsersIcon fontSize="small" />} iconPosition="start" onClick={handleUsersTab} />
+              )}
+              <Tab value="products" label="ניהול מוצרים" icon={<ProductsIcon fontSize="small" />} iconPosition="start" />
+              <Tab value="reports" label="דוחות זריקות" icon={<ReportsIcon fontSize="small" />} iconPosition="start" />
+            </Tabs>
+          </Box>
+
+          <Box sx={{ pt: 2 }}>
+            {activeTab === 'inventory' && (
+              <Box component="section" aria-labelledby="admin-inventory-heading">
+                <Typography id="admin-inventory-heading" component="h2" sx={{ fontWeight: 700, fontSize: '1.125rem', mb: 1 }}>
+                  מלאי העסק
+                </Typography>
+                {/* Text-only sub-views (no emoji); each one is a filtered view of the same list. */}
+                <Tabs
+                  value={inventorySubTab}
+                  onChange={(_, newValue) => setInventorySubTab(newValue)}
+                  variant="scrollable"
+                  scrollButtons={false}
+                  aria-label="תצוגת מלאי"
+                  sx={{ mb: 1.5, minHeight: 44, '& .MuiTab-root': { minHeight: 44, fontWeight: 700, fontSize: '0.875rem', px: 1.5 } }}
+                >
+                  <Tab value="active" label="פעילים" />
+                  <Tab value="expiring" label="עומדים לפוג" />
+                  <Tab value="discarded" label="פג תוקף ונזרקו" />
+                  <Tab value="finished" label="נגמרו" />
+                </Tabs>
+
+                {inventorySubTab === 'active' && (
+                  <ItemsList showActiveOnly refreshTrigger={0} isOffline={isOffline} onItemUpdated={() => {}} />
                 )}
-                <Tab 
-                  value="products" 
-                  label="ניהול מוצרים" 
-                  icon={<ProductsIcon />} 
-                  iconPosition="start"
-                />
-                <Tab 
-                  value="reports" 
-                  label="דוחות זריקות" 
-                  icon={<ReportsIcon />} 
-                  iconPosition="start"
-                />
-              </Tabs>
-            </Box>
-            
-            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-              {activeTab === 'inventory' && (
-                <Box>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
-                      מלאי מוצרים
+                {inventorySubTab === 'expiring' && (
+                  <>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      פריטים שתוקפם מסתיים ב־72 השעות הקרובות.
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      מעקב מלא אחר מצב המלאי בכל הקטגוריות.
-                    </Typography>
-                  </Box>
-                  
-                  {/* Sub-navigation for inventory */}
-                  <Box sx={{ mb: 3 }}>
-                    <Tabs 
-                      value={inventorySubTab} 
-                      onChange={(_, newValue) => setInventorySubTab(newValue)}
-                      variant="scrollable"
-                      scrollButtons="auto"
-                      sx={{
-                        borderBottom: 1,
-                        borderColor: 'divider',
-                        '& .MuiTab-root': {
-                          fontWeight: 500,
-                          fontSize: '0.85rem',
-                          minHeight: 48,
-                          textTransform: 'none',
-                        },
-                      }}
-                    >
-                      <Tab value="active" label="🟢 פעיל" />
-                      <Tab value="expiring" label="🟡 פג תוקף בקרוב" />
-                      <Tab value="discarded" label="🗑️ נזרקו לפח" />
-                      <Tab value="finished" label="✅ נגמר" />
-                    </Tabs>
-                  </Box>
-
-                  {/* Inventory content based on sub-tab */}
-                  {inventorySubTab === 'active' && (
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'success.main' }}>
-                        מוצרים פעילים
+                    <ItemsList showExpiringsSoon refreshTrigger={0} isOffline={isOffline} onItemUpdated={() => {}} />
+                  </>
+                )}
+                {inventorySubTab === 'discarded' && (
+                  <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+                    <Box component="section" aria-labelledby="admin-expired-heading">
+                      <Typography id="admin-expired-heading" component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1 }}>
+                        פג תוקף וממתינים לטיפול
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        מוצרים תקינים ופעילים במערכת.
-                      </Typography>
-                      <ItemsList 
-                        showActiveOnly={true}
-                        refreshTrigger={0}
-                        isOffline={isOffline}
-                        onItemUpdated={() => {}}
-
-
-                      />
+                      <ItemsList showExpiredOnly refreshTrigger={0} isOffline={isOffline} onItemUpdated={() => {}} />
                     </Box>
-                  )}
-
-                  {inventorySubTab === 'expiring' && (
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'warning.main' }}>
-                        פג תוקף בקרוב
+                    <Box component="section" aria-labelledby="admin-discarded-heading">
+                      <Typography id="admin-discarded-heading" component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1 }}>
+                        פריטים שנזרקו
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        מוצרים שעומדים לפוג בתוך 3 ימים.
-                      </Typography>
-                      <ItemsList 
-                        showExpiringsSoon={true}
-                        refreshTrigger={0}
-                        isOffline={isOffline}
-                        onItemUpdated={() => {}}
-
-                      />
+                      <ItemsList showDiscardedOnly refreshTrigger={0} isOffline={isOffline} onItemUpdated={() => {}} />
                     </Box>
-                  )}
-
-                  {inventorySubTab === 'discarded' && (
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'error.main' }}>
-                        נזרקו לפח
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        מוצרים שנזרקו עם פירוט סיבת הזריקה וכמות.
-                      </Typography>
-                      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr' } }}>
-                        <Card sx={{ p: 2 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                            פג תוקף וממתינים לטיפול
-                          </Typography>
-                          <ItemsList 
-                            showExpiredOnly={true}
-                            refreshTrigger={0}
-                            isOffline={isOffline}
-                            onItemUpdated={() => {}}
-
-                          />
-                        </Card>
-                        <Card sx={{ p: 2 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                            מוצרים שנזרקו ידנית
-                          </Typography>
-                          <ItemsList 
-                            showDiscardedOnly={true}
-                            refreshTrigger={0}
-                            isOffline={isOffline}
-                            onItemUpdated={() => {}}
-
-                          />
-                        </Card>
-                      </Box>
-                    </Box>
-                  )}
-
-                  {inventorySubTab === 'finished' && (
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'success.main' }}>
-                        מוצרים שנגמרו
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        מוצרים שנוצלו עד התום (לא נזרקו).
-                      </Typography>
-                      <ItemsList 
-                        showFinishedOnly={true}
-                        refreshTrigger={0}
-                        isOffline={isOffline}
-                        onItemUpdated={() => {}}
-
-                      />
-                    </Box>
-                  )}
-                </Box>
-              )}
-
-              {activeTab === 'users' && (
-                <Box>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
-                      ניהול משתמשים
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      רק מנהלים יכולים לגשת לעמוד זה.
-                    </Typography>
                   </Box>
-                  <Alert 
-                    severity="info" 
-                    sx={{ 
-                      borderRadius: 2,
-                      background: alpha(theme.palette.primary.main, 0.05),
-                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }}
-                  >
-                    עמוד זה זמין רק למנהלים מלאים.
-                  </Alert>
-                </Box>
-              )}
+                )}
+                {inventorySubTab === 'finished' && (
+                  <ItemsList showFinishedOnly refreshTrigger={0} isOffline={isOffline} onItemUpdated={() => {}} />
+                )}
+              </Box>
+            )}
 
-              {activeTab === 'products' && (
-                <Box>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
-                      ניהול מוצרים
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      ניהול רשימת המוצרים והגדרת זמני תוקף.
-                    </Typography>
-                  </Box>
-                  <ProductManagement isOffline={isOffline} />
-                </Box>
-          )}
+            {activeTab === 'users' && (
+              <Alert severity="info">ניהול המשתמשים נמצא בעמוד נפרד; המעבר אליו מתבצע מהלשונית.</Alert>
+            )}
 
-          {activeTab === 'reports' && (
-                <Box>
-                  <DiscardReport businessId={profile?.businessId || ''} />
-                </Box>
-              )}
+            {activeTab === 'products' && (
+              <Box component="section" aria-labelledby="admin-products-heading">
+                <Typography id="admin-products-heading" component="h2" sx={{ fontWeight: 700, fontSize: '1.125rem', mb: 0.5 }}>
+                  ניהול מוצרים
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  רשימת המוצרים וזמני התוקף שלהם.
+                </Typography>
+                <ProductManagement isOffline={isOffline} />
+              </Box>
+            )}
 
-
-          
-
-
-
-
-
-            </Box>
-          </Paper>
-
+            {activeTab === 'reports' && <DiscardReport businessId={profile?.businessId || ''} />}
+          </Box>
         </Container>
       )}
     </Box>

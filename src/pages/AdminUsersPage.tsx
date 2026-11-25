@@ -4,19 +4,18 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Container,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Paper,
   TextField,
   Typography,
 } from '@mui/material';
 import { Block as BlockIcon, Edit as EditIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
 import { PageHeader } from '../components/layout/PageHeader';
+import { ManagementList, ManagementRow, Tag } from '../components/layout/ManagementList';
 import { getAllUsers, createUserByAdmin, updateUserByAdmin, deleteUserByAdmin } from '../api/authAPI';
 import { UserProfile } from '../types/UserProfile';
 import { useSearchParams } from 'react-router-dom';
@@ -260,83 +259,82 @@ const AdminUsersPage: React.FC = () => {
           <Typography sx={{ mt: 1 }}>טוען משתמשים...</Typography>
         </Box>
       ) : users.length === 0 ? (
-        <Box sx={{ py: 4, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+        <Box sx={{ py: 5, textAlign: 'center', borderTop: 1, borderColor: 'divider' }}>
           <Typography sx={{ fontWeight: 700 }}>לא נמצאו משתמשים.</Typography>
         </Box>
       ) : (
-        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+        <ManagementList>
           {users.map((user, index) => {
             const name = user.fullName || user.email || '-';
             const self = user.uid === currentUid;
             const inactive = isDeactivated(user);
             const role = toAppRole(user.role);
             return (
-              <Paper
+              <ManagementRow
                 key={user.uid || index}
-                component="article"
-                variant="outlined"
-                data-user-row
-                aria-label={name}
-                sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 1, opacity: inactive ? 0.7 : 1, minWidth: 0 }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>
-                      {user.fullName || '-'}
-                    </Typography>
-                    <Typography variant="body2" dir="ltr" sx={{ textAlign: 'right', overflowWrap: 'anywhere' }}>
-                      {user.email || '-'}
-                    </Typography>
+                label={name}
+                dataAttributes={{ 'data-user-row': true }}
+                muted={inactive}
+                title={user.fullName || '-'}
+                subtitle={
+                  <Box component="span" dir="ltr" sx={{ unicodeBidi: 'isolate' }}>
+                    {user.email || '-'}
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
-                    {self && <Chip size="small" label="אתה" variant="outlined" />}
-                    {inactive && <Chip size="small" color="error" label="מושבת" />}
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Chip size="small" color="primary" variant="outlined" label={role ? ROLE_LABELS[role] : 'תפקיד לא תקין'} sx={{ fontWeight: 600 }} />
-                  <Chip size="small" variant="outlined" label={user.role !== 'admin' ? departmentLabel(user.department) ?? 'לא הוגדרה' : 'כל המחלקות'} />
-                  {user.phoneNumber && (
-                    <Typography variant="body2" dir="ltr">
-                      {user.phoneNumber}
-                    </Typography>
-                  )}
-                  <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                }
+                tags={
+                  <>
+                    <Tag tone="primary">{role ? ROLE_LABELS[role] : 'תפקיד לא תקין'}</Tag>
+                    <Tag>{user.role !== 'admin' ? departmentLabel(user.department) ?? 'לא הוגדרה' : 'כל המחלקות'}</Tag>
+                    {self && <Tag>אתה</Tag>}
+                    {inactive && <Tag tone="danger">מושבת</Tag>}
+                  </>
+                }
+                meta={
+                  <>
+                    {user.phoneNumber && (
+                      <Box component="span" dir="ltr" sx={{ unicodeBidi: 'isolate', marginInlineEnd: 1 }}>
+                        {user.phoneNumber}
+                      </Box>
+                    )}
                     נוצר: {formatCreatedAt(user.createdAt)}
-                  </Typography>
-                </Box>
-                {inactive ? (
-                  <Typography variant="body2">אין פעולות זמינות</Typography>
-                ) : (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<EditIcon />}
-                      onClick={() => openEditModal(user)}
-                      disabled={loading || offline}
-                      aria-label={`עריכה — ${name}`}
-                      sx={{ minHeight: 44, flex: 1 }}
-                    >
-                      עריכה
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<BlockIcon />}
-                      onClick={() => handleDeactivate(user)}
-                      disabled={loading || offline || self}
-                      title={self ? 'לא ניתן להשבית את עצמך' : undefined}
-                      aria-label={`השבתה — ${name}`}
-                      sx={{ minHeight: 44, flex: 1 }}
-                    >
-                      השבתה
-                    </Button>
-                  </Box>
-                )}
-              </Paper>
+                  </>
+                }
+                actions={
+                  inactive ? (
+                    <Typography variant="body2" color="text.secondary">
+                      אין פעולות זמינות
+                    </Typography>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outlined"
+                        startIcon={<EditIcon />}
+                        onClick={() => openEditModal(user)}
+                        disabled={loading || offline}
+                        aria-label={`עריכה — ${name}`}
+                        sx={{ minHeight: 44 }}
+                      >
+                        עריכה
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<BlockIcon />}
+                        onClick={() => handleDeactivate(user)}
+                        disabled={loading || offline || self}
+                        title={self ? 'לא ניתן להשבית את עצמך' : undefined}
+                        aria-label={`השבתה — ${name}`}
+                        sx={{ minHeight: 44 }}
+                      >
+                        השבתה
+                      </Button>
+                    </>
+                  )
+                }
+              />
             );
           })}
-        </Box>
+        </ManagementList>
       )}
 
       {/* Add / edit user: MUI dialog (focus trap, Escape, focus returns to the opener). */}

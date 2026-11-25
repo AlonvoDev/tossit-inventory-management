@@ -14,7 +14,7 @@ const RegisterPage: React.FC = () => (
     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
       <AccessibilityMenu />
     </Box>
-    <Card elevation={3}>
+    <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardContent sx={{ py: 5, px: { xs: 3, sm: 5 } }}>
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Box component="img" src={tossitLogo} alt="TossIt" sx={{ height: 60, width: 'auto', maxWidth: '100%' }} />

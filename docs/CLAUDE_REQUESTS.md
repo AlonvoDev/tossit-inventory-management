@@ -3,6 +3,12 @@
 Requests for Codex-owned files. Claude does not edit these paths. Newest first.
 Entries from the 2026-11-15 UI/UX round supersede all earlier (historical, resolved) sections below.
 
+## Redesign round — from V3 (2026-11-25)
+1. **V3-1: department on discard-report rows** (`src/api/firestoreAPI.ts` `getDiscardReport` / `DiscardReportItem`, Codex-owned).
+   - Problem: the report groups by `[productId ?? productName, type]` and returns no department, so in the admin's combined report two "לימון חתוך" rows (bar and kitchen) look identical. This is a master-plan acceptance item ("show department identity in the combined discard report").
+   - Request: add an optional `area?: Department` to `DiscardReportItem`, taken from the discarded items, and include it in the grouping key so departments are never merged.
+   - The UI side is already in place (`DiscardReport.tsx` `departmentOf`): it renders a department tag on phone rows and desktop rows whenever `area` is present, with a regression test (`DiscardReport.test.tsx`, "V3: shows the department…"). No UI change is needed after the API change. Not blocking V3.
+
 ## UI/UX round — from UI3 (2026-11-15)
 1. **Hebrew name for the header menu button** (`tests/browser/inventory.spec.ts:113,119`, Codex-owned). The button's
    accessible name is still the English `"menu"` because the browser suite selects it by that name. Requested: change

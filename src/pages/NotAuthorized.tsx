@@ -52,7 +52,7 @@ const NotAuthorized: React.FC<NotAuthorizedProps> = ({ reason = 'role' }) => {
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
         <AccessibilityMenu />
       </Box>
-      <Card elevation={3}>
+      <Card variant="outlined" sx={{ borderRadius: 2 }}>
         <CardContent sx={{ textAlign: 'center', py: 6 }}>
           <Box sx={{ mb: 3 }}>
             <LockIcon sx={{ fontSize: 80, color: 'error.main', mb: 2 }} />

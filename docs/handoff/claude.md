@@ -1,9 +1,55 @@
 # Claude handoff
 Branch: claude/tossit-ui
-Task / bounded subtask: **V1 — compact inventory/navigation + light/dark/system appearance in "נגישות"** (`docs/CLAUDE_WORK_PLAN.md` top section)
-Status: **V1 READY FOR CODEX REVIEW**. Not deployed; `main` not touched.
-Integrated Codex SHAs: `bc286be` (V0 review + C0b/S0a) and `fe470bf` (V1 approval). Both normal merges; no reset.
-Last previously confirmed remote SHA: 7668e623cb82ee6dd111e0c38bc8855f0b4b57a9 (V0)
+Task / bounded subtask: **V3 — the same visual language on admin, catalog, fridges, settings, reports and PWA controls** (`docs/TOSSIT_MASTER_PLAN.md` V3)
+Status: **V3 READY FOR CODEX REVIEW**. Not deployed; `main` not touched.
+Integrated Codex SHA: none new since V1 (`codex/tossit-core` `ac46bd2` date-scan lifecycle not merged; needed for V4).
+Last previously confirmed remote SHA: 009259223fad42ce7678ee3f018975b8445c2121 (V1)
+
+## V3 — 2026-11-25
+- **Shared management rows** (`src/components/layout/ManagementList.tsx`, new): `ManagementList`, `ManagementRow` and `Tag`. These are flat rows with thin separators, small bordered text tags and compact named actions, matching the inventory rows. They replace the card grids on:
+  - users: `data-user-row`, the `article` name and "עריכה/השבתה — X" are kept, as are the self, deactivated and offline guards;
+  - fridges;
+  - catalog (`ProductManagement`).
+- **AdminPanel**:
+  - flat tabs; no enclosing card;
+  - inventory sub-tabs are text-only (פעילים / עומדים לפוג / פג תוקף ונזרקו / נגמרו; no emoji, no repeated coloured headings);
+  - one `h2` per section; the expired and discarded views are side-by-side sections instead of nested cards;
+  - the access-denied fallback uses MUI buttons (it no longer injects a `<style>` with `grey[300]`).
+- **Catalog form**:
+  - rewritten with MUI fields: native selects keep the roles and labels the tests use; same handlers, validation, permissions and offline lock;
+  - the unscoped global `<style>` block was removed: it re-styled every `label`/`input` and set `* { pointer-events }` while mounted.
+- **Reports**:
+  - one flat summary strip (kg and units still separate);
+  - phone rows via `ManagementRow`, keeping the UI3-R2 sort control and per-product unit averages;
+  - neutral table header;
+  - date button: a normal 44px control (it overflowed at 320px; see evidence);
+  - the date dialog's close button is named "סגירה", 44px;
+  - the dialog's preset panel and info box use tokens (`grey[100]` looked bright in dark mode).
+- **Report rounding:** desktop now uses the same unit-aware rounding as phones (up to 3 decimals for totals, 2 for averages, with units). Before, `toFixed(0)` showed a 1.5-unit average as "2" and `toFixed(1)` showed 0.25 kg as "0.3".
+- **Same-name products in reports:** a department tag is rendered once the report data carries `area`. The API change is requested from Codex as **V3-1** in `docs/CLAUDE_REQUESTS.md`.
+- **Shared `ui/Card`** (Settings, report error): flat, thin border, compact `h2` header; no shadow or large title. NotAuthorized and Register cards are outlined.
+- **PWA controls:**
+  - the queue chips ("ממתינות לשליחה" / "נכשלו") are now 44px outlined (they were 24px);
+  - update and notification controls already use theme buttons (44px from the theme) and tokens.
+- **Responsive borders:** the `border: {md: 1}` shorthand reset the colour to currentColor on desktop (dark outline in light mode, white separator in dark mode). Inventory list, management list and report strip now use explicit `1px solid var(--tossit-line)`.
+
+### Evidence and checks
+- **Screenshots:** `docs/ui-review/v3/`, 56 PNGs (README there): before = V1 `0092592`, after = this checkpoint; light and dark; 390 and 1280.
+- **Emulator harness:** after **4/4 PASS**. Before **2/4**: the reports page overflowed by 12px at 320px (fixed).
+- **Unit tests:** `npm run test:run` 47 files, **499/499 PASS** (V1: 495; +4). New tests:
+  - report rounding and department tag;
+  - date dialog close button;
+  - queue chips at 44px.
+  Existing users, fridges, products, admin, report and PWA tests are unchanged.
+- **Lint:** `npm run lint` 0 errors, 7 existing warnings.
+- **Build:** `npm run build` PASS.
+- **Browser suite:** `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:browser` **5/5 PASS** (21.7s; the container's Chromium differs from the project's Playwright, as before).
+- **NOT RUN:** real devices, screen readers.
+- No Codex-owned files, packages or lockfiles changed.
+
+---
+
+# Previous: V1 (READY for Codex review at 0092592)
 
 ## V1 — 2026-11-25
 

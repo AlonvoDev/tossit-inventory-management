@@ -107,6 +107,39 @@ describe('DiscardReport', () => {
     await waitFor(() => expect(getDiscardReport).toHaveBeenLastCalledWith('b1', undefined, undefined, 'damaged'));
   });
 
+  it('V3: the desktop table uses the same unit-aware rounding as phones (1.5 units is not shown as 2)', async () => {
+    getDiscardReport.mockResolvedValue([
+      { productName: 'ביצה', totalQuantity: 3, discardCount: 2, reasons: { expired: 2, damaged: 0, other: 0 }, averageQuantity: 1.5, type: 'units' },
+      { productName: 'נענע', totalQuantity: 0.25, discardCount: 1, reasons: { expired: 1, damaged: 0, other: 0 }, averageQuantity: 0.25, type: 'kg' },
+    ]);
+    render(<DiscardReport businessId="b1" />);
+    const egg = (await screen.findByText('ביצה')).closest('tr') as HTMLElement;
+    expect(within(egg).getByText('1.5 יח׳')).toBeInTheDocument();
+    const mint = screen.getByText('נענע').closest('tr') as HTMLElement;
+    expect(within(mint).getByText('0.25')).toBeInTheDocument(); // was toFixed(1) → "0.3"
+    expect(within(mint).getByText('0.25 ק״ג')).toBeInTheDocument();
+  });
+
+  it('V3: shows the department for same-name products once the report data carries it', async () => {
+    getDiscardReport.mockResolvedValue([
+      { ...rows[1], productName: 'לימון', area: 'bar' } as DiscardReportItem,
+      { ...rows[1], productName: 'לימון', area: 'kitchen' } as DiscardReportItem,
+    ]);
+    render(<DiscardReport businessId="b1" />);
+    const [first, second] = (await screen.findAllByText('לימון')).map(n => n.closest('tr') as HTMLElement);
+    expect(within(first).getByText('בר')).toBeInTheDocument();
+    expect(within(second).getByText('מטבח')).toBeInTheDocument();
+  });
+
+  it('V3: the date dialog close button is named and 44px', async () => {
+    getDiscardReport.mockResolvedValue(rows);
+    render(<DiscardReport businessId="b1" />);
+    await screen.findByText('חלב');
+    await userEvent.click(screen.getByRole('button', { name: /בחר טווח תאריכים/ }));
+    const close = within(await screen.findByRole('dialog')).getByRole('button', { name: 'סגירה' });
+    expect(getComputedStyle(close).height).toBe('44px');
+  });
+
   it('shows a recoverable error and retries', async () => {
     getDiscardReport.mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }));
     getDiscardReport.mockResolvedValueOnce(rows);

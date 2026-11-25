@@ -5,7 +5,7 @@ import { getBusinessFridges } from '../api/fridgesAPI';
 import { getBusinessCategories, addCustomCategory } from '../api/categoriesAPI';
 import { Product, PRODUCT_CATEGORIES } from '../types/Product';
 import { Fridge } from '../types/Fridge';
-import { Alert, Box, Button, Chip, Paper, Typography } from '@mui/material';
+import { Alert, Box, Button, TextField, Typography } from '@mui/material';
 import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon, WifiOff as WifiOffIcon } from '@mui/icons-material';
 import {
   canManageBusiness,
@@ -22,33 +22,13 @@ import {
   validateProductForm,
 } from '../features/catalog/productForm';
 import { errorMessage } from '../features/common/errorMessage';
+import { ManagementList, ManagementRow, Tag } from './layout/ManagementList';
 
 interface ProductManagementProps {
   isOffline?: boolean;
 }
 
-const fieldStyle = (hasError: boolean): React.CSSProperties => ({
-  width: '100%',
-  minHeight: '44px',
-  boxSizing: 'border-box',
-  padding: '8px',
-  marginTop: '5px',
-  border: hasError ? '2px solid var(--tossit-danger, #B42318)' : '1px solid var(--tossit-control, #858E9A)',
-  color: 'var(--tossit-text, #151A21)',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  backgroundColor: 'var(--tossit-surface, #FFFFFF)',
-  borderRadius: '8px',
-});
-
-const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'var(--tossit-text, #151A21)' };
-
-const FieldError: React.FC<{ text?: string }> = ({ text }) =>
-  text ? (
-    <div role="alert" style={{ color: 'var(--tossit-danger, #B42318)', fontSize: '14px', marginTop: '5px', fontWeight: 'normal' }}>
-      {text}
-    </div>
-  ) : null;
+const FIELD = { '& .MuiInputBase-root': { minHeight: 48 } } as const;
 
 /**
  * Catalog management for admins (all departments) and managers (own department only).
@@ -287,7 +267,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
   const canEdit = allowedDepartments.length > 0;
 
   return (
-    <div className="product-management" dir="rtl">
+    <Box dir="rtl">
       {/* The surrounding admin tab provides the "ניהול מוצרים" heading. */}
       {error && (
         <Alert severity="error" role="alert" sx={{ mb: 2 }}>
@@ -325,187 +305,173 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
       )}
 
       {formOpen && (
-        <div className={editing ? 'edit-product-form' : 'add-product-form'}>
-          <h3>{editing ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h3>
-          <form onSubmit={handleSubmit} noValidate aria-label={editing ? 'עריכת מוצר' : 'הוספת מוצר'}>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                מזהה מוצר:
-                <input type="text" value={editing ? editing.productId : nextCode} readOnly style={{ ...fieldStyle(false), background: 'var(--tossit-surface-soft, #F5F6F8)' }} />
-              </label>
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                שם מוצר: <span style={{ color: 'red' }}>*</span>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={e => setField('name', e.target.value)}
-                  placeholder="הזן שם מוצר"
-                  disabled={saving}
-                  style={fieldStyle(!!formErrors.name)}
-                />
-                <FieldError text={formErrors.name} />
-              </label>
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                תוקף בימים: <span style={{ color: 'red' }}>*</span>
-                <input
-                  type="number"
-                  name="shelfLifeDays"
-                  inputMode="numeric"
-                  min="1"
-                  step="1"
-                  value={form.shelfLifeDays}
-                  onChange={e => setField('shelfLifeDays', e.target.value)}
-                  disabled={saving}
-                  style={fieldStyle(!!formErrors.shelfLifeDays)}
-                />
-                <FieldError text={formErrors.shelfLifeDays} />
-              </label>
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                מחלקה: <span style={{ color: 'red' }}>*</span>
-                <select
-                  name="department"
-                  value={form.area}
-                  onChange={e => setField('area', e.target.value as Department | '')}
-                  disabled={saving || allowedDepartments.length === 1}
-                  style={fieldStyle(!!formErrors.area)}
-                >
-                  <option value="" disabled>בחר מחלקה</option>
-                  {allowedDepartments.map(d => (
-                    <option key={d} value={d}>{departmentLabel(d)}</option>
-                  ))}
-                </select>
-                <FieldError text={formErrors.area} />
-              </label>
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                סוג מדידה:
-                <select
-                  name="type"
-                  value={form.type}
-                  onChange={e => setField('type', e.target.value as 'kg' | 'units')}
-                  disabled={saving || !!editing}
-                  title={editing ? 'לא ניתן לשנות סוג מדידה למוצר קיים' : undefined}
-                  style={fieldStyle(!!formErrors.type)}
-                >
-                  <option value="units">יחידות</option>
-                  <option value="kg">ק"ג</option>
-                </select>
-                <FieldError text={formErrors.type} />
-              </label>
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                קטגוריית מוצר:
-                <select
-                  name="category"
-                  value={form.category}
-                  onChange={e => setField('category', e.target.value)}
-                  disabled={saving}
-                  style={fieldStyle(false)}
-                >
-                  <option value="">בחר קטגוריה (אופציונלי)</option>
-                  {allCategories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </label>
-
+        // V3: MUI fields in the shared visual language (was raw inputs with their own bold styling).
+        <Box
+          component="section"
+          aria-labelledby="product-form-title"
+          sx={{ mb: 3, p: { xs: 1.5, sm: 2 }, border: 1, borderColor: 'divider', borderRadius: 2, maxWidth: 640 }}
+        >
+          <Typography id="product-form-title" component="h3" sx={{ fontWeight: 700, fontSize: '1.0625rem', mb: 2 }}>
+            {editing ? 'עריכת מוצר' : 'הוספת מוצר חדש'}
+          </Typography>
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            noValidate
+            aria-label={editing ? 'עריכת מוצר' : 'הוספת מוצר'}
+            sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}
+          >
+            <TextField
+              label="מזהה מוצר"
+              value={editing ? editing.productId : nextCode}
+              InputProps={{ readOnly: true }}
+              inputProps={{ dir: 'ltr' }}
+              helperText="נקבע אוטומטית"
+              sx={FIELD}
+            />
+            <TextField
+              label="שם מוצר"
+              name="name"
+              required
+              value={form.name}
+              onChange={e => setField('name', e.target.value)}
+              placeholder="הזן שם מוצר"
+              disabled={saving}
+              error={!!formErrors.name}
+              helperText={formErrors.name}
+              FormHelperTextProps={{ role: formErrors.name ? 'alert' : undefined }}
+              sx={FIELD}
+            />
+            <TextField
+              label="תוקף בימים"
+              name="shelfLifeDays"
+              type="number"
+              required
+              value={form.shelfLifeDays}
+              onChange={e => setField('shelfLifeDays', e.target.value)}
+              disabled={saving}
+              error={!!formErrors.shelfLifeDays}
+              helperText={formErrors.shelfLifeDays}
+              FormHelperTextProps={{ role: formErrors.shelfLifeDays ? 'alert' : undefined }}
+              inputProps={{ inputMode: 'numeric', min: 1, step: 1, dir: 'ltr' }}
+              sx={FIELD}
+            />
+            <TextField
+              select
+              label="מחלקה"
+              name="department"
+              required
+              value={form.area}
+              onChange={e => setField('area', e.target.value as Department | '')}
+              disabled={saving || allowedDepartments.length === 1}
+              error={!!formErrors.area}
+              helperText={formErrors.area}
+              FormHelperTextProps={{ role: formErrors.area ? 'alert' : undefined }}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+              sx={FIELD}
+            >
+              <option value="" disabled>בחר מחלקה</option>
+              {allowedDepartments.map(d => (
+                <option key={d} value={d}>{departmentLabel(d)}</option>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="סוג מדידה"
+              name="type"
+              value={form.type}
+              onChange={e => setField('type', e.target.value as 'kg' | 'units')}
+              disabled={saving || !!editing}
+              title={editing ? 'לא ניתן לשנות סוג מדידה למוצר קיים' : undefined}
+              error={!!formErrors.type}
+              helperText={formErrors.type ?? (editing ? 'לא ניתן לשנות למוצר קיים' : undefined)}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+              sx={FIELD}
+            >
+              <option value="units">יחידות</option>
+              <option value="kg">ק"ג</option>
+            </TextField>
+            <TextField
+              select
+              label="מקרר"
+              name="fridgeId"
+              value={form.fridgeId}
+              onChange={e => setField('fridgeId', e.target.value)}
+              disabled={saving}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+              sx={FIELD}
+            >
+              <option value="">ללא מקרר (אופציונלי)</option>
+              {fridgeOptions.map(fridge => (
+                <option key={fridge.id} value={fridge.id}>
+                  {fridge.name} ({departmentLabel(fridge.department) ?? '?'})
+                </option>
+              ))}
+            </TextField>
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <TextField
+                select
+                fullWidth
+                label="קטגוריית מוצר"
+                name="category"
+                value={form.category}
+                onChange={e => setField('category', e.target.value)}
+                disabled={saving}
+                SelectProps={{ native: true }}
+                InputLabelProps={{ shrink: true }}
+                sx={FIELD}
+              >
+                <option value="">ללא קטגוריה (אופציונלי)</option>
+                {allCategories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </TextField>
               {isBusinessAdmin && (
-                <div style={{ marginTop: '10px' }}>
+                <Box sx={{ mt: 1 }}>
                   {!showAddCategoryForm ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCategoryForm(true)}
-                      disabled={disabled}
-                      style={{ background: 'var(--tossit-primary, #1D6A4E)', color: 'var(--tossit-primary-contrast, #FFFFFF)', padding: '8px 16px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
+                    <Button variant="text" startIcon={<AddIcon />} onClick={() => setShowAddCategoryForm(true)} disabled={disabled}>
                       הוסף קטגוריה חדשה
-                    </button>
+                    </Button>
                   ) : (
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <input
-                        type="text"
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <TextField
+                        size="small"
+                        label="שם הקטגוריה החדשה"
+                        placeholder="שם הקטגוריה החדשה"
                         value={newCategoryName}
                         onChange={e => setNewCategoryName(e.target.value)}
-                        placeholder="שם הקטגוריה החדשה"
-                        style={{ ...fieldStyle(false), flex: 1, marginTop: 0 }}
+                        sx={{ flex: '1 1 200px', '& .MuiInputBase-root': { minHeight: 44 } }}
                       />
-                      <button
-                        type="button"
-                        onClick={handleAddCategory}
-                        disabled={disabled || !newCategoryName.trim()}
-                        style={{ background: 'var(--tossit-primary, #1D6A4E)', color: 'var(--tossit-primary-contrast, #FFFFFF)', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
-                      >
+                      <Button variant="contained" onClick={handleAddCategory} disabled={disabled || !newCategoryName.trim()}>
                         הוסף
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="outlined"
                         onClick={() => {
                           setShowAddCategoryForm(false);
                           setNewCategoryName('');
                         }}
-                        style={{ background: 'var(--tossit-surface-soft, #F5F6F8)', color: 'var(--tossit-text, #151A21)', outline: '1px solid var(--tossit-control, #858E9A)', padding: '8px 12px', border: 'none', borderRadius: '4px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
                       >
                         ביטול
-                      </button>
-                    </div>
+                      </Button>
+                    </Box>
                   )}
-                </div>
+                </Box>
               )}
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>
-                מקרר:
-                <select
-                  name="fridgeId"
-                  value={form.fridgeId}
-                  onChange={e => setField('fridgeId', e.target.value)}
-                  disabled={saving}
-                  style={fieldStyle(false)}
-                >
-                  <option value="">בחר מקרר (אופציונלי)</option>
-                  {fridgeOptions.map(fridge => (
-                    <option key={fridge.id} value={fridge.id}>
-                      {fridge.name} ({departmentLabel(fridge.department) ?? '?'})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-              <button
-                type="submit"
-                disabled={disabled}
-                style={{ width: '65%', padding: '12px', background: disabled ? 'var(--tossit-line-strong, #C9CFD6)' : 'var(--tossit-primary, #1D6A4E)', color: disabled ? 'var(--tossit-text, #151A21)' : 'var(--tossit-primary-contrast, #FFFFFF)', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-              >
+            </Box>
+            <Box sx={{ gridColumn: '1 / -1', display: 'flex', gap: 1, mt: 0.5 }}>
+              <Button type="submit" variant="contained" disabled={disabled} sx={{ flex: { xs: 2, sm: '0 0 auto' }, minHeight: 48, px: 3 }}>
                 {saving ? 'שומר...' : editing ? 'עדכן מוצר' : 'הוסף מוצר'}
-              </button>
-              <button
-                type="button"
-                onClick={closeForm}
-                disabled={saving}
-                style={{ width: '30%', padding: '12px', background: 'var(--tossit-surface-soft, #F5F6F8)', color: 'var(--tossit-text, #151A21)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-              >
+              </Button>
+              <Button type="button" variant="outlined" onClick={closeForm} disabled={saving} sx={{ flex: { xs: 1, sm: '0 0 auto' }, minHeight: 48 }}>
                 ביטול
-              </button>
-            </div>
-          </form>
-        </div>
+              </Button>
+            </Box>
+          </Box>
+        </Box>
       )}
 
       <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1.5 }}>
@@ -514,7 +480,7 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
       {loading ? (
         <Typography role="status">טוען מוצרים...</Typography>
       ) : products.length === 0 ? (
-        <Box sx={{ py: 3, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+        <Box sx={{ py: 5, textAlign: 'center', borderTop: 1, borderColor: 'divider' }}>
           <Typography sx={{ fontWeight: 700 }}>
             {allowedDepartments.length === 1
               ? `לא נמצאו מוצרים עבור מחלקת ${departmentLabel(allowedDepartments[0])}.`
@@ -522,296 +488,49 @@ const ProductManagement: React.FC<ProductManagementProps> = () => {
           </Typography>
         </Box>
       ) : (
-        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
-          {products.map(product => (
-            <Paper
-              key={product.id}
-              component="article"
-              variant="outlined"
-              aria-label={product.name}
-              sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'flex-start' }}>
-                <Typography component="h4" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>
-                  {product.name}
-                </Typography>
-                <Typography variant="body2" dir="ltr" sx={{ flexShrink: 0 }}>
-                  {product.productId}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-                <Chip size="small" variant="outlined" label={`${product.shelfLifeDays} ימים`} />
-                <Chip size="small" variant="outlined" label={product.type === 'kg' ? 'ק״ג' : 'יחידות'} />
-                <Chip size="small" variant="outlined" label={departmentLabel(product.area) ?? 'לא הוגדר'} />
-                {product.fridgeId && fridges.find(f => f.id === product.fridgeId) && (
-                  <Chip size="small" variant="outlined" label={fridges.find(f => f.id === product.fridgeId)!.name} />
-                )}
-              </Box>
-              {canEdit && (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button variant="outlined" startIcon={<EditIcon />} onClick={() => openEdit(product)} disabled={disabled}
-                    aria-label={`עריכה — ${product.name}`} sx={{ minHeight: 44, flex: 1 }}>
-                    עריכה
-                  </Button>
-                  <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteProduct(product)} disabled={disabled}
-                    aria-label={`מחיקה — ${product.name}`} sx={{ minHeight: 44, flex: 1 }}>
-                    מחיקה
-                  </Button>
-                </Box>
-              )}
-            </Paper>
-          ))}
-        </Box>
+        <ManagementList>
+          {products.map(product => {
+            const fridge = product.fridgeId ? fridges.find(f => f.id === product.fridgeId) : undefined;
+            return (
+              <ManagementRow
+                key={product.id}
+                label={product.name}
+                headingComponent="h4"
+                title={product.name}
+                subtitle={
+                  <Box component="span" dir="ltr" sx={{ unicodeBidi: 'isolate' }}>
+                    {product.productId}
+                  </Box>
+                }
+                tags={
+                  <>
+                    <Tag tone="primary">{`${product.shelfLifeDays} ימים`}</Tag>
+                    <Tag>{product.type === 'kg' ? 'ק״ג' : 'יחידות'}</Tag>
+                    <Tag>{departmentLabel(product.area) ?? 'לא הוגדר'}</Tag>
+                    {fridge && <Tag>{fridge.name}</Tag>}
+                  </>
+                }
+                actions={
+                  canEdit ? (
+                    <>
+                      <Button variant="outlined" startIcon={<EditIcon />} onClick={() => openEdit(product)} disabled={disabled}
+                        aria-label={`עריכה — ${product.name}`} sx={{ minHeight: 44 }}>
+                        עריכה
+                      </Button>
+                      <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteProduct(product)} disabled={disabled}
+                        aria-label={`מחיקה — ${product.name}`} sx={{ minHeight: 44 }}>
+                        מחיקה
+                      </Button>
+                    </>
+                  ) : undefined
+                }
+              />
+            );
+          })}
+        </ManagementList>
       )}
 
-      <style>{`
-        /* Base styles */
-        .product-management {
-          margin-top: 20px;
-          color: var(--tossit-text, #151A21);
-          text-align: right;
-          font-family: sans-serif;
-        }
-        
-        .product-management h2 {
-          color: var(--tossit-text, #151A21);
-          font-size: 24px;
-          margin-bottom: 20px;
-          font-weight: bold;
-        }
-        
-        .product-management h3 {
-          color: var(--tossit-text, #151A21);
-          font-size: 20px;
-          margin-bottom: 15px;
-          font-weight: bold;
-        }
-        
-        .product-management p,
-        .product-management label,
-        .product-management th,
-        .product-management td,
-        .product-management input,
-        .product-management select {
-          color: var(--tossit-text, #151A21);
-          font-weight: bold;
-        }
-        
-        .form-group {
-          margin-bottom: 15px;
-        }
-        
-        label {
-          display: block;
-          margin-bottom: 5px;
-          font-weight: 500;
-          color: var(--tossit-text, #151A21);
-        }
-        
-        input {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid var(--tossit-line-strong, #C9CFD6);
-          border-radius: 4px;
-          color: var(--tossit-text, #151A21);
-          font-size: 16px;
-        }
-        
-        /* Hebrew text inputs */
-        input[type="text"] {
-          text-align: right;
-          direction: rtl;
-        }
-        
-        /* Number inputs should be LTR for better usability */
-        input[type="number"] {
-          text-align: left;
-          direction: ltr;
-        }
-        
-        .form-input {
-          border: 1px solid var(--tossit-line-strong, #C9CFD6);
-          background-color: var(--tossit-surface, #FFFFFF);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .form-input:focus {
-          outline: none;
-          border-color: var(--tossit-focus, #1D6A4E);
-          box-shadow: 0 0 0 2px var(--tossit-focus, #1D6A4E);
-        }
-        
-        .readonly-input {
-          background-color: var(--tossit-surface-soft, #F5F6F8);
-          cursor: not-allowed;
-          border: 1px solid var(--tossit-line-strong, #C9CFD6);
-          text-align: right;
-          direction: rtl;
-        }
-        
-        .radio-group {
-          display: flex;
-          gap: 20px;
-        }
-        
-        .radio-group label {
-          display: flex;
-          alignItems: center;
-          font-weight: normal;
-          color: var(--tossit-text, #151A21);
-        }
-        
-        .radio-group input {
-          width: auto;
-          margin-left: 8px;
-        }
-        
-        .submit-button, .action-button, .edit-button, .delete-button, .cancel-button {
-          padding: 10px 15px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: background-color 0.3s;
-          font-size: 16px;
-        }
-        
-        .submit-button {
-          background-color: var(--tossit-primary, #1D6A4E);
-          color: var(--tossit-primary-contrast, #FFFFFF);
-          width: 100%;
-        }
-        
-        .submit-button:hover {
-          background-color: var(--tossit-primary-strong, #155239);
-        }
-        
-        .action-button {
-          background-color: var(--tossit-primary, #1D6A4E);
-          color: var(--tossit-primary-contrast, #FFFFFF);
-          margin-bottom: 20px;
-        }
-        
-        .action-button:hover {
-          background-color: var(--tossit-primary-strong, #155239);
-        }
-        
-        .cancel-button {
-          background-color: var(--tossit-surface-soft, #F5F6F8);
-          color: var(--tossit-text, #151A21);
-          margin-right: 10px;
-        }
-        
-        .cancel-button:hover {
-          background-color: var(--tossit-line, #E3E6EA);
-        }
-        
-        .form-actions {
-          display: flex;
-          justify-content: flex-start;
-        }
-        
-        .alert {
-          padding: 12px;
-          border-radius: 4px;
-          margin-bottom: 15px;
-          font-weight: bold;
-          font-size: 16px;
-        }
-        
-        .error {
-          background-color: var(--tossit-danger-tint, #FDF0EF);
-          color: var(--tossit-text, #151A21);
-          border: 1px solid var(--tossit-danger, #B42318);
-        }
-        
-        .success {
-          background-color: var(--tossit-success-tint, #EAF4EE);
-          color: var(--tossit-text, #151A21);
-          border: 1px solid var(--tossit-success, #1D6A4E);
-        }
-        
-        .products-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-          background-color: var(--tossit-surface, #FFFFFF);
-          border: 1px solid var(--tossit-line-strong, #C9CFD6);
-        }
-        
-        .products-table th, .products-table td {
-          padding: 12px;
-          border: 1px solid var(--tossit-line, #E3E6EA);
-          text-align: right;
-          color: var(--tossit-text, #151A21);
-          font-weight: bold;
-        }
-        
-        .products-table th {
-          background-color: var(--tossit-surface-soft, #F5F6F8);
-          font-weight: bold;
-          color: var(--tossit-text, #151A21);
-        }
-        
-        .products-table tr:nth-child(even) {
-          background-color: var(--tossit-surface-soft, #F5F6F8);
-        }
-        
-        .actions-cell {
-          display: flex;
-          gap: 5px;
-        }
-        
-        .edit-button {
-          background-color: var(--tossit-surface-soft, #F5F6F8);
-          color: var(--tossit-text, #151A21);
-        }
-        
-        .edit-button:hover {
-          background-color: var(--tossit-line, #E3E6EA);
-        }
-        
-        .delete-button {
-          background-color: var(--tossit-danger, #B42318);
-          color: var(--tossit-surface, #FFFFFF);
-        }
-        
-        .delete-button:hover {
-          background-color: var(--tossit-danger, #B42318);
-        }
-        
-        ::placeholder {
-          color: var(--tossit-text-muted, #58616F);
-          opacity: 1;
-        }
-        
-        /* Fix for number input */
-        input[type="number"] {
-          -moz-appearance: textfield;
-          color: var(--tossit-text, #151A21) !important;
-          background-color: var(--tossit-surface, #FFFFFF) !important;
-        }
-        
-        input[type="number"]::-webkit-inner-spin-button, 
-        input[type="number"]::-webkit-outer-spin-button { 
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        
-        /* Troubleshooting styles */
-        input[type="text"], input[type="number"] {
-          pointer-events: auto !important;
-          cursor: text !important;
-          user-select: auto !important;
-          color: var(--tossit-text, #151A21) !important;
-        }
-        
-        /* Fix for possible interference */
-        * {
-          pointer-events: auto;
-        }
-      `}</style>
-    </div>
+    </Box>
   );
 };
 

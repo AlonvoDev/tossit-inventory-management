@@ -12,7 +12,6 @@ import {
   Chip,
   IconButton,
   useTheme,
-  alpha,
   Divider,
   TextField,
 } from '@mui/material';
@@ -123,23 +122,17 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         startIcon={<DateRangeIcon />}
         endIcon={<CalendarIcon />}
         sx={{
-          minWidth: 320,
+          // V3: a regular outlined control like the other filters (was a shadowed 320px pill).
+          minHeight: 44,
+          flex: { xs: '1 1 100%', sm: '0 0 auto' },
           justifyContent: 'space-between',
-          textTransform: 'none',
-          fontSize: '1rem',
-          py: 1.8,
-          px: 3,
-          borderRadius: 3,
-          border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-          background: tokens.colors.surface,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            borderColor: theme.palette.primary.main,
-            background: alpha(theme.palette.primary.main, 0.05),
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            transform: 'translateY(-1px)',
-          },
+          gap: 1,
+          px: 1.5,
+          fontWeight: 600,
+          borderColor: tokens.colors.control,
+          color: 'text.primary',
+          bgcolor: 'background.paper',
+          '& .MuiButton-startIcon, & .MuiButton-endIcon': { color: 'primary.main' },
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -189,7 +182,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
               </Typography>
             </Box>
           </Box>
-          <IconButton onClick={handleClose} size="small">
+          <IconButton onClick={handleClose} aria-label="סגירה" sx={{ width: 44, height: 44 }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -204,7 +197,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 elevation={0}
                 sx={{
                   p: 2,
-                  bgcolor: alpha(theme.palette.grey[100], 0.5),
+                  bgcolor: tokens.colors.surfaceSoft,
                   borderRadius: 2,
                 }}
               >
@@ -283,9 +276,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   elevation={0}
                   sx={{
                     p: 2,
-                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                    bgcolor: tokens.colors.infoTint,
                     borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                    border: `1px solid ${tokens.colors.info}`,
                   }}
                 >
                   <Typography variant="body2" color="info.main" sx={{ fontWeight: 500 }}>

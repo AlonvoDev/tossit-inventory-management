@@ -3,11 +3,13 @@ import { useAuth } from '../context/AuthContext';
 import { getDiscardReport, DiscardReportItem } from '../api/firestoreAPI';
 import DateRangePicker from './DateRangePicker';
 import { toQueryBounds } from './dateRange';
+import { ManagementList, ManagementRow, Tag } from './layout/ManagementList';
+import { departmentLabel } from '../app/access';
+import { tokens } from '../app/theme';
 import type { DiscardReason } from '../domain/contracts';
 import {
   Box,
   Typography,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -21,7 +23,6 @@ import {
   Button,
   useTheme,
   useMediaQuery,
-  alpha,
   TextField,
   InputAdornment,
   MenuItem,
@@ -137,13 +138,6 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
   const totalDiscardEvents = reportData.reduce((sum, item) => sum + item.discardCount, 0);
   const totalProducts = reportData.length;
 
-  const getReasonColor = (reason: string) => {
-    switch (reason) {
-      case 'expired': return theme.palette.warning.main;
-      case 'damaged': return theme.palette.error.main;
-      default: return theme.palette.info.main;
-    }
-  };
 
 
 
@@ -199,6 +193,13 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
   const kgTotal = reportData.filter(i => i.type === 'kg').reduce((sum, i) => sum + i.totalQuantity, 0);
   const unitsTotal = reportData.filter(i => i.type !== 'kg').reduce((sum, i) => sum + i.totalQuantity, 0);
   const round = (n: number) => Math.round(n * 1000) / 1000;
+  const STRIP_LINE = `1px solid ${tokens.colors.line}`;
+  const unitText = (type: DiscardReportItem['type']) => (type === 'kg' ? 'ק״ג' : 'יח׳');
+  // Same rounding on every screen size (was toFixed(0/1) on desktop, which showed 1.5 units as "2").
+  const qty = (n: number, type: DiscardReportItem['type']) => `${round(n)} ${unitText(type)}`;
+  const avg = (item: DiscardReportItem) => `${Math.round(item.averageQuantity * 100) / 100} ${unitText(item.type)}`;
+  // Department identity for same-name products, shown once the report data carries it (CLAUDE_REQUESTS V3-1).
+  const departmentOf = (item: DiscardReportItem) => departmentLabel((item as DiscardReportItem & { area?: string }).area) ?? null;
   const reasonChips = (item: DiscardReportItem) => (
     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
       {item.reasons.expired > 0 && <Chip size="small" label={`פג תוקף: ${item.reasons.expired}`} sx={{ bgcolor: 'var(--tossit-warning-tint, #FDF4EA)', color: 'var(--tossit-text, #151A21)', fontWeight: 600 }} />}
@@ -253,15 +254,33 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
         </Typography>
       )}
 
-      {/* Summary: plain counts, units never mixed */}
-      <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' }, my: 2 }}>
-        {stats.map(stat => (
-          <Paper key={stat.label} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
-            <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+      {/* Summary: plain counts, units never mixed — one flat strip with separators (V3). */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
+          my: 2,
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 2,
+          overflow: 'clip',
+        }}
+      >
+        {stats.map((stat, i) => (
+          <Box
+            key={stat.label}
+            sx={{
+              px: 1.5,
+              py: 1,
+              borderInlineStart: { xs: i % 2 ? STRIP_LINE : 0, sm: i ? STRIP_LINE : 0 },
+              borderTop: { xs: i > 1 ? STRIP_LINE : 0, sm: 0 },
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>
               {stat.label}
             </Typography>
             <Typography sx={{ fontWeight: 700, fontSize: '1.25rem' }}>{stat.value}</Typography>
-          </Paper>
+          </Box>
         ))}
       </Box>
 
@@ -295,32 +314,40 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
       )}
 
       {isPhone && filteredData.length > 0 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <ManagementList>
           {filteredData.map(item => (
-            <Paper key={`${item.productName}|${item.type}`} component="article" variant="outlined" aria-label={item.productName} sx={{ p: 1.5, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>{item.productName}</Typography>
-                <Chip size="small" variant="outlined" label={item.type === 'kg' ? 'ק״ג' : 'יחידות'} />
-              </Box>
-              <Typography sx={{ fontWeight: 600 }}>
-                נזרק: {item.totalQuantity.toFixed(item.type === 'kg' ? 1 : 0)} {item.type === 'kg' ? 'ק״ג' : 'יח׳'} · {item.discardCount} פעמים
-              </Typography>
-              <Typography variant="body2">
-                ממוצע לזריקה: {Math.round(item.averageQuantity * 100) / 100} {item.type === 'kg' ? 'ק״ג' : 'יח׳'}
-              </Typography>
-              {reasonChips(item)}
-              <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>זריקה אחרונה: {formatDate(item.lastDiscarded)}</Typography>
-            </Paper>
+            <ManagementRow
+              key={`${item.productName}|${item.type}`}
+              label={item.productName}
+              title={item.productName}
+              subtitle={
+                <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                  נזרק: {qty(item.totalQuantity, item.type)} · {item.discardCount} פעמים
+                </Box>
+              }
+              tags={
+                <>
+                  <Tag>{item.type === 'kg' ? 'ק״ג' : 'יחידות'}</Tag>
+                  {departmentOf(item) && <Tag>{departmentOf(item)}</Tag>}
+                  {reasonChips(item)}
+                </>
+              }
+              meta={
+                <>
+                  ממוצע לזריקה: {avg(item)} · זריקה אחרונה: {formatDate(item.lastDiscarded)}
+                </>
+              }
+            />
           ))}
-        </Box>
+        </ManagementList>
       )}
 
       {/* Report table (tablet/desktop) */}
       {!isPhone && (
-      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+      <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'clip' }}>
         <TableContainer>
           <Table>
-            <TableHead sx={{ background: alpha(theme.palette.primary.main, 0.1) }}>
+            <TableHead sx={{ bgcolor: tokens.colors.surfaceSoft, '& .MuiTableCell-head': { fontWeight: 700, color: 'text.secondary', fontSize: '0.8125rem' } }}>
               <TableRow>
                 <TableCell>
                   <TableSortLabel
@@ -379,83 +406,25 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
             </TableHead>
             <TableBody>
               {filteredData.map((item) => (
-                <TableRow 
-                  key={`${item.productName}|${item.type}`}
-                  sx={{ 
-                    '&:nth-of-type(odd)': { 
-                      backgroundColor: alpha(theme.palette.primary.main, 0.02) 
-                    },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.05)
-                    }
-                  }}
-                >
+                <TableRow key={`${item.productName}|${item.type}`} hover sx={{ '&:last-of-type td': { borderBottom: 0 } }}>
                   <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                      <Typography component="span" sx={{ fontWeight: 700 }}>
                         {item.productName}
                       </Typography>
-                      <Chip 
-                        label={item.type === 'kg' ? 'ק"ג' : 'יחידות'} 
-                        size="small" 
-                        variant="outlined"
-                      />
+                      <Tag>{item.type === 'kg' ? 'ק"ג' : 'יחידות'}</Tag>
+                      {departmentOf(item) && <Tag>{departmentOf(item)}</Tag>}
                     </Box>
                   </TableCell>
                   <TableCell align="center">
-                    <Typography variant="h6" sx={{ 
-                      fontWeight: 600,
-                      color: theme.palette.error.main 
-                    }}>
-                      {item.totalQuantity.toFixed(item.type === 'kg' ? 1 : 0)}
+                    <Typography component="span" sx={{ fontWeight: 700, fontSize: '1.0625rem' }}>
+                      {round(item.totalQuantity)}
                     </Typography>
                   </TableCell>
+                  <TableCell align="center">{item.discardCount}</TableCell>
+                  <TableCell align="center">{avg(item)}</TableCell>
                   <TableCell align="center">
-                    <Chip 
-                      label={item.discardCount} 
-                      color="warning" 
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    {item.averageQuantity.toFixed(item.type === 'kg' ? 1 : 0)}
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-                      {item.reasons.expired > 0 && (
-                        <Chip 
-                          label={`פג תוקף: ${item.reasons.expired}`}
-                          size="small"
-                          sx={{ 
-                            bgcolor: alpha(getReasonColor('expired'), 0.1),
-                            color: getReasonColor('expired'),
-                            fontWeight: 600
-                          }}
-                        />
-                      )}
-                      {item.reasons.damaged > 0 && (
-                        <Chip 
-                          label={`נפגם: ${item.reasons.damaged}`}
-                          size="small"
-                          sx={{ 
-                            bgcolor: alpha(getReasonColor('damaged'), 0.1),
-                            color: getReasonColor('damaged'),
-                            fontWeight: 600
-                          }}
-                        />
-                      )}
-                      {item.reasons.other > 0 && (
-                        <Chip 
-                          label={`אחר: ${item.reasons.other}`}
-                          size="small"
-                          sx={{ 
-                            bgcolor: alpha(getReasonColor('other'), 0.1),
-                            color: getReasonColor('other'),
-                            fontWeight: 600
-                          }}
-                        />
-                      )}
-                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>{reasonChips(item)}</Box>
                   </TableCell>
                   <TableCell align="center">
                     <Typography variant="body2" color="text.secondary">
@@ -467,12 +436,12 @@ const DiscardReport: React.FC<DiscardReportProps> = ({ businessId: propBusinessI
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box>
       )}
 
       {filteredData.length === 0 && !loading && (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="text.secondary">
+        <Box sx={{ textAlign: 'center', py: 5 }}>
+          <Typography sx={{ fontWeight: 700 }}>
             אין נתונים להצגה
           </Typography>
           <Typography variant="body2" color="text.secondary">

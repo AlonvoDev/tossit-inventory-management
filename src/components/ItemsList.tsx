@@ -38,6 +38,8 @@ interface ItemsListProps {
   onItemUpdated?: () => void; // Callback for when items are updated
 }
 
+const LINE = `1px solid ${tokens.colors.line}`;
+
 const ItemsList: React.FC<ItemsListProps> = ({ 
   areaFilter, 
   showExpiredOnly = false,
@@ -422,9 +424,9 @@ const ItemsList: React.FC<ItemsListProps> = ({
         <Box
           sx={{
             mx: { xs: -1.5, sm: 0 },
-            borderTop: 1,
-            border: { md: 1 },
-            borderColor: 'divider', // after the shorthand so it is not reset to currentColor
+            // Explicit colour in every breakpoint: a responsive `border: 1` resets the colour to currentColor.
+            borderTop: LINE,
+            border: { md: LINE },
             borderRadius: { md: 2 },
             overflow: 'clip',
           }}

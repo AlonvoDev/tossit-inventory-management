@@ -19,24 +19,33 @@ export const Card: React.FC<CardProps> = ({
     none: '0',
     small: tokens.spacing.md,
     medium: tokens.spacing.lg,
-    large: tokens.spacing.xl,
+    large: tokens.spacing.lg,
   };
 
   return (
-    <MuiCard 
+    <MuiCard
+      variant="outlined"
       {...props}
       sx={{
+        // V3: flat surface with a thin border; compact section heading (no large card title).
         backgroundColor: tokens.colors.surface,
-        boxShadow: tokens.shadows.soft,
+        boxShadow: 'none',
+        border: 1,
+        borderColor: 'divider',
         borderRadius: tokens.radius,
         ...props.sx,
       }}
     >
       {(title || subtitle) && (
-        <CardHeader 
+        <CardHeader
           title={title}
           subheader={subtitle}
+          titleTypographyProps={{ component: 'h2', sx: { fontSize: '1.125rem', fontWeight: 700, lineHeight: 1.3 } }}
+          subheaderTypographyProps={{ sx: { fontSize: '0.875rem' } }}
           sx={{
+            px: 2,
+            pt: 1.75,
+            pb: 0,
             color: tokens.colors.text.primary,
             '& .MuiCardHeader-subheader': {
               color: tokens.colors.text.muted,
@@ -44,7 +53,7 @@ export const Card: React.FC<CardProps> = ({
           }}
         />
       )}
-      <CardContent sx={{ padding: paddingValues[padding] }}>
+      <CardContent sx={{ padding: paddingValues[padding], '&:last-child': { pb: paddingValues[padding] } }}>
         {children}
       </CardContent>
     </MuiCard>

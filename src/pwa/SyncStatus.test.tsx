@@ -37,6 +37,17 @@ describe('SyncStatus', () => {
     expect(screen.getByText('1 נכשלו')).toBeInTheDocument();
   });
 
+  it('V3: the tappable queue chips are real 44px targets', () => {
+    state.current.operations = [
+      { operationId: 'a', itemId: '1', state: 'pending' },
+      { operationId: 'c', itemId: '3', state: 'failed', errorCode: 'already-closed' },
+    ];
+    render(<SyncStatus />);
+    for (const name of ['1 ממתינות לשליחה', '1 נכשלו']) {
+      expect(getComputedStyle(screen.getByRole('button', { name })).minHeight).toBe('44px');
+    }
+  });
+
   it('lists failures with a Hebrew reason and retries the same operation on request only', async () => {
     state.current.operations = [
       { operationId: 'p', itemId: '1', state: 'pending' },
